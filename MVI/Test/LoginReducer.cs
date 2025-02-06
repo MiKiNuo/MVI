@@ -1,13 +1,14 @@
 ﻿using MVI;
 
 namespace Test;
+
 public class LoginReducer : IReducer<LoginState, LoginIntent>
 {
     private async ValueTask<LoginState> HandleSubmit(LoginState currentState)
     {
         if (string.IsNullOrEmpty(currentState.Username) || string.IsNullOrEmpty(currentState.Password))
         {
-            return currentState.SetError("Username and password are required.");
+            return currentState.SetError("用户名和密码不能为空");
         }
 
         var loadingState = currentState.StartLoading();
@@ -39,25 +40,13 @@ public class LoginReducer : IReducer<LoginState, LoginIntent>
     {
         switch (intent)
         {
-            case UsernameChanged:
-                var usernameChanged = intent as UsernameChanged;
-                currentState = currentState.UpdateUsername(usernameChanged.UserName);
-                break;
+            case UsernameChanged usernameChanged:
+                return currentState.UpdateUsername(usernameChanged.UserName);
 
-            case PasswordChanged:
-                var passwordChanged = intent as PasswordChanged;
-                currentState = currentState.UpdatePassword(passwordChanged.Password);
-                break;
+            case PasswordChanged passwordChanged:
+                return currentState.UpdatePassword(passwordChanged.Password);
             case Submit:
-                var submit = intent as Submit;
-                if (string.IsNullOrEmpty(currentState.Username) || string.IsNullOrEmpty(currentState.Password))
-                {
-                    currentState = currentState.SetError("用户名和密码不能为空");
-                }
-                
-
-                //await HandleSubmit(currentState);
-                break;
+                return await HandleSubmit(currentState);
         }
 
         return currentState;
