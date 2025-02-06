@@ -39,17 +39,17 @@ public class LoginReducer : IReducer<LoginState, LoginIntent>
     {
         switch (intent)
         {
-            case LoginIntent.UsernameChanged:
-                var usernameChanged = intent as LoginIntent.UsernameChanged;
+            case UsernameChanged:
+                var usernameChanged = intent as UsernameChanged;
                 currentState = currentState.UpdateUsername(usernameChanged.UserName);
                 break;
 
-            case LoginIntent.PasswordChanged:
-                var passwordChanged = intent as LoginIntent.PasswordChanged;
+            case PasswordChanged:
+                var passwordChanged = intent as PasswordChanged;
                 currentState = currentState.UpdatePassword(passwordChanged.Password);
                 break;
-            case LoginIntent.Submit:
-                var submit = intent as LoginIntent.Submit;
+            case Submit:
+                var submit = intent as Submit;
                 if (string.IsNullOrEmpty(currentState.Username) || string.IsNullOrEmpty(currentState.Password))
                 {
                     currentState = currentState.SetError("用户名和密码不能为空");

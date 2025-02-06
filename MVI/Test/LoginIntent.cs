@@ -2,31 +2,33 @@
 
 namespace Test;
 
-public class LoginIntent :IIntent
+public class LoginIntent : IIntent
 {
-    public class UsernameChanged : LoginIntent
+}
+
+public class PasswordChanged : LoginIntent
+{
+    public PasswordChanged(string newPassword)
     {
-        public UsernameChanged(string newUsername)
-        {
-            UserName = newUsername;
-        }
-        public string UserName { get; set; }
+        Password = newPassword;
     }
-    
-    public class PasswordChanged : LoginIntent
+
+    public string Password { get; set; }
+}
+
+public class UsernameChanged : LoginIntent
+{
+    public UsernameChanged(string newUsername)
     {
-        public PasswordChanged(string newPassword)
-        {
-            Password = newPassword;
-        }
-        public string Password { get; set; }
+        UserName = newUsername;
     }
-    
-    public class Submit : LoginIntent
+
+    public string UserName { get; set; }
+}
+
+public class Submit : LoginIntent
+{
+    public void DOSubmit()
     {
-        public void DOSubmit()
-        {
-            
-        }
     }
 }

@@ -4,6 +4,6 @@ namespace MVI
 {
     public interface IReducer<TState, TIntent> where TState : IState where TIntent : IIntent
     {
-        ValueTask<TState>  ReduceAsync(TState currentState, TIntent intent);
+        ValueTask<TState> ReduceAsync(TState currentState, TIntent intent);
     }
 }

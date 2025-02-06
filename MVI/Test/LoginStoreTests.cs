@@ -1,8 +1,5 @@
-﻿using MVI;
-
+﻿
 namespace Test;
-
-// LoginStoreTests.cs
 using Xunit;
 using System.Threading.Tasks;
 using Moq;
@@ -24,11 +21,11 @@ public class LoginStoreTests
         // Arrange
         var newState = new LoginState("newUser", "", false, null);
         _reducerMock
-            .Setup(r => r.ReduceAsync(It.IsAny<LoginState>(), new LoginIntent.UsernameChanged("newUser")))
+            .Setup(r => r.ReduceAsync(It.IsAny<LoginState>(), new UsernameChanged("newUser")))
             .ReturnsAsync(newState);
 
         // Act
-        await _store.ProcessIntentAsync(new LoginIntent.UsernameChanged("newUser") );
+        await _store.ProcessIntentAsync(new UsernameChanged("newUser") );
 
         // Assert
         Assert.Equal("newUser", _store.CurrentState.Username);
@@ -40,11 +37,11 @@ public class LoginStoreTests
         // Arrange
         var errorState = new LoginState("", "", false, "Username and password are required.");
         _reducerMock
-            .Setup(r => r.ReduceAsync(It.IsAny<LoginState>(), new LoginIntent.Submit()))
+            .Setup(r => r.ReduceAsync(It.IsAny<LoginState>(), new Submit()))
             .ReturnsAsync(errorState);
 
         // Act
-        await _store.ProcessIntentAsync(new LoginIntent.Submit());
+        await _store.ProcessIntentAsync(new Submit());
 
         // Assert
         Assert.Equal("Username and password are required.", _store.CurrentState.ErrorMessage);

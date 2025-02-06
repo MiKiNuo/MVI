@@ -15,7 +15,7 @@ public class LoginReducerTests
     public async Task Reduce_UsernameChanged_UpdatesUsername()
     {
         var initialState = new LoginState("", "", false, null);
-        var newState = await _reducer.ReduceAsync(initialState, new LoginIntent.UsernameChanged("newUser"));
+        var newState = await _reducer.ReduceAsync(initialState, new UsernameChanged("newUser"));
 
         Assert.Equal("newUser", newState.Username);
     }
@@ -24,7 +24,7 @@ public class LoginReducerTests
     public async Task Reduce_PasswordChanged_UpdatesPassword()
     {
         var initialState = new LoginState("", "", false, null);
-        var newState = await _reducer.ReduceAsync(initialState, new LoginIntent.PasswordChanged("newPass"));
+        var newState = await _reducer.ReduceAsync(initialState, new PasswordChanged("newPass"));
 
         Assert.Equal("newPass", newState.Password);
     }
@@ -33,7 +33,7 @@ public class LoginReducerTests
     public async Task Reduce_Submit_WithEmptyCredentials_SetsError()
     {
         var initialState = new LoginState("", "", false, null);
-        var newState = await _reducer.ReduceAsync(initialState, new LoginIntent.Submit());
+        var newState = await _reducer.ReduceAsync(initialState, new Submit());
 
         Assert.Equal("用户名和密码不能为空", newState.ErrorMessage);
     }
@@ -42,7 +42,7 @@ public class LoginReducerTests
     public async Task Reduce_Submit_WithValidCredentials_ClearsError()
     {
         var initialState = new LoginState("admin", "password", false, null);
-        var newState = await _reducer.ReduceAsync(initialState, new LoginIntent.Submit());
+        var newState = await _reducer.ReduceAsync(initialState, new Submit());
 
         Assert.Null(newState.ErrorMessage);
     }

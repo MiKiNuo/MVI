@@ -1,7 +1,6 @@
 ﻿namespace MVI
 {
-    public interface  IIntent
+    public interface IIntent
     {
-        
     }
 }
