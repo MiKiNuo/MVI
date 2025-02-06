@@ -1,4 +1,4 @@
-﻿namespace MVI.Src
+﻿namespace MVI
 {
     public interface  IIntent
     {

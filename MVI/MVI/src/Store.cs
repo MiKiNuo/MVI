@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using R3;
 
-namespace MVI.Src
+namespace MVI
 {
     public abstract class Store<TState, TIntent> where TState : class, IState where TIntent : IIntent
     {

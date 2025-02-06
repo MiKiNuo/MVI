@@ -1,8 +1,6 @@
-﻿using MVI.Src;
+﻿using MVI;
 
 namespace Test;
-
-// LoginReducer.cs
 public class LoginReducer : IReducer<LoginState, LoginIntent>
 {
     private async ValueTask<LoginState> HandleSubmit(LoginState currentState)

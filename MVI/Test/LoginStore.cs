@@ -1,4 +1,4 @@
-﻿using MVI.Src;
+﻿using MVI;
 
 namespace Test;
 

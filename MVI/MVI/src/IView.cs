@@ -1,6 +1,6 @@
 ﻿using R3;
 
-namespace MVI.Src
+namespace MVI
 {
     public interface IView<TState, TIntent> where TState : IState where TIntent : IIntent
     {
