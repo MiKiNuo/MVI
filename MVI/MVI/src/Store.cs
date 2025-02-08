@@ -1,28 +1,62 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using R3;
 
 namespace MVI
 {
-    public class Store<TState, TIntent>
+    public abstract class Store<TState, TIntent> : IDisposable
         where TState : IState
         where TIntent : IIntent
     {
-        private readonly ReactiveProperty<TState> _state;
-        private readonly IReducer<TState, TIntent> _reducer;
+        private readonly BehaviorSubject<TState> _stateSubject;
+        private readonly CompositeDisposable _disposables = new CompositeDisposable();
 
-        public Observable<TState> State => _state;
-        public TState CurrentState => _state.Value;
-
-        public Store(TState initialState, IReducer<TState, TIntent> reducer)
+        protected Store(TState initialState)
         {
-            _reducer = reducer;
-            _state = new ReactiveProperty<TState>(initialState);
+            _stateSubject = new BehaviorSubject<TState>(initialState);
         }
 
-        public async Task ProcessIntentAsync(TIntent intent)
+        public Observable<TState> State => _stateSubject;
+
+        public void Bind(IView<TState, TIntent> view)
         {
-            var newState = await _reducer.ReduceAsync(CurrentState, intent);
-            _state.Value = newState;
+            Process(view.IntentStream);
+            _stateSubject
+                .Subscribe(view.Render)
+                .AddTo(_disposables);
         }
+
+        protected async ValueTask<Observable<IMviResult>> ProcessIntentAsync(TIntent intent,
+            CancellationToken ct = default)
+        {
+            var result = await intent.HandleIntentAsync(_stateSubject.Value);
+            return Observable.Return(result);
+        }
+
+        public void Process(Observable<TIntent> intents)
+        {
+            intents
+                .SelectAwait(ProcessIntentAsync)
+                .Switch()
+                .Subscribe(Reducer)
+                .AddTo(_disposables);
+        }
+
+        private void Reducer(IMviResult result)
+        {
+            var newState = Reducer(_stateSubject.Value, result);
+            UpdateState(newState);
+        }
+
+
+        public void UpdateState(TState state)
+        {
+            _stateSubject.OnNext(state);
+        }
+
+        protected abstract TState Reducer(TState currentState, IMviResult result);
+
+        public void Dispose() => _disposables.Dispose();
     }
 }

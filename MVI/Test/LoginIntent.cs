@@ -2,33 +2,43 @@
 
 namespace Test;
 
-public class LoginIntent : IIntent
+public record LoginIntent : IIntent
 {
-}
-
-public class PasswordChanged : LoginIntent
-{
-    public PasswordChanged(string newPassword)
+    public virtual async ValueTask<IMviResult> HandleIntentAsync(IState request)
     {
-        Password = newPassword;
+        await ValueTask.CompletedTask;
+        return null;
     }
-
-    public string Password { get; set; }
 }
 
-public class UsernameChanged : LoginIntent
+public record Submit : LoginIntent
 {
-    public UsernameChanged(string newUsername)
+    public override async ValueTask<IMviResult> HandleIntentAsync(IState request)
     {
-        UserName = newUsername;
-    }
+        await ValueTask.CompletedTask;
+        var curState = request as LoginState;         
+        var mviResult = new MviResult();
+        if (string.IsNullOrWhiteSpace(curState.Password) || string.IsNullOrWhiteSpace(curState.Username))
+        {
+            mviResult.Code = -1;
+            mviResult.Message = "用户名或密码不能为空";
+        }
+        else if (curState.Username != "admin")
+        {
+            mviResult.Code = -1;
+            mviResult.Message = "用户名错误";
+        }else if (curState.Password != "888888")
+        {
+            mviResult.Code = -1;
+            mviResult.Message = "密码错误";
+        }
+        else if (curState.Password == "888888" && curState.Username == "admin")
+        {
+            mviResult.Code = 0;
+            mviResult.Message = "登录成功";
+            mviResult.Data = new LoginState(curState.Username, curState.Password, false, "");
+        }
 
-    public string UserName { get; set; }
-}
-
-public class Submit : LoginIntent
-{
-    public void DOSubmit()
-    {
+        return mviResult;
     }
 }

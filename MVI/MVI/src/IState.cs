@@ -1,4 +1,5 @@
-﻿namespace MVI
+﻿
+namespace MVI
 {
     public interface IState
     {
