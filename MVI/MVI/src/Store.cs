@@ -21,7 +21,7 @@ namespace MVI
 
         public void Bind(IView<TState, TIntent> view)
         {
-            Process(view.IntentStream);
+            Process(view.IntentSubject);
             _stateSubject
                 .Subscribe(view.Render)
                 .AddTo(_disposables);

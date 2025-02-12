@@ -7,8 +7,11 @@ namespace MVI
         where TState : IState
         where TIntent : IIntent
     {
-        void Bind(Store<TState, TIntent> store);
+        void Bind();
         void Render(TState state);
-        Observable<TIntent> IntentStream { get; }
+        Subject<TIntent> IntentSubject { get; }
+        Store<TState, TIntent> Store { get; }
+        TState GetCurrentState();
+        void EmitIntent(TIntent intent);
     }
 }

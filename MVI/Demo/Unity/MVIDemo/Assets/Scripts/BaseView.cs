@@ -3,25 +3,33 @@ using UnityEngine;
 
 namespace MVI.Demo
 {
-    public abstract class BaseView<TState,TIntent> :MonoBehaviour,IView<TState,TIntent>
+    public abstract class BaseView<TState, TIntent> : MonoBehaviour, IView<TState, TIntent>
         where TState : IState
         where TIntent : IIntent
     {
+        private readonly Subject<TIntent> _intentSubject = new();
+        public abstract Store<TState, TIntent> Store { get; }
+
         public void Dispose()
         {
             throw new System.NotImplementedException();
         }
 
-        public void Bind(Store<TState, TIntent> store)
+        public void Bind()
         {
-            throw new System.NotImplementedException();
+            Store.Bind(this);
         }
 
-        public void Render(TState state)
+        public abstract void Render(TState state);
+        public abstract TState GetCurrentState();
+
+        public void EmitIntent(TIntent intent)
         {
-            throw new System.NotImplementedException();
+            var curState = GetCurrentState();
+            Store.UpdateState(curState);
+            IntentSubject.OnNext(intent);
         }
 
-        public Observable<TIntent> IntentStream { get; }
+        public Subject<TIntent> IntentSubject => _intentSubject;
     }
 }

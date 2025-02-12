@@ -42,4 +42,9 @@ namespace MVI.Demo
             return mviResult;
         }
     }
+
+    public record Cancel : LoginIntent
+    {
+        
+    }
 }
