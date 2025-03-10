@@ -1,5 +1,5 @@
 # MVI
-- en [chinese](Readem_zh.md)
+- zh [chinese](README_zh.md)
 This is an implementation of the Model-View-Intent (MVI) architecture using C#, with the following features:
 
 - Uses R3 as the reactive library.
