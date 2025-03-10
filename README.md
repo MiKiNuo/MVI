@@ -155,7 +155,7 @@ Store需要获取State和Intent所以我们要定定义好上面的State和Inten
             public Subject<TIntent> IntentSubject => _intentSubject;
     }
 #### 4、具体View实现
-进一步抽线了Bas儿View后，我们对应的View只需要继承Bas儿View即可，举例登陆界面，如下代码所示：
+进一步抽象了BaseView后，我们对应的View只需要继承BaseView即可，举例登陆界面，如下代码所示：
 
     public class LoginView : BaseView<LoginState, LoginIntent>
     {
