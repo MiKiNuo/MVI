@@ -4,15 +4,15 @@ namespace Winform;
 
 public record LoginIntent : IIntent
 {
-    public virtual ValueTask<IMviResult> HandleIntentAsync(IState state)
+    public virtual ValueTask<IMviResult> HandleIntentAsync(IState state, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
 }
 
-public record Submit: LoginIntent
+public record Submit : LoginIntent
 {
-    public override async ValueTask<IMviResult> HandleIntentAsync(IState state)
+    public override async ValueTask<IMviResult> HandleIntentAsync(IState state, CancellationToken ct = default)
     {
         await ValueTask.CompletedTask;
         var curState = state as LoginState;
