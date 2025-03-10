@@ -30,7 +30,7 @@ namespace MVI
         protected async ValueTask<Observable<IMviResult>> ProcessIntentAsync(TIntent intent,
             CancellationToken ct = default)
         {
-            var result = await intent.HandleIntentAsync(_stateSubject.Value);
+            var result = await intent.HandleIntentAsync(_stateSubject.Value,ct);
             return Observable.Return(result);
         }
 

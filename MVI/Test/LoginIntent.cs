@@ -4,7 +4,7 @@ namespace Test;
 
 public record LoginIntent : IIntent
 {
-    public virtual async ValueTask<IMviResult> HandleIntentAsync(IState request)
+    public virtual async ValueTask<IMviResult> HandleIntentAsync(IState request, CancellationToken ct = default)
     {
         await ValueTask.CompletedTask;
         return null;
@@ -13,7 +13,7 @@ public record LoginIntent : IIntent
 
 public record Submit : LoginIntent
 {
-    public override async ValueTask<IMviResult> HandleIntentAsync(IState request)
+    public override async ValueTask<IMviResult> HandleIntentAsync(IState request, CancellationToken ct = default)
     {
         await ValueTask.CompletedTask;
         var curState = request as LoginState;         
