@@ -18,6 +18,12 @@ public record Submit : LoginIntent
         await ValueTask.CompletedTask;
         var curState = request as LoginState;         
         var mviResult = new MviResult();
+        if (curState is null)
+        {
+            mviResult.Code = -1;
+            mviResult.Message = "状态类型不对";
+            return mviResult;
+        }
         if (string.IsNullOrWhiteSpace(curState.Password) || string.IsNullOrWhiteSpace(curState.Username))
         {
             mviResult.Code = -1;

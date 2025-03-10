@@ -1,10 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace MVI.Demo
 {
     public record LoginIntent : IIntent
     {
-        public virtual async ValueTask<IMviResult> HandleIntentAsync(IState request)
+        public virtual async ValueTask<IMviResult> HandleIntentAsync(IState request, CancellationToken ct = default)
         {
             await Task.CompletedTask;
             return null;
@@ -13,7 +14,7 @@ namespace MVI.Demo
 
     public record Submit : LoginIntent
     {
-        public override async ValueTask<IMviResult> HandleIntentAsync(IState request)
+        public override async ValueTask<IMviResult> HandleIntentAsync(IState request, CancellationToken ct = default)
         {
             await Task.CompletedTask;
             var curState = request as LoginState;         
