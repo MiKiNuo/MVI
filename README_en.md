@@ -1,11 +1,11 @@
 # MVI
-- zh [chinese](README.md)
+- [chinese](README.md)
 This is an implementation of the Model-View-Intent (MVI) architecture using C#, with the following features:
 
 - Uses R3 as the reactive library.
--Cross-platform support for any C#-compatible platform. Tested with Windows Forms and Unity.
--Simple and easy to understand, with core code under 100 lines.
--Supports unit testing.
+- Cross-platform support for any C#-compatible platform. Tested with Windows Forms and Unity.
+- Simple and easy to understand, with core code under 100 lines.
+- Supports unit testing.
 ## Tutorials
 ### I. Windows Forms Tutorial
 We use a login interface as an example. The State should ideally be a record or sealed class and implement the IState interface. For a login screen, the state includes fields like username, password, loading status, and error messages.
@@ -24,7 +24,6 @@ We use a login interface as an example. The State should ideally be a record or 
 #### 2. Define the Intent
    Intents (user actions) must implement IIntent. For a login screen, common intents include submitting credentials or canceling.
 
-
    public record LoginIntent : IIntent  
    {  
       public virtual ValueTask<IMviResult> HandleIntentAsync(IState state, CancellationToken ct = default)  
@@ -34,7 +33,6 @@ We use a login interface as an example. The State should ideally be a record or 
    }
 #### 3. Define the MviResult
    A result class to encapsulate outcomes like error codes, messages, and data:
-
 
    public record MviResult : IMviResult  
    {  
@@ -46,21 +44,21 @@ We use a login interface as an example. The State should ideally be a record or 
    The Store manages state updates based on results from intents:
    public class LoginStore : Store<LoginState, LoginIntent>  
    {  
-   public LoginStore(LoginState initialState) : base(initialState) { }
+      public LoginStore(LoginState initialState) : base(initialState) { }
 
-    protected override LoginState Reducer(LoginState currentState, IMviResult result)  
-    {  
-        if (result is not MviResult mviResult) return currentState;  
-        if (mviResult.Code == 0)  
-        {  
-            var data = mviResult.Data as LoginState;  
-            return data != null ? new LoginState(data.Username, data.Password, false, mviResult.Message) : currentState.SetError(mviResult.Message);  
-        }  
-        else  
-        {  
-            return currentState.SetError(mviResult.Message);  
-        }  
-    }  
+       protected override LoginState Reducer(LoginState currentState, IMviResult result)  
+       {  
+           if (result is not MviResult mviResult) return currentState;  
+           if (mviResult.Code == 0)  
+           {  
+               var data = mviResult.Data as LoginState;  
+               return data != null ? new LoginState(data.Username, data.Password, false, mviResult.Message) : currentState.SetError(mviResult.Message);  
+           }  
+           else  
+           {  
+               return currentState.SetError(mviResult.Message);  
+           }  
+       }  
    }
 ####  5. Implement the View
    Create a Form or UserControl that implements IView<LoginState, LoginIntent>:
