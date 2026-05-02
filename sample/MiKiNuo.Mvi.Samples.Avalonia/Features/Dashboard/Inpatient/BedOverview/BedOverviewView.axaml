@@ -1,0 +1,31 @@
+﻿<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedOverview.BedOverviewView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="12" Padding="10">
+        <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" />
+                <Border Grid.Column="1" Background="#DBEAFE" CornerRadius="10" Padding="8,3">
+                    <TextBlock Text="病区" Foreground="#1D4ED8" FontSize="12" />
+                </Border>
+            </Grid>
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Width="76" Height="76" Background="#EEF2FF" CornerRadius="10">
+                    <TextBlock Text="{Binding MainValue}" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#3730A3" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Text="{Binding StatusText}" Foreground="#0F766E" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding DetailText}" TextWrapping="Wrap" Foreground="#475569" />
+                </StackPanel>
+            </Grid>
+            <Border Grid.Row="2" Background="#F8FAFC" CornerRadius="8" Padding="8">
+                <TextBlock Text="{Binding ActionLog}" TextWrapping="Wrap" Foreground="#334155" />
+            </Border>
+            <Grid Grid.Row="3" ColumnDefinitions="2*,*" ColumnSpacing="8">
+                <Button Content="{Binding PrimaryActionText}" Command="{Binding PrimaryActionCommand}" />
+                <Button Grid.Column="1" Content="{Binding SecondaryActionText}" Command="{Binding SecondaryActionCommand}" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

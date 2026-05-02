@@ -1,0 +1,14 @@
+﻿<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder.ClinicalReminderView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#FFF7ED" BorderBrush="#FDBA74" BorderThickness="1" CornerRadius="10" Padding="12">
+        <StackPanel Spacing="10">
+            <TextBlock Text="临床提醒 MVI" FontSize="17" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding PatientName}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding PrimaryAlert}" Foreground="#C2410C" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding Alerts}" />
+            <Button Content="处理首要提醒" Command="{Binding ResolvePrimaryAlertCommand}" />
+        </StackPanel>
+    </Border>
+</UserControl>

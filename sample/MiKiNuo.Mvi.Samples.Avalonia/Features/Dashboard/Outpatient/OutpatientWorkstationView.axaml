@@ -1,0 +1,11 @@
+﻿<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.OutpatientWorkstationView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Slot;assembly=MiKiNuo.Mvi.Presentation">
+    <Grid ColumnDefinitions="1.05*,1.25*,1*" ColumnSpacing="12">
+        <mvi:MviSlotHost x:Name="QueueSlot" Grid.Column="0" />
+        <mvi:MviSlotHost x:Name="EditorSlot" Grid.Column="1" />
+        <mvi:MviSlotHost x:Name="ReminderSlot" Grid.Column="2" />
+    </Grid>
+</UserControl>

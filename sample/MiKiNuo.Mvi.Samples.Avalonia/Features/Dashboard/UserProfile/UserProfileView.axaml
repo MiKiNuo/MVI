@@ -1,0 +1,12 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.UserProfile.UserProfileView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#2B2D35" CornerRadius="16" Padding="20">
+        <StackPanel Spacing="10">
+            <TextBlock Text="用户信息" FontSize="22" FontWeight="Bold" Foreground="White" />
+            <TextBlock Text="{Binding DisplayName}" FontSize="18" Foreground="#D8DAE5" />
+            <TextBlock Text="{Binding RoleName}" Foreground="#B6BAC8" />
+        </StackPanel>
+    </Border>
+</UserControl>

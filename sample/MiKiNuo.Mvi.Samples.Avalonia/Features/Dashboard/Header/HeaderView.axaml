@@ -1,0 +1,11 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header.HeaderView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#2B2D35" CornerRadius="16" Padding="20">
+        <StackPanel>
+            <TextBlock Text="{Binding Title}" FontSize="26" FontWeight="Bold" Foreground="White" />
+            <TextBlock Text="{Binding SubTitle}" Foreground="#B6BAC8" />
+        </StackPanel>
+    </Border>
+</UserControl>

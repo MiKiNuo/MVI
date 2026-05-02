@@ -1,0 +1,13 @@
+﻿<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu.DashboardMenuView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Spacing="12">
+        <TextBlock Text="HIS 功能菜单" FontSize="18" FontWeight="SemiBold" />
+        <TextBlock Text="点击菜单会派发 Menu Intent，并通过 Mediator 请求 Dashboard 切换业务页面。" TextWrapping="Wrap" Foreground="#64748B" />
+        <ListBox ItemsSource="{Binding MenuItems}" SelectedItem="{Binding SelectedMenuKey, Mode=TwoWay}" MinHeight="260" />
+        <Border Background="#E0F2FE" CornerRadius="8" Padding="8">
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="#0369A1" />
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,56 @@
+﻿<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Lab.LabOrderComposer.LabOrderComposerView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="12" Padding="12">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                    <TextBlock Text="检验医嘱录入" FontSize="15" FontWeight="SemiBold" />
+                    <TextBlock Text="医生录入医嘱后，标本流转、危急值和 TAT 子 MVI 自动联动" Foreground="#64748B" FontSize="12" />
+                </StackPanel>
+                <Border Grid.Column="1" Background="#E0F2FE" CornerRadius="10" Padding="8,3">
+                    <TextBlock Text="LIS" Foreground="#0369A1" FontSize="12" />
+                </Border>
+            </Grid>
+
+            <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                <StackPanel>
+                    <TextBlock Text="患者号/就诊号" FontSize="12" Foreground="#475569" />
+                    <TextBox Text="{Binding PatientIdentity, Mode=TwoWay}" Watermark="例如：OP20260502001" />
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="检验项目" FontSize="12" Foreground="#475569" />
+                    <TextBox Text="{Binding TestItem, Mode=TwoWay}" Watermark="例如：血常规+CRP" />
+                </StackPanel>
+                <StackPanel Grid.Row="1">
+                    <TextBlock Text="优先级" FontSize="12" Foreground="#475569" />
+                    <TextBox Text="{Binding PriorityLevel, Mode=TwoWay}" Watermark="常规/急诊/危急" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1">
+                    <TextBlock Text="标本类型" FontSize="12" Foreground="#475569" />
+                    <TextBox Text="{Binding SpecimenType, Mode=TwoWay}" Watermark="血液/尿液/咽拭子" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.ColumnSpan="2">
+                    <TextBlock Text="临床指征" FontSize="12" Foreground="#475569" />
+                    <TextBox Text="{Binding ClinicalIndication, Mode=TwoWay}" Watermark="发热、感染指标升高、术前检查等" AcceptsReturn="True" MinHeight="56" />
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="2" ColumnDefinitions="2*,*" ColumnSpacing="8">
+                <Button Content="{Binding SubmitOrderText}" Command="{Binding SubmitLabOrderCommand}" />
+                <Button Grid.Column="1" Content="{Binding SecondaryActionText}" Command="{Binding SecondaryActionCommand}" />
+            </Grid>
+
+            <Border Grid.Row="3" Background="#F8FAFC" CornerRadius="8" Padding="8">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding StatusText}" Foreground="#0369A1" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding DetailText}" TextWrapping="Wrap" Foreground="#475569" />
+                    <TextBlock Text="{Binding ActionLog}" TextWrapping="Wrap" Foreground="#334155" />
+                </StackPanel>
+            </Border>
+
+            <Button Grid.Row="4" Content="模拟急诊检验套餐" Command="{Binding PrimaryActionCommand}" />
+        </Grid>
+    </Border>
+</UserControl>

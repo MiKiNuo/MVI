@@ -1,0 +1,20 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch.PatientSearchView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="12" Padding="10">
+        <StackPanel Spacing="6">
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding PageKey}" Foreground="#64748B" />
+            <TextBox Text="{Binding QueryText, Mode=TwoWay}" Watermark="输入姓名 / 住院号 / 门诊号" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Content="检索患者" Command="{Binding SearchCommand}" />
+                <Button Grid.Column="1" Content="选择并传递" Command="{Binding SelectPatientCommand}" />
+            </Grid>
+            <TextBlock Text="{Binding SelectedPatientName}" FontWeight="SemiBold" Foreground="#0F172A" />
+            <TextBlock Text="{Binding SelectedPatientNo}" Foreground="#475569" />
+            <TextBlock Text="{Binding ResultSummary}" TextWrapping="Wrap" Foreground="#334155" />
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="#0369A1" />
+        </StackPanel>
+    </Border>
+</UserControl>

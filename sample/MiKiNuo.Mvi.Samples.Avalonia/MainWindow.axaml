@@ -1,0 +1,12 @@
+<Window
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="MiKiNuo MVI Sample"
+    Width="1100"
+    Height="720"
+    Background="#1E1F24">
+    <Border Padding="24">
+        <ContentControl x:Name="RootContent" />
+    </Border>
+</Window>

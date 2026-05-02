@@ -1,0 +1,18 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Login.LoginView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#2B2D35" CornerRadius="18" Padding="32" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+            <TextBlock Text="MiKiNuo MVI 登录" FontSize="26" FontWeight="Bold" Foreground="White" />
+            <TextBlock Text="示例账号：admin / 123456" Foreground="#B6BAC8" />
+            <TextBox PlaceholderText="账号" Text="{Binding UserName, Mode=TwoWay}" />
+            <TextBox PlaceholderText="密码" PasswordChar="*" Text="{Binding Password, Mode=TwoWay}" />
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF7373" />
+            <Button Command="{Binding SubmitCommand}" HorizontalAlignment="Stretch">
+                <TextBlock Text="登录" HorizontalAlignment="Center" />
+            </Button>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+        </StackPanel>
+    </Border>
+</UserControl>

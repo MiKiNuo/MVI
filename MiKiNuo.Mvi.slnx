@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" Type="Classic C#" />
+    <Project Path="src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" Type="Classic C#" />
+    <Project Path="src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" Type="Classic C#" />
+    <Project Path="src\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/sample/">
+    <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test\MiKiNuo.Mvi.Tests\MiKiNuo.Mvi.Tests.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path=".editorconfig" />
+    <File Path="README.md" />
+  </Folder>
+</Solution>

@@ -1,0 +1,14 @@
+﻿<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeaturesCards.MetricCardView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="10" Padding="12">
+        <StackPanel Spacing="8">
+            <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Value}" FontSize="28" FontWeight="Bold" Foreground="#1D4ED8" />
+            <TextBlock Text="{Binding Status}" Foreground="#0F766E" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="#475569" />
+            <Button Content="刷新卡片" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+    </Border>
+</UserControl>

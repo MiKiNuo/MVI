@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />
+    <PackageReference Include="R3" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
+    <PackageReference Include="Avalonia" />
+  </ItemGroup>
+</Project>

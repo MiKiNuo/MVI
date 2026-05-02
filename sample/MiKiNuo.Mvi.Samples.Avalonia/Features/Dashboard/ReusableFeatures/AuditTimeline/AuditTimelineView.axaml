@@ -1,0 +1,20 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.AuditTimeline.AuditTimelineView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#020617" CornerRadius="12" Padding="10">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="6">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" Foreground="#E2E8F0" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding PageKey}" Foreground="#94A3B8" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="清空" Command="{Binding ClearCommand}" />
+            </Grid>
+            <TextBlock Grid.Row="1" Text="{Binding LatestEvent}" Foreground="#BAE6FD" TextWrapping="Wrap" />
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <TextBlock Text="{Binding EntriesText}" Foreground="#A7F3D0" TextWrapping="Wrap" />
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

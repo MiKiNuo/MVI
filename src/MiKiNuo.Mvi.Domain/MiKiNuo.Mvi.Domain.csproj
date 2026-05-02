@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>MiKiNuo MVI 领域层。</Description>
+  </PropertyGroup>
+</Project>
