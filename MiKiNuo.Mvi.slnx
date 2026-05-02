@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/sample/">
+    <Project Path="sample/MiKiNuo.Mvi.Samples.Avalonia/MiKiNuo.Mvi.Samples.Avalonia.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/MiKiNuo.Mvi.Abstractions/MiKiNuo.Mvi.Abstractions.csproj" />
+    <Project Path="src/MiKiNuo.Mvi.Analyzers/MiKiNuo.Mvi.Analyzers.csproj" />
+    <Project Path="src/MiKiNuo.Mvi.Core/MiKiNuo.Mvi.Core.csproj" />
+    <Project Path="src/MiKiNuo.Mvi.SourceGen/MiKiNuo.Mvi.SourceGen.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MiKiNuo.Mvi.Analyzers.Tests/MiKiNuo.Mvi.Analyzers.Tests.csproj" />
+    <Project Path="tests/MiKiNuo.Mvi.Core.Tests/MiKiNuo.Mvi.Core.Tests.csproj" />
+    <Project Path="tests/MiKiNuo.Mvi.Samples.Avalonia.Tests/MiKiNuo.Mvi.Samples.Avalonia.Tests.csproj" />
+    <Project Path="tests/MiKiNuo.Mvi.SourceGen.Tests/MiKiNuo.Mvi.SourceGen.Tests.csproj" />
+  </Folder>
+</Solution>

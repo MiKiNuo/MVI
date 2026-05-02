@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/MiKiNuo.Mvi.Abstractions/MiKiNuo.Mvi.Abstractions.csproj" />
+    <ProjectReference Include="../../src/MiKiNuo.Mvi.Core/MiKiNuo.Mvi.Core.csproj" />
+  </ItemGroup>
+</Project>

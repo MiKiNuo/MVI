@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MiKiNuo.Mvi.Samples.Avalonia.MainWindow"
+        Width="960"
+        Height="640"
+        Title="MiKiNuo MVI Sample">
+  <TextBlock HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             Text="MiKiNuo MVI Sample" />
+</Window>

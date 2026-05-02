@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="TUnit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/MiKiNuo.Mvi.Abstractions/MiKiNuo.Mvi.Abstractions.csproj" />
+    <ProjectReference Include="../../src/MiKiNuo.Mvi.Core/MiKiNuo.Mvi.Core.csproj" />
+    <ProjectReference Include="../../src/MiKiNuo.Mvi.SourceGen/MiKiNuo.Mvi.SourceGen.csproj" />
+  </ItemGroup>
+</Project>

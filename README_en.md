@@ -1,5 +1,7 @@
 # MVI
 - [chinese](README.md)
+- [Analyzer rules v1.1](docs/analyzer-rules-v1.1.md)
+- [Generated DI (M004)](docs/generated-di-m004.md)
 This is an implementation of the Model-View-Intent (MVI) architecture using C#, with the following features:
 
 - Uses R3 as the reactive library.
