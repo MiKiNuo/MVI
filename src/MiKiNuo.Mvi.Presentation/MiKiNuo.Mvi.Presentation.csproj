@@ -1,4 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Presentation</PackageId>
+    <Description>MiKiNuo MVI 框架的平台适配层，提供 Avalonia 等 UI 平台支持。</Description>
+</PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
     <PackageReference Include="Avalonia" />

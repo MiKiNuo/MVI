@@ -2,15 +2,21 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsRoslynComponent>true</IsRoslynComponent>
-    <IncludeBuildOutput>true</IncludeBuildOutput>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);RS2007;RS2008</NoWarn>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Infrastructure</PackageId>
+    <Description>MiKiNuo MVI 框架的 Source Generator 与 Analyzer 编译期工具。</Description>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
-    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+    <None Include="$(OutputPath)$(AssemblyName).dll"
+        Pack="true"
+        PackagePath="analyzers/dotnet/cs" />
   </ItemGroup>
 </Project>

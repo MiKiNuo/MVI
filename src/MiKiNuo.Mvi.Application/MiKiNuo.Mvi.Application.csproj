@@ -1,4 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Application</PackageId>
+    <Description>MiKiNuo MVI 框架运行时核心，包含 Store、Command、Middleware、Mediator 和 ViewModel Base。</Description>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />
     <PackageReference Include="R3" />

@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Description>MiKiNuo MVI 领域层。</Description>
-  </PropertyGroup>
+<PropertyGroup>
+  <IsPackable>true</IsPackable>
+  <PackageId>MiKiNuo.Mvi.Domain</PackageId>
+  <Description>MiKiNuo MVI 框架的领域抽象、标记接口和公共基础模型。</Description>
+</PropertyGroup>
 </Project>
