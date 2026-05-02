@@ -14,6 +14,13 @@ public interface IMviResolver
         where TService : notnull;
 
     /// <summary>
+    /// 解析指定类型的服务。
+    /// </summary>
+    /// <param name="serviceType">服务类型。</param>
+    /// <returns>服务实例。</returns>
+    public object Resolve(Type serviceType);
+
+    /// <summary>
     /// 创建作用域。
     /// </summary>
     /// <returns>服务作用域。</returns>

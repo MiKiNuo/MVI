@@ -1,0 +1,129 @@
+name: Publish NuGet
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "NuGet package version, for example 1.9.2 or 1.10.0-preview.1"
+        required: true
+        type: string
+      publish_to_nuget:
+        description: "Push packages to NuGet.org"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CI: true
+  SOLUTION_FILE: MiKiNuo.Mvi.slnx
+  PACKAGE_OUTPUT: artifacts/packages
+  NUGET_SOURCE: https://api.nuget.org/v3/index.json
+
+jobs:
+  pack-and-publish:
+    name: Pack and Publish
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve package version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}".TrimStart("v")
+            $publish = "true"
+          }
+          else {
+            $version = "${{ inputs.version }}"
+            $publish = "${{ inputs.publish_to_nuget }}"
+          }
+
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Package version cannot be empty."
+          }
+
+          "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "PUBLISH_TO_NUGET=$publish" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "PACKAGE_VERSION=$version"
+          Write-Host "PUBLISH_TO_NUGET=$publish"
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }}
+
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION_FILE }} -c Release --no-build
+
+      - name: Clean package output
+        shell: pwsh
+        run: |
+          if (Test-Path "${{ env.PACKAGE_OUTPUT }}") {
+            Remove-Item "${{ env.PACKAGE_OUTPUT }}" -Recurse -Force
+          }
+
+          New-Item -ItemType Directory -Path "${{ env.PACKAGE_OUTPUT }}" | Out-Null
+
+      - name: Pack NuGet packages
+        shell: pwsh
+        run: |
+          $projects = @(
+            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
+            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
+            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
+            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj"
+          )
+
+          foreach ($project in $projects) {
+            if (-not (Test-Path $project)) {
+              throw "Pack project not found: $project"
+            }
+
+            dotnet pack $project `
+              -c Release `
+              --no-build `
+              -p:PackageVersion=${{ env.PACKAGE_VERSION }} `
+              -p:ContinuousIntegrationBuild=true `
+              -o "${{ env.PACKAGE_OUTPUT }}"
+          }
+
+      - name: Upload NuGet package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ env.PACKAGE_VERSION }}
+          path: |
+            ${{ env.PACKAGE_OUTPUT }}/*.nupkg
+            ${{ env.PACKAGE_OUTPUT }}/*.snupkg
+          if-no-files-found: error
+
+      - name: Publish to NuGet.org
+        if: env.PUBLISH_TO_NUGET == 'true'
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.NUGET_API_KEY }}")) {
+            throw "Missing repository secret: NUGET_API_KEY"
+          }
+
+          Get-ChildItem "${{ env.PACKAGE_OUTPUT }}" -Filter "*.nupkg" | ForEach-Object {
+            dotnet nuget push $_.FullName `
+              --api-key "${{ secrets.NUGET_API_KEY }}" `
+              --source "${{ env.NUGET_SOURCE }}" `
+              --skip-duplicate
+          }

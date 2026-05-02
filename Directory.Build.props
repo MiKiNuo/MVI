@@ -1,3 +1,4 @@
+<Import Project="build/NuGetPackaging.props" Condition="Exists('build/NuGetPackaging.props')" />
 <Project>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

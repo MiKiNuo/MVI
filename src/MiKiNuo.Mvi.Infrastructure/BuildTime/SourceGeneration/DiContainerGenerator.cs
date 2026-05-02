@@ -38,6 +38,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.DI;
+using MiKiNuo.Mvi.Domain.DI;
 using MiKiNuo.Mvi.Application.MVI.Diagnostics;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
@@ -80,8 +81,9 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Composition;
 /// <summary>
 /// 表示由 DI 源生成器生成的示例 DI 容器。
 /// </summary>
-public sealed class SampleGeneratedContainer : IMviResolver, ILoginNavigationService, IMviMediator, IMviDiagnosticSink
+public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, ILoginNavigationService, IMviMediator, IMviDiagnosticSink
 {
+    private readonly IReadOnlyList<MviServiceDescriptor> _serviceDescriptors;
     private readonly IAuthService _authService;
     private readonly AppShellEffectDispatcher _shellEffectDispatcher;
     private readonly AppShellReducerDispatcher _shellReducerDispatcher;
@@ -111,6 +113,18 @@ public sealed class SampleGeneratedContainer : IMviResolver, ILoginNavigationSer
     /// </summary>
     public SampleGeneratedContainer()
     {
+        _serviceDescriptors = new MviServiceDescriptor[]
+        {
+            new(typeof(IAuthService), typeof(FakeAuthService), ServiceLifetime.Singleton),
+            new(typeof(ILoginNavigationService), typeof(SampleGeneratedContainer), ServiceLifetime.Singleton),
+            new(typeof(IMviMediator), typeof(SampleGeneratedContainer), ServiceLifetime.Singleton),
+            new(typeof(IMviDiagnosticSink), typeof(SampleGeneratedContainer), ServiceLifetime.Singleton),
+            new(typeof(IMviViewRegistry), typeof(SampleGeneratedViewRegistry), ServiceLifetime.Singleton),
+            new(typeof(AppShellViewModel), typeof(AppShellViewModel), ServiceLifetime.Singleton),
+            new(typeof(LoginViewModel), typeof(LoginViewModel), ServiceLifetime.Scoped),
+            new(typeof(IMviStore<LoginState, LoginIntent, LoginEffect>), typeof(MviStore<LoginState, LoginIntent, LoginEffect>), ServiceLifetime.Scoped),
+            new(typeof(DashboardViewModel), typeof(DashboardViewModel), ServiceLifetime.Singleton)
+        };
         _authService = new FakeAuthService();
         _shellEffectDispatcher = new AppShellEffectDispatcher();
         _shellReducerDispatcher = new AppShellReducerDispatcher();
@@ -129,11 +143,21 @@ public sealed class SampleGeneratedContainer : IMviResolver, ILoginNavigationSer
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<MviServiceDescriptor> ServiceDescriptors => _serviceDescriptors;
+
+    /// <inheritdoc />
     public TService Resolve<TService>()
         where TService : notnull
     {
-        object value = ResolveCore(typeof(TService));
+        object value = Resolve(typeof(TService));
         return (TService)value;
+    }
+
+    /// <inheritdoc />
+    public object Resolve(Type serviceType)
+    {
+        ArgumentNullException.ThrowIfNull(serviceType);
+        return ResolveCore(serviceType);
     }
 
     /// <inheritdoc />
@@ -205,6 +229,26 @@ public sealed class SampleGeneratedContainer : IMviResolver, ILoginNavigationSer
     {
         ArgumentNullException.ThrowIfNull(serviceType);
 
+        if (serviceType == typeof(IAuthService))
+        {
+            return _authService;
+        }
+
+        if (serviceType == typeof(ILoginNavigationService))
+        {
+            return this;
+        }
+
+        if (serviceType == typeof(IMviMediator))
+        {
+            return this;
+        }
+
+        if (serviceType == typeof(IMviDiagnosticSink))
+        {
+            return this;
+        }
+
         if (serviceType == typeof(AppShellViewModel))
         {
             return _shellViewModel;
@@ -228,7 +272,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, ILoginNavigationSer
         throw new InvalidOperationException($"未注册服务：{serviceType.FullName}");
     }
 
-    private IReadOnlyList<IMviMiddleware<TState, TIntent, TEffect>> CreateDefaultMiddlewares<TState, TIntent, TEffect>(string componentName)
+    internal IReadOnlyList<IMviMiddleware<TState, TIntent, TEffect>> CreateDefaultMiddlewares<TState, TIntent, TEffect>(string componentName)
         where TState : MiKiNuo.Mvi.Domain.MVI.State.IMviState
         where TIntent : MiKiNuo.Mvi.Domain.MVI.Intent.IMviIntent
         where TEffect : MiKiNuo.Mvi.Domain.MVI.Effect.IMviEffect
@@ -995,6 +1039,8 @@ public sealed class SampleGeneratedContainer : IMviResolver, ILoginNavigationSer
 public sealed class SampleGeneratedScope : IMviScope
 {
     private readonly SampleGeneratedContainer _container;
+    private readonly Dictionary<Type, object> _scopedServices;
+    private bool _isDisposed;
 
     /// <summary>
     /// 初始化由 DI 源生成器生成的示例 DI 作用域。
@@ -1005,20 +1051,104 @@ public sealed class SampleGeneratedScope : IMviScope
         ArgumentNullException.ThrowIfNull(container);
 
         _container = container;
+        _scopedServices = new Dictionary<Type, object>();
     }
 
     /// <inheritdoc />
     public TService Resolve<TService>()
         where TService : notnull
     {
-        return _container.Resolve<TService>();
+        object value = Resolve(typeof(TService));
+        return (TService)value;
+    }
+
+    /// <inheritdoc />
+    public object Resolve(Type serviceType)
+    {
+        ArgumentNullException.ThrowIfNull(serviceType);
+        ThrowIfDisposed();
+
+        if (_scopedServices.TryGetValue(serviceType, out object? cached))
+        {
+            return cached;
+        }
+
+        object created = CreateScopedOrRootService(serviceType);
+        if (IsScopedService(serviceType))
+        {
+            _scopedServices[serviceType] = created;
+        }
+
+        return created;
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        foreach (object service in _scopedServices.Values)
+        {
+            if (service is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
+        _scopedServices.Clear();
+        _isDisposed = true;
+    }
+
+    private object CreateScopedOrRootService(Type serviceType)
+    {
+        if (serviceType == typeof(LoginViewModel))
+        {
+            return new LoginViewModel((IMviStore<LoginState, LoginIntent, LoginEffect>)Resolve(typeof(IMviStore<LoginState, LoginIntent, LoginEffect>)));
+        }
+
+        if (serviceType == typeof(IMviStore<LoginState, LoginIntent, LoginEffect>))
+        {
+            return CreateScopedLoginStore();
+        }
+
+        return _container.Resolve(serviceType);
+    }
+
+    private static bool IsScopedService(Type serviceType)
+    {
+        return serviceType == typeof(LoginViewModel)
+            || serviceType == typeof(IMviStore<LoginState, LoginIntent, LoginEffect>);
+    }
+
+    private IMviStore<LoginState, LoginIntent, LoginEffect> CreateScopedLoginStore()
+    {
+        IMviStore<LoginState, LoginIntent, LoginEffect>? store = null;
+        LoginEffectDispatcher dispatcher = new(
+            _container.Resolve<IAuthService>(),
+            _container.Resolve<ILoginNavigationService>(),
+            () => store ?? throw new InvalidOperationException("登录 Store 尚未完成作用域创建。"));
+
+        store = new MviStore<LoginState, LoginIntent, LoginEffect>(
+            LoginState.Initial,
+            new LoginReducerDispatcher(),
+            dispatcher,
+            _container.CreateDefaultMiddlewares<LoginState, LoginIntent, LoginEffect>("登录 MVI / Scope"));
+
+        return store;
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_isDisposed)
+        {
+            throw new ObjectDisposedException(nameof(SampleGeneratedScope));
+        }
     }
 }
+
 
 """;
     }

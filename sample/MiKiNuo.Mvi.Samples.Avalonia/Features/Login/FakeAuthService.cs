@@ -1,8 +1,10 @@
+﻿using MiKiNuo.Mvi.Domain.DI;
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
 /// <summary>
 /// 表示示例认证服务。
 /// </summary>
+[DiService(ServiceLifetime.Singleton, ServiceType = typeof(IAuthService))]
 public sealed class FakeAuthService : IAuthService
 {
     /// <inheritdoc />

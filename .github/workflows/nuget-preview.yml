@@ -1,0 +1,104 @@
+name: Publish Preview NuGet
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview_suffix:
+        description: "Preview suffix, for example alpha, beta, rc, dev"
+        required: true
+        type: string
+        default: "preview"
+      publish_to_nuget:
+        description: "Push preview packages to NuGet.org"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CI: true
+  SOLUTION_FILE: MiKiNuo.Mvi.slnx
+  PACKAGE_OUTPUT: artifacts/packages
+  NUGET_SOURCE: https://api.nuget.org/v3/index.json
+
+jobs:
+  preview-pack:
+    name: Preview Pack
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve preview version
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yyyyMMdd"
+          $suffix = "${{ inputs.preview_suffix }}"
+          $version = "0.0.0-$suffix.$date.${{ github.run_number }}"
+          "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "PUBLISH_TO_NUGET=${{ inputs.publish_to_nuget }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "PACKAGE_VERSION=$version"
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }}
+
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION_FILE }} -c Release --no-build
+
+      - name: Pack preview packages
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.PACKAGE_OUTPUT }}" | Out-Null
+
+          $projects = @(
+            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
+            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
+            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
+            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj"
+          )
+
+          foreach ($project in $projects) {
+            dotnet pack $project `
+              -c Release `
+              --no-build `
+              -p:PackageVersion=${{ env.PACKAGE_VERSION }} `
+              -p:ContinuousIntegrationBuild=true `
+              -o "${{ env.PACKAGE_OUTPUT }}"
+          }
+
+      - name: Upload preview package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-nuget-packages-${{ env.PACKAGE_VERSION }}
+          path: |
+            ${{ env.PACKAGE_OUTPUT }}/*.nupkg
+            ${{ env.PACKAGE_OUTPUT }}/*.snupkg
+          if-no-files-found: error
+
+      - name: Publish preview packages to NuGet.org
+        if: env.PUBLISH_TO_NUGET == 'true'
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.NUGET_API_KEY }}")) {
+            throw "Missing repository secret: NUGET_API_KEY"
+          }
+
+          Get-ChildItem "${{ env.PACKAGE_OUTPUT }}" -Filter "*.nupkg" | ForEach-Object {
+            dotnet nuget push $_.FullName `
+              --api-key "${{ secrets.NUGET_API_KEY }}" `
+              --source "${{ env.NUGET_SOURCE }}" `
+              --skip-duplicate
+          }

@@ -12,4 +12,11 @@ public interface IMviScope : IDisposable
     /// <returns>服务实例。</returns>
     public TService Resolve<TService>()
         where TService : notnull;
+
+    /// <summary>
+    /// 解析指定类型的作用域服务。
+    /// </summary>
+    /// <param name="serviceType">服务类型。</param>
+    /// <returns>服务实例。</returns>
+    public object Resolve(Type serviceType);
 }
