@@ -56,7 +56,7 @@ jobs:
         run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }}
 
       - name: Test
-        run: dotnet test ${{ env.SOLUTION_FILE }} -c Release --no-build
+        run: dotnet test --solution ${{ env.SOLUTION_FILE }} -c Release --no-build --results-directory TestResults
 
       - name: Pack preview packages
         shell: pwsh
