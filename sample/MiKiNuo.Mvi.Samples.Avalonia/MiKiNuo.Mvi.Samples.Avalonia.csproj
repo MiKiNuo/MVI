@@ -3,6 +3,10 @@
     <OutputType>WinExe</OutputType>
     <IsPackable>false</IsPackable>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors></WarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />

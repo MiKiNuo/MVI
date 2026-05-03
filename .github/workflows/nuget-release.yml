@@ -4,10 +4,11 @@ on:
   push:
     tags:
       - "v*.*.*"
+
   workflow_dispatch:
     inputs:
       version:
-        description: "NuGet package version, for example 1.9.2 or 1.10.0-preview.1"
+        description: "NuGet package version, for example 0.1.2"
         required: true
         type: string
       publish_to_nuget:
@@ -23,7 +24,6 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   CI: true
-  SOLUTION_FILE: MiKiNuo.Mvi.slnx
   PACKAGE_OUTPUT: artifacts/packages
   NUGET_SOURCE: https://api.nuget.org/v3/index.json
 
@@ -42,7 +42,6 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Resolve package version
-        id: version
         shell: pwsh
         run: |
           if ("${{ github.ref_type }}" -eq "tag") {
@@ -60,17 +59,41 @@ jobs:
 
           "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
           "PUBLISH_TO_NUGET=$publish" | Out-File -FilePath $env:GITHUB_ENV -Append
+
           Write-Host "PACKAGE_VERSION=$version"
           Write-Host "PUBLISH_TO_NUGET=$publish"
 
-      - name: Restore
-        run: dotnet restore ${{ env.SOLUTION_FILE }}
+      - name: Restore package projects
+        shell: pwsh
+        run: |
+          $projects = @(
+            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
+            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
+            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
+            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj"
+          )
 
-      - name: Build
-        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }}
+          foreach ($project in $projects) {
+            dotnet restore $project
+          }
 
-      - name: Test
-        run: dotnet test ${{ env.SOLUTION_FILE }} -c Release --no-build
+      - name: Build package projects
+        shell: pwsh
+        run: |
+          $projects = @(
+            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
+            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
+            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
+            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj"
+          )
+
+          foreach ($project in $projects) {
+            dotnet build $project `
+              -c Release `
+              --no-restore `
+              -p:Version=${{ env.PACKAGE_VERSION }} `
+              -p:ContinuousIntegrationBuild=true
+          }
 
       - name: Clean package output
         shell: pwsh
@@ -92,10 +115,6 @@ jobs:
           )
 
           foreach ($project in $projects) {
-            if (-not (Test-Path $project)) {
-              throw "Pack project not found: $project"
-            }
-
             dotnet pack $project `
               -c Release `
               --no-build `
