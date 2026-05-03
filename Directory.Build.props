@@ -1,16 +1,23 @@
-<Import Project="build/NuGetPackaging.props" Condition="Exists('build/NuGetPackaging.props')" />
 <Project>
+  <Import Project="build/NuGetPackaging.props"
+          Condition="Exists('build/NuGetPackaging.props')" />
+
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(TargetFrameworks)' == ''">net10.0</TargetFramework>
+
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors>nullable;CS1591</WarningsAsErrors>
+
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
     <NoWarn>$(NoWarn);NU1603</NoWarn>
   </PropertyGroup>
 </Project>
