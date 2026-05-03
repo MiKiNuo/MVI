@@ -1,6 +1,6 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.ViewRegistry;
+using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Platforms.Avalonia</PackageId>
+    <Description>MiKiNuo MVI 框架的 Avalonia 平台入口包，包含平台适配、运行时依赖以及 Source Generator / Analyzer 编译期工具。</Description>
+    <PackageTags>mvi;r3;avalonia;source-generator;analyzer;clean-architecture;mediator;di</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
+    <ProjectReference Include="..\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" />
+    <PackageReference Include="Avalonia" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="buildTransitive\MiKiNuo.Mvi.Platforms.Avalonia.targets" Pack="true" PackagePath="buildTransitive\MiKiNuo.Mvi.Platforms.Avalonia.targets" />
+    <None Include="..\MiKiNuo.Mvi.Infrastructure\bin\$(Configuration)\netstandard2.0\MiKiNuo.Mvi.Infrastructure.dll"
+          Pack="true"
+          PackagePath="analyzers\dotnet\cs\MiKiNuo.Mvi.Infrastructure.dll"
+          Condition="Exists('..\MiKiNuo.Mvi.Infrastructure\bin\$(Configuration)\netstandard2.0\MiKiNuo.Mvi.Infrastructure.dll')" />
+  </ItemGroup>
+</Project>

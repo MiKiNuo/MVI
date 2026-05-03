@@ -1,9 +1,10 @@
 using Avalonia.Threading;
+using MiKiNuo.Mvi.Presentation.Threading;
 
-namespace MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Threading;
+namespace MiKiNuo.Mvi.Platforms.Avalonia.Threading;
 
 /// <summary>
-/// 表示 Avalonia UI 调度器。
+/// 表示 Avalonia 平台 UI 调度器。
 /// </summary>
 public sealed class AvaloniaMviUiDispatcher : IMviUiDispatcher
 {

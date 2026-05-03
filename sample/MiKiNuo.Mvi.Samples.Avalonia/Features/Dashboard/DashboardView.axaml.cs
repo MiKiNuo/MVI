@@ -1,8 +1,8 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Slot;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.ViewRegistry;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Views;
+using MiKiNuo.Mvi.Platforms.Avalonia.Slot;
+using MiKiNuo.Mvi.Presentation.ViewRegistry;
+using MiKiNuo.Mvi.Platforms.Avalonia.Views;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 

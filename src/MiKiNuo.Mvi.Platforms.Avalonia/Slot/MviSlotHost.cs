@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 
-namespace MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Slot;
+namespace MiKiNuo.Mvi.Platforms.Avalonia.Slot;
 
 /// <summary>
 /// 表示 Avalonia MVI 组合插槽。

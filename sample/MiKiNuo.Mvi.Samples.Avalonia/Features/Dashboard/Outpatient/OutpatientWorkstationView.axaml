@@ -1,8 +1,8 @@
-﻿<UserControl
+<UserControl
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.OutpatientWorkstationView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Slot;assembly=MiKiNuo.Mvi.Presentation">
+    xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Platforms.Avalonia.Slot;assembly=MiKiNuo.Mvi.Platforms.Avalonia">
     <Grid ColumnDefinitions="1.05*,1.25*,1*" ColumnSpacing="12">
         <mvi:MviSlotHost x:Name="QueueSlot" Grid.Column="0" />
         <mvi:MviSlotHost x:Name="EditorSlot" Grid.Column="1" />

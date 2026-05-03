@@ -5,8 +5,8 @@
     Title="MiKiNuo MVI Sample"
     Width="1100"
     Height="720"
-    Background="#1E1F24">
-    <Border Padding="24">
+    Background="#EEF2F7">
+    <Border Padding="24" Background="#EEF2F7">
         <ContentControl x:Name="RootContent" />
     </Border>
 </Window>

@@ -1,4 +1,4 @@
-namespace MiKiNuo.Mvi.Presentation.Platforms.Avalonia.ViewRegistry;
+namespace MiKiNuo.Mvi.Presentation.ViewRegistry;
 
 /// <summary>
 /// 表示视图未找到异常。

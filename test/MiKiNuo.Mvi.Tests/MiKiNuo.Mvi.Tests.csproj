@@ -1,20 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <IsPackable>false</IsPackable>
-        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-        <WarningsAsErrors></WarningsAsErrors>
-        <NoWarn>$(NoWarn);CS1591</NoWarn>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />
-        <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
-        <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" />
-
-        <PackageReference Include="TUnit" />
-        <PackageReference Include="TUnit.Assertions" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    </ItemGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors></WarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" />
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="TUnit.Assertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
 </Project>

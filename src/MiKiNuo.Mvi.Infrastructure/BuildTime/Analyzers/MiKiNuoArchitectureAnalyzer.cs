@@ -64,6 +64,15 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "test 只能依赖 src 和 sample，不能被 src 或 sample 反向依赖.");
 
+    private static readonly DiagnosticDescriptor PresentationReferencePlatformRule = new(
+        id: "ARCH0007",
+        title: "Presentation 抽象层禁止引用具体平台项目",
+        messageFormat: "Presentation 抽象层项目“{0}”不能引用具体平台项目“{1}”。",
+        category: "Architecture",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Presentation 层只能定义平台无关抽象，Avalonia、WinForms、Godot、Unity 等实现必须放在独立平台项目中.");
+
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
@@ -72,7 +81,8 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
             InfrastructureReferenceRule,
             SourceReferenceSampleRule,
             SampleReferenceRule,
-            TestReferenceRule);
+            TestReferenceRule,
+            PresentationReferencePlatformRule);
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
@@ -120,9 +130,15 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (IsInfrastructure(projectName) && IsPresentation(referenceName))
+        if (IsInfrastructure(projectName) && (IsPresentation(referenceName) || IsPlatform(referenceName)))
         {
             Report(context, InfrastructureReferenceRule, projectName, referenceName);
+            return;
+        }
+
+        if (IsPresentation(projectName) && IsPlatform(referenceName))
+        {
+            Report(context, PresentationReferencePlatformRule, projectName, referenceName);
             return;
         }
 
@@ -174,6 +190,11 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         return projectName.Equals("MiKiNuo.Mvi.Presentation", StringComparison.Ordinal);
     }
 
+    private static bool IsPlatform(string projectName)
+    {
+        return projectName.StartsWith("MiKiNuo.Mvi.Platforms.", StringComparison.Ordinal);
+    }
+
     private static bool IsSample(string projectName)
     {
         return projectName.IndexOf(".Samples.", StringComparison.Ordinal) >= 0;
@@ -189,7 +210,8 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         return IsDomain(projectName)
             || IsApplication(projectName)
             || IsInfrastructure(projectName)
-            || IsPresentation(projectName);
+            || IsPresentation(projectName)
+            || IsPlatform(projectName);
     }
 
     private static bool IsOuterThanDomain(string referenceName)
@@ -197,6 +219,7 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         return IsApplication(referenceName)
             || IsInfrastructure(referenceName)
             || IsPresentation(referenceName)
+            || IsPlatform(referenceName)
             || IsSample(referenceName);
     }
 
@@ -204,6 +227,7 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
     {
         return IsInfrastructure(referenceName)
             || IsPresentation(referenceName)
+            || IsPlatform(referenceName)
             || IsSample(referenceName);
     }
 }

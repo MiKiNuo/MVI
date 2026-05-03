@@ -2,12 +2,12 @@
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Statistics.StatisticsView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Background="#2B2D35" CornerRadius="16" Padding="20">
+    <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="16" Padding="20">
         <StackPanel Spacing="12">
-            <TextBlock Text="运行指标" FontSize="22" FontWeight="Bold" Foreground="White" />
-            <TextBlock Text="{Binding OnlineUsers, StringFormat='在线用户：{0}'}" Foreground="#D8DAE5" />
-            <TextBlock Text="{Binding RequestCount, StringFormat='请求数量：{0}'}" Foreground="#D8DAE5" />
-            <TextBlock Text="{Binding SuccessRate, StringFormat='成功率：{0:P1}'}" Foreground="#D8DAE5" />
+            <TextBlock Text="运行指标" FontSize="22" FontWeight="Bold" Foreground="#0F172A" />
+            <TextBlock Text="{Binding OnlineUsers, StringFormat='在线用户：{0}'}" Foreground="#334155" />
+            <TextBlock Text="{Binding RequestCount, StringFormat='请求数量：{0}'}" Foreground="#334155" />
+            <TextBlock Text="{Binding SuccessRate, StringFormat='成功率：{0:P1}'}" Foreground="#334155" />
         </StackPanel>
     </Border>
 </UserControl>

@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.ViewRegistry;
+using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;

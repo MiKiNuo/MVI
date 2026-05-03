@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    NuGet 使用场景扩展点：MiKiNuo.Mvi.Platforms.Avalonia 是 Avalonia 平台入口包。
+    Source Generator / Analyzer DLL 会通过 nupkg 的 analyzers/dotnet/cs 目录自动进入编译。
+    此 targets 文件保留为后续增加生成器开关、Analyzer 开关和平台构建属性的扩展点。
+  -->
+  <PropertyGroup>
+    <MiKiNuoMviPlatformsAvaloniaPackageImported>true</MiKiNuoMviPlatformsAvaloniaPackageImported>
+  </PropertyGroup>
+</Project>

@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Views;
+namespace MiKiNuo.Mvi.Platforms.Avalonia.Views;
 
 /// <summary>
 /// 表示 Avalonia 平台 MVI 视图基类。

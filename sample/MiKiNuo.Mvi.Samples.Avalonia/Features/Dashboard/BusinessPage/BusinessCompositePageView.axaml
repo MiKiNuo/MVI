@@ -2,7 +2,7 @@
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage.BusinessCompositePageView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Slot;assembly=MiKiNuo.Mvi.Presentation">
+    xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Platforms.Avalonia.Slot;assembly=MiKiNuo.Mvi.Platforms.Avalonia">
     <Grid RowDefinitions="Auto,*,170" RowSpacing="12">
         <Grid ColumnDefinitions="2*,*" ColumnSpacing="12">
             <Border Background="#EFF6FF" CornerRadius="12" Padding="14">
@@ -144,11 +144,11 @@
             </Grid>
         </Grid>
 
-        <Border Grid.Row="2" Background="#0F172A" CornerRadius="12" Padding="10">
+        <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="12" Padding="10">
             <StackPanel>
-                <TextBlock Text="组合式 MVI 数据流日志" Foreground="#E2E8F0" FontWeight="SemiBold" />
+                <TextBlock Text="组合式 MVI 数据流日志" Foreground="#0F172A" FontWeight="SemiBold" />
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding InteractionLog}" Foreground="#BAE6FD" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding InteractionLog}" Foreground="#0369A1" TextWrapping="Wrap" />
                 </ScrollViewer>
             </StackPanel>
         </Border>

@@ -1,7 +1,7 @@
-﻿using MiKiNuo.Mvi.Application.DI;
+using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.DI;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.ViewRegistry;
+using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using TUnit.Assertions;

@@ -1,7 +1,7 @@
-﻿namespace MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Threading;
+namespace MiKiNuo.Mvi.Presentation.Threading;
 
 /// <summary>
-/// 表示 UI 调度器。
+/// 表示平台无关的 UI 调度器。
 /// </summary>
 public interface IMviUiDispatcher
 {

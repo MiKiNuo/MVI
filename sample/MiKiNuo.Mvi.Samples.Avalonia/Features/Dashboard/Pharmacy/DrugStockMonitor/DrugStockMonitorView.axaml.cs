@@ -1,5 +1,5 @@
-﻿using Avalonia.Markup.Xaml;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.Views;
+using Avalonia.Markup.Xaml;
+using MiKiNuo.Mvi.Platforms.Avalonia.Views;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Pharmacy.DrugStockMonitor;
 

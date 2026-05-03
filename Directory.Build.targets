@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    编译期工具引用集中在根构建文件中管理，避免 sample 项目直接引用所有框架层。
+    这里的 Infrastructure 引用只作为 Analyzer / Source Generator 使用，不参与运行时依赖。
+  -->
+  <ItemGroup Condition="'$(UseMiKiNuoMviBuildTimeTools)' == 'true'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+</Project>

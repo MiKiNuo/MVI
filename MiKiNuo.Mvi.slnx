@@ -4,6 +4,7 @@
     <Project Path="src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" Type="Classic C#" />
     <Project Path="src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" Type="Classic C#" />
     <Project Path="src\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" Type="Classic C#" />
+    <Project Path="src\MiKiNuo.Mvi.Platforms.Avalonia\MiKiNuo.Mvi.Platforms.Avalonia.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/sample/">
     <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" Type="Classic C#" />

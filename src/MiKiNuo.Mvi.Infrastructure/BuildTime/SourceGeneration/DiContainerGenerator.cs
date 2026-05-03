@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
@@ -43,7 +43,7 @@ using MiKiNuo.Mvi.Application.MVI.Diagnostics;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.ViewRegistry;
+using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
@@ -1161,8 +1161,7 @@ public sealed class SampleGeneratedScope : IMviScope
 #nullable enable
 
 using System;
-using Avalonia.Controls;
-using MiKiNuo.Mvi.Presentation.Platforms.Avalonia.ViewRegistry;
+using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
@@ -1201,7 +1200,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Composition;
 public sealed class SampleGeneratedViewRegistry : IMviViewRegistry
 {
     /// <inheritdoc />
-    public Control CreateView(object viewModel)
+    public object CreateView(object viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
 
