@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.UserProfile;
 
 /// <summary>
 /// 表示用户信息组件规约器。
 /// </summary>
-public static class UserProfileReducers
+public sealed partial class UserProfileReducer
+    : MviReducerBase<UserProfileState, UserProfileIntent, UserProfileEffect>
 {
     /// <summary>
     /// 处理修改角色名称意图。
@@ -13,8 +15,8 @@ public static class UserProfileReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">修改角色名称意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<UserProfileState, UserProfileEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<UserProfileState, UserProfileEffect> Reduce(
         UserProfileState state,
         UserProfileIntent.ChangeRole intent)
     {

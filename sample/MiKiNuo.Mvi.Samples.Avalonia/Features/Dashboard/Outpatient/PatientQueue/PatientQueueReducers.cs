@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.PatientQueue;
 
 /// <summary>
 /// 表示门诊队列规约器。
 /// </summary>
-public static class PatientQueueReducers
+public sealed partial class PatientQueueReducer
+    : MviReducerBase<PatientQueueState, PatientQueueIntent, PatientQueueEffect>
 {
     /// <summary>
     /// 处理接诊下一位患者意图。
@@ -13,8 +15,8 @@ public static class PatientQueueReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">接诊下一位患者意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PatientQueueState, PatientQueueEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PatientQueueState, PatientQueueEffect> Reduce(
         PatientQueueState state,
         PatientQueueIntent.CallNext intent)
     {

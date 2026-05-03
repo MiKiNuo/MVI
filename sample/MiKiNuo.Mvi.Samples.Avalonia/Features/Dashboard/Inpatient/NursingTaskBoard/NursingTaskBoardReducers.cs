@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.NursingTaskBoard;
 
 /// <summary>
 /// 表示护理任务 MVI规约器。
 /// </summary>
-public static class NursingTaskBoardReducers
+public sealed partial class NursingTaskBoardReducer
+    : MviReducerBase<NursingTaskBoardState, NursingTaskBoardIntent, NursingTaskBoardEffect>
 {
     /// <summary>
     /// 处理主业务动作意图。
@@ -13,8 +15,8 @@ public static class NursingTaskBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<NursingTaskBoardState, NursingTaskBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<NursingTaskBoardState, NursingTaskBoardEffect> Reduce(
         NursingTaskBoardState state,
         NursingTaskBoardIntent.ExecutePrimaryAction intent)
     {
@@ -38,8 +40,8 @@ public static class NursingTaskBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<NursingTaskBoardState, NursingTaskBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<NursingTaskBoardState, NursingTaskBoardEffect> Reduce(
         NursingTaskBoardState state,
         NursingTaskBoardIntent.ExecuteSecondaryAction intent)
     {
@@ -63,8 +65,8 @@ public static class NursingTaskBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<NursingTaskBoardState, NursingTaskBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<NursingTaskBoardState, NursingTaskBoardEffect> Reduce(
         NursingTaskBoardState state,
         NursingTaskBoardIntent.ApplyExternalUpdate intent)
     {

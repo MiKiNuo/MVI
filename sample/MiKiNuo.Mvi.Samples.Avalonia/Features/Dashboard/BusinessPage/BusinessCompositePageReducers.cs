@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 
 /// <summary>
 /// 表示生产业务组合页面规约器。
 /// </summary>
-public static class BusinessCompositePageReducers
+public sealed partial class BusinessCompositePageReducer
+    : MviReducerBase<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>
 {
     /// <summary>
     /// 处理刷新页面布局意图。
@@ -13,8 +15,8 @@ public static class BusinessCompositePageReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">刷新页面意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> Reduce(
         BusinessCompositePageState state,
         BusinessCompositePageIntent.RefreshPage intent)
     {
@@ -30,8 +32,8 @@ public static class BusinessCompositePageReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">上下文更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> Reduce(
         BusinessCompositePageState state,
         BusinessCompositePageIntent.UpdateContext intent)
     {
@@ -51,8 +53,8 @@ public static class BusinessCompositePageReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">追加日志意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> Reduce(
         BusinessCompositePageState state,
         BusinessCompositePageIntent.AppendInteractionLog intent)
     {

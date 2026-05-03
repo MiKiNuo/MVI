@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Quality.RectificationTracker;
 
 /// <summary>
 /// 表示整改闭环 MVI规约器。
 /// </summary>
-public static class RectificationTrackerReducers
+public sealed partial class RectificationTrackerReducer
+    : MviReducerBase<RectificationTrackerState, RectificationTrackerIntent, RectificationTrackerEffect>
 {
     /// <summary>
     /// 处理主业务动作意图。
@@ -13,8 +15,8 @@ public static class RectificationTrackerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RectificationTrackerState, RectificationTrackerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RectificationTrackerState, RectificationTrackerEffect> Reduce(
         RectificationTrackerState state,
         RectificationTrackerIntent.ExecutePrimaryAction intent)
     {
@@ -38,8 +40,8 @@ public static class RectificationTrackerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RectificationTrackerState, RectificationTrackerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RectificationTrackerState, RectificationTrackerEffect> Reduce(
         RectificationTrackerState state,
         RectificationTrackerIntent.ExecuteSecondaryAction intent)
     {
@@ -63,8 +65,8 @@ public static class RectificationTrackerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RectificationTrackerState, RectificationTrackerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RectificationTrackerState, RectificationTrackerEffect> Reduce(
         RectificationTrackerState state,
         RectificationTrackerIntent.ApplyExternalUpdate intent)
     {

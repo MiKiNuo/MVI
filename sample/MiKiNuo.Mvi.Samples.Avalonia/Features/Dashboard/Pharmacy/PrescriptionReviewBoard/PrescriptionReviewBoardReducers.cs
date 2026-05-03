@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Pharmacy.PrescriptionReviewBoard;
 
 /// <summary>
 /// 表示处方审核 MVI 规约器。
 /// </summary>
-public static class PrescriptionReviewBoardReducers
+public sealed partial class PrescriptionReviewBoardReducer
+    : MviReducerBase<PrescriptionReviewBoardState, PrescriptionReviewBoardIntent, PrescriptionReviewBoardEffect>
 {
     /// <summary>
     /// 处理处方号变更意图。
@@ -13,8 +15,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">处方号变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ChangePrescriptionNo intent)
     {
@@ -30,8 +32,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">患者姓名变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ChangePatientName intent)
     {
@@ -47,8 +49,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">药品名称变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ChangeDrugName intent)
     {
@@ -64,8 +66,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">剂量用法变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ChangeDoseText intent)
     {
@@ -81,8 +83,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">过敏史变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ChangeAllergyHistory intent)
     {
@@ -98,8 +100,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">提交处方审核意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.SubmitPrescriptionReviewForm intent)
     {
@@ -133,8 +135,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ExecutePrimaryAction intent)
     {
@@ -158,8 +160,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ExecuteSecondaryAction intent)
     {
@@ -183,8 +185,8 @@ public static class PrescriptionReviewBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PrescriptionReviewBoardState, PrescriptionReviewBoardEffect> Reduce(
         PrescriptionReviewBoardState state,
         PrescriptionReviewBoardIntent.ApplyExternalUpdate intent)
     {

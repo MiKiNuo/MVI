@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Lab.CriticalValueMonitor;
 
 /// <summary>
 /// 表示危急值闭环 MVI规约器。
 /// </summary>
-public static class CriticalValueMonitorReducers
+public sealed partial class CriticalValueMonitorReducer
+    : MviReducerBase<CriticalValueMonitorState, CriticalValueMonitorIntent, CriticalValueMonitorEffect>
 {
     /// <summary>
     /// 处理主业务动作意图。
@@ -13,8 +15,8 @@ public static class CriticalValueMonitorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<CriticalValueMonitorState, CriticalValueMonitorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<CriticalValueMonitorState, CriticalValueMonitorEffect> Reduce(
         CriticalValueMonitorState state,
         CriticalValueMonitorIntent.ExecutePrimaryAction intent)
     {
@@ -38,8 +40,8 @@ public static class CriticalValueMonitorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<CriticalValueMonitorState, CriticalValueMonitorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<CriticalValueMonitorState, CriticalValueMonitorEffect> Reduce(
         CriticalValueMonitorState state,
         CriticalValueMonitorIntent.ExecuteSecondaryAction intent)
     {
@@ -63,8 +65,8 @@ public static class CriticalValueMonitorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<CriticalValueMonitorState, CriticalValueMonitorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<CriticalValueMonitorState, CriticalValueMonitorEffect> Reduce(
         CriticalValueMonitorState state,
         CriticalValueMonitorIntent.ApplyExternalUpdate intent)
     {

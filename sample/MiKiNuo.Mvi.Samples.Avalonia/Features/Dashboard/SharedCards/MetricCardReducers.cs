@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeaturesCards;
 
 /// <summary>
 /// 表示业务指标卡片规约器。
 /// </summary>
-public static class MetricCardReducers
+public sealed partial class MetricCardReducer
+    : MviReducerBase<MetricCardState, MetricCardIntent, MetricCardEffect>
 {
     /// <summary>
     /// 处理刷新卡片意图。
@@ -13,8 +15,8 @@ public static class MetricCardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">刷新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<MetricCardState, MetricCardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<MetricCardState, MetricCardEffect> Reduce(
         MetricCardState state,
         MetricCardIntent.Refresh intent)
     {

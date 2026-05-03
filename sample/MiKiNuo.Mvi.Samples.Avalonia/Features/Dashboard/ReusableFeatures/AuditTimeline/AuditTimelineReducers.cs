@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.AuditTimeline;
 
 /// <summary>
 /// 表示可复用审计时间线 MVI 规约器。
 /// </summary>
-public static class AuditTimelineReducers
+public sealed partial class AuditTimelineReducer
+    : MviReducerBase<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect>
 {
     /// <summary>
     /// 处理追加审计记录意图。
@@ -13,8 +15,8 @@ public static class AuditTimelineReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">追加审计记录意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AuditTimelineState, AuditTimelineEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AuditTimelineState, AuditTimelineEffect> Reduce(
         AuditTimelineState state,
         AuditTimelineIntent.AppendEntry intent)
     {
@@ -41,8 +43,8 @@ public static class AuditTimelineReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">清空审计记录意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AuditTimelineState, AuditTimelineEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AuditTimelineState, AuditTimelineEffect> Reduce(
         AuditTimelineState state,
         AuditTimelineIntent.ClearEntries intent)
     {

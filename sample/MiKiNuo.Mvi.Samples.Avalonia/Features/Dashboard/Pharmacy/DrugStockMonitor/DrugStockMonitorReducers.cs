@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Pharmacy.DrugStockMonitor;
 
 /// <summary>
 /// 表示库存监控 MVI规约器。
 /// </summary>
-public static class DrugStockMonitorReducers
+public sealed partial class DrugStockMonitorReducer
+    : MviReducerBase<DrugStockMonitorState, DrugStockMonitorIntent, DrugStockMonitorEffect>
 {
     /// <summary>
     /// 处理主业务动作意图。
@@ -13,8 +15,8 @@ public static class DrugStockMonitorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<DrugStockMonitorState, DrugStockMonitorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<DrugStockMonitorState, DrugStockMonitorEffect> Reduce(
         DrugStockMonitorState state,
         DrugStockMonitorIntent.ExecutePrimaryAction intent)
     {
@@ -38,8 +40,8 @@ public static class DrugStockMonitorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<DrugStockMonitorState, DrugStockMonitorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<DrugStockMonitorState, DrugStockMonitorEffect> Reduce(
         DrugStockMonitorState state,
         DrugStockMonitorIntent.ExecuteSecondaryAction intent)
     {
@@ -63,8 +65,8 @@ public static class DrugStockMonitorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<DrugStockMonitorState, DrugStockMonitorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<DrugStockMonitorState, DrugStockMonitorEffect> Reduce(
         DrugStockMonitorState state,
         DrugStockMonitorIntent.ApplyExternalUpdate intent)
     {

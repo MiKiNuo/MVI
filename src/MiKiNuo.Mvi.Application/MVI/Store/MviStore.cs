@@ -22,7 +22,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
 {
     private readonly ReactiveProperty<TState> _state;
     private readonly Subject<TEffect> _effects;
-    private readonly IMviReducerDispatcher<TState, TIntent, TEffect> _reducerDispatcher;
+    private readonly IMviReducer<TState, TIntent, TEffect> _reducer;
     private readonly IMviEffectDispatcher<TEffect> _effectDispatcher;
     private readonly MviMiddlewarePipeline<TState, TIntent, TEffect> _pipeline;
     private readonly SemaphoreSlim _dispatchGate;
@@ -32,18 +32,18 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     /// 初始化 R3 驱动的 MVI 状态存储。
     /// </summary>
     /// <param name="initialState">初始状态。</param>
-    /// <param name="reducerDispatcher">规约分发器。</param>
+    /// <param name="reducer">状态规约器。</param>
     /// <param name="effectDispatcher">副作用分发器。</param>
     /// <param name="middlewares">中间件集合。</param>
     public MviStore(
         TState initialState,
-        IMviReducerDispatcher<TState, TIntent, TEffect> reducerDispatcher,
+        IMviReducer<TState, TIntent, TEffect> reducer,
         IMviEffectDispatcher<TEffect> effectDispatcher,
         IReadOnlyList<IMviMiddleware<TState, TIntent, TEffect>>? middlewares = null)
     {
         _state = new ReactiveProperty<TState>(initialState);
         _effects = new Subject<TEffect>();
-        _reducerDispatcher = reducerDispatcher;
+        _reducer = reducer;
         _effectDispatcher = effectDispatcher;
         _pipeline = new MviMiddlewarePipeline<TState, TIntent, TEffect>(middlewares ?? []);
         _dispatchGate = new SemaphoreSlim(1, 1);
@@ -110,7 +110,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        MviReduceResult<TState, TEffect> result = _reducerDispatcher.Reduce(context.State, context.Intent);
+        MviReduceResult<TState, TEffect> result = _reducer.Reduce(context.State, context.Intent);
         return ValueTask.FromResult(result);
     }
 }

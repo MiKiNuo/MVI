@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Lab.LabTurnaroundBoard;
 
 /// <summary>
 /// 表示TAT 监控 MVI规约器。
 /// </summary>
-public static class LabTurnaroundBoardReducers
+public sealed partial class LabTurnaroundBoardReducer
+    : MviReducerBase<LabTurnaroundBoardState, LabTurnaroundBoardIntent, LabTurnaroundBoardEffect>
 {
     /// <summary>
     /// 处理主业务动作意图。
@@ -13,8 +15,8 @@ public static class LabTurnaroundBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabTurnaroundBoardState, LabTurnaroundBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabTurnaroundBoardState, LabTurnaroundBoardEffect> Reduce(
         LabTurnaroundBoardState state,
         LabTurnaroundBoardIntent.ExecutePrimaryAction intent)
     {
@@ -38,8 +40,8 @@ public static class LabTurnaroundBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabTurnaroundBoardState, LabTurnaroundBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabTurnaroundBoardState, LabTurnaroundBoardEffect> Reduce(
         LabTurnaroundBoardState state,
         LabTurnaroundBoardIntent.ExecuteSecondaryAction intent)
     {
@@ -63,8 +65,8 @@ public static class LabTurnaroundBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabTurnaroundBoardState, LabTurnaroundBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabTurnaroundBoardState, LabTurnaroundBoardEffect> Reduce(
         LabTurnaroundBoardState state,
         LabTurnaroundBoardIntent.ApplyExternalUpdate intent)
     {

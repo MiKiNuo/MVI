@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
 
 /// <summary>
 /// 表示架构验证中心规约器。
 /// </summary>
-public static class ArchitectureValidationReducers
+public sealed partial class ArchitectureValidationReducer
+    : MviReducerBase<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect>
 {
     /// <summary>
     /// 处理更新当前架构验证上下文意图。
@@ -13,8 +15,8 @@ public static class ArchitectureValidationReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">更新上下文意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> Reduce(
         ArchitectureValidationState state,
         ArchitectureValidationIntent.UpdateContext intent)
     {
@@ -34,8 +36,8 @@ public static class ArchitectureValidationReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">追加交互日志意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> Reduce(
         ArchitectureValidationState state,
         ArchitectureValidationIntent.AppendInteractionLog intent)
     {

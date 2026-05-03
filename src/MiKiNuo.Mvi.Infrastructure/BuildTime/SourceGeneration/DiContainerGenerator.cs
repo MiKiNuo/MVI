@@ -86,8 +86,8 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
     private readonly IReadOnlyList<MviServiceDescriptor> _serviceDescriptors;
     private readonly IAuthService _authService;
     private readonly AppShellEffectDispatcher _shellEffectDispatcher;
-    private readonly AppShellReducerDispatcher _shellReducerDispatcher;
-    private readonly LoginReducerDispatcher _loginReducerDispatcher;
+    private readonly AppShellReducer _shellReducer;
+    private readonly LoginReducer _loginReducer;
     private readonly IMviStore<AppShellState, AppShellIntent, AppShellEffect> _shellStore;
     private readonly AppShellViewModel _shellViewModel;
     private readonly Dictionary<string, object> _pageCache;
@@ -123,15 +123,16 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
             new(typeof(AppShellViewModel), typeof(AppShellViewModel), ServiceLifetime.Singleton),
             new(typeof(LoginViewModel), typeof(LoginViewModel), ServiceLifetime.Scoped),
             new(typeof(IMviStore<LoginState, LoginIntent, LoginEffect>), typeof(MviStore<LoginState, LoginIntent, LoginEffect>), ServiceLifetime.Scoped),
+            new(typeof(global::MiKiNuo.Mvi.Application.MVI.Reducer.IMviReducer<LoginState, LoginIntent, LoginEffect>), typeof(LoginReducer), ServiceLifetime.Scoped),
             new(typeof(DashboardViewModel), typeof(DashboardViewModel), ServiceLifetime.Singleton)
         };
         _authService = new FakeAuthService();
         _shellEffectDispatcher = new AppShellEffectDispatcher();
-        _shellReducerDispatcher = new AppShellReducerDispatcher();
-        _loginReducerDispatcher = new LoginReducerDispatcher();
+        _shellReducer = new AppShellReducer();
+        _loginReducer = new LoginReducer();
         _shellStore = new MviStore<AppShellState, AppShellIntent, AppShellEffect>(
             AppShellState.Initial,
-            _shellReducerDispatcher,
+            _shellReducer,
             _shellEffectDispatcher);
         _shellViewModel = new AppShellViewModel(_shellStore);
         _pageCache = new Dictionary<string, object>(StringComparer.Ordinal);
@@ -313,7 +314,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
 
         _loginStore = new MviStore<LoginState, LoginIntent, LoginEffect>(
             LoginState.Initial,
-            _loginReducerDispatcher,
+            _loginReducer,
             loginEffectDispatcher,
             CreateDefaultMiddlewares<LoginState, LoginIntent, LoginEffect>("登录 MVI"));
 
@@ -339,7 +340,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
             currentPage);
         _dashboardStore = new MviStore<DashboardState, DashboardIntent, DashboardEffect>(
             state,
-            new DashboardReducerDispatcher(),
+            new DashboardReducer(),
             new DashboardEffectDispatcher());
         _dashboardViewModel = new DashboardViewModel(_dashboardStore);
         return _dashboardViewModel;
@@ -357,7 +358,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
             "左侧菜单、页面容器、页面子组件全部是独立 MVI，跨组件通信通过真正 Mediator Request/Response 完成。");
         _headerStore = new MviStore<HeaderState, HeaderIntent, HeaderEffect>(
             state,
-            new HeaderReducerDispatcher(),
+            new HeaderReducer(),
             new HeaderEffectDispatcher());
         _headerViewModel = new HeaderViewModel(_headerStore);
         return _headerViewModel;
@@ -372,7 +373,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
 
         IMviStore<DashboardMenuState, DashboardMenuIntent, DashboardMenuEffect> store = new MviStore<DashboardMenuState, DashboardMenuIntent, DashboardMenuEffect>(
             DashboardMenuState.Initial,
-            new DashboardMenuReducerDispatcher(),
+            new DashboardMenuReducer(),
             new DashboardMenuEffectDispatcher(this),
             CreateDefaultMiddlewares<DashboardMenuState, DashboardMenuIntent, DashboardMenuEffect>("左侧菜单 MVI"));
         _menuViewModel = new DashboardMenuViewModel(store);
@@ -542,7 +543,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         OutpatientWorkstationState state = new(queue, editor, reminder);
         IMviStore<OutpatientWorkstationState, OutpatientWorkstationIntent, OutpatientWorkstationEffect> store = new MviStore<OutpatientWorkstationState, OutpatientWorkstationIntent, OutpatientWorkstationEffect>(
             state,
-            new OutpatientWorkstationReducerDispatcher(),
+            new OutpatientWorkstationReducer(),
             new OutpatientWorkstationEffectDispatcher());
         OutpatientWorkstationViewModel viewModel = new(store);
         _pageCache[pageKey] = viewModel;
@@ -553,7 +554,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
     {
         IMviStore<PatientQueueState, PatientQueueIntent, PatientQueueEffect> store = new MviStore<PatientQueueState, PatientQueueIntent, PatientQueueEffect>(
             PatientQueueState.Initial,
-            new PatientQueueReducerDispatcher(),
+            new PatientQueueReducer(),
             new PatientQueueEffectDispatcher(this));
         return new PatientQueueViewModel(store);
     }
@@ -562,7 +563,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
     {
         _clinicalEditorStore = new MviStore<ClinicalEditorState, ClinicalEditorIntent, ClinicalEditorEffect>(
             ClinicalEditorState.Initial,
-            new ClinicalEditorReducerDispatcher(),
+            new ClinicalEditorReducer(),
             new ClinicalEditorEffectDispatcher());
         return new ClinicalEditorViewModel(_clinicalEditorStore);
     }
@@ -571,7 +572,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
     {
         _clinicalReminderStore = new MviStore<ClinicalReminderState, ClinicalReminderIntent, ClinicalReminderEffect>(
             ClinicalReminderState.Initial,
-            new ClinicalReminderReducerDispatcher(),
+            new ClinicalReminderReducer(),
             new ClinicalReminderEffectDispatcher());
         return new ClinicalReminderViewModel(_clinicalReminderStore);
     }
@@ -598,7 +599,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
             "父页面已加载 住院床位生产指挥中心，请点击任意子组件动作验证父子与子子 MVI 交互。");
         IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store = new MviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(
             state,
-            new BusinessCompositePageReducerDispatcher(),
+            new BusinessCompositePageReducer(),
             new BusinessCompositePageEffectDispatcher(),
             CreateDefaultMiddlewares<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(pageKey + "/父页面 MVI"));
         _businessPageStores[pageKey] = store;
@@ -629,7 +630,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
             "父页面已加载 检验医嘱全流程中心，请点击任意子组件动作验证父子与子子 MVI 交互。");
         IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store = new MviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(
             state,
-            new BusinessCompositePageReducerDispatcher(),
+            new BusinessCompositePageReducer(),
             new BusinessCompositePageEffectDispatcher(),
             CreateDefaultMiddlewares<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(pageKey + "/父页面 MVI"));
         _businessPageStores[pageKey] = store;
@@ -660,7 +661,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
             "父页面已加载 药房库存协同中心，请点击任意子组件动作验证父子与子子 MVI 交互。");
         IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store = new MviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(
             state,
-            new BusinessCompositePageReducerDispatcher(),
+            new BusinessCompositePageReducer(),
             new BusinessCompositePageEffectDispatcher(),
             CreateDefaultMiddlewares<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(pageKey + "/父页面 MVI"));
         _businessPageStores[pageKey] = store;
@@ -691,7 +692,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
             "父页面已加载 运营质控闭环驾驶舱，请点击任意子组件动作验证父子与子子 MVI 交互。");
         IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store = new MviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(
             state,
-            new BusinessCompositePageReducerDispatcher(),
+            new BusinessCompositePageReducer(),
             new BusinessCompositePageEffectDispatcher(),
             CreateDefaultMiddlewares<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>(pageKey + "/父页面 MVI"));
         _businessPageStores[pageKey] = store;
@@ -762,7 +763,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
 
         _architectureValidationStore = new MviStore<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect>(
             state,
-            new ArchitectureValidationReducerDispatcher(),
+            new ArchitectureValidationReducer(),
             new ArchitectureValidationEffectDispatcher(),
             CreateDefaultMiddlewares<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect>(pageKey + "/父页面 MVI"));
         ArchitectureValidationViewModel viewModel = new(_architectureValidationStore);
@@ -780,7 +781,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
     {
         IMviStore<MetricCardState, MetricCardIntent, MetricCardEffect> store = new MviStore<MetricCardState, MetricCardIntent, MetricCardEffect>(
             new MetricCardState(title, value, status, detail, true),
-            new MetricCardReducerDispatcher(),
+            new MetricCardReducer(),
             new MetricCardEffectDispatcher(),
             CreateDefaultMiddlewares<MetricCardState, MetricCardIntent, MetricCardEffect>(componentKey));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
@@ -794,7 +795,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         string componentKey = pageKey + "/患者检索 MVI";
         IMviStore<PatientSearchState, PatientSearchIntent, PatientSearchEffect> store = new MviStore<PatientSearchState, PatientSearchIntent, PatientSearchEffect>(
             PatientSearchState.CreateInitial(pageKey),
-            new PatientSearchReducerDispatcher(),
+            new PatientSearchReducer(),
             new PatientSearchEffectDispatcher(this),
             CreatePatientSearchMiddlewares(pageKey));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
@@ -808,7 +809,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         string componentKey = pageKey + "/审计时间线 MVI";
         IMviStore<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect> store = new MviStore<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect>(
             AuditTimelineState.CreateInitial(pageKey),
-            new AuditTimelineReducerDispatcher(),
+            new AuditTimelineReducer(),
             new AuditTimelineEffectDispatcher());
         _auditTimelineStores[pageKey] = store;
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
@@ -828,7 +829,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "床位总览 MVI";
         IMviStore<BedOverviewState, BedOverviewIntent, BedOverviewEffect> store = new MviStore<BedOverviewState, BedOverviewIntent, BedOverviewEffect>(
             BedOverviewState.Initial,
-            new BedOverviewReducerDispatcher(),
+            new BedOverviewReducer(),
             new BedOverviewEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new BedOverviewIntent.ApplyExternalUpdate(message),
@@ -841,7 +842,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "入院流程 MVI";
         IMviStore<AdmissionCoordinatorState, AdmissionCoordinatorIntent, AdmissionCoordinatorEffect> store = new MviStore<AdmissionCoordinatorState, AdmissionCoordinatorIntent, AdmissionCoordinatorEffect>(
             AdmissionCoordinatorState.Initial,
-            new AdmissionCoordinatorReducerDispatcher(),
+            new AdmissionCoordinatorReducer(),
             new AdmissionCoordinatorEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new AdmissionCoordinatorIntent.ApplyExternalUpdate(message),
@@ -854,7 +855,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "护理任务 MVI";
         IMviStore<NursingTaskBoardState, NursingTaskBoardIntent, NursingTaskBoardEffect> store = new MviStore<NursingTaskBoardState, NursingTaskBoardIntent, NursingTaskBoardEffect>(
             NursingTaskBoardState.Initial,
-            new NursingTaskBoardReducerDispatcher(),
+            new NursingTaskBoardReducer(),
             new NursingTaskBoardEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new NursingTaskBoardIntent.ApplyExternalUpdate(message),
@@ -867,7 +868,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "病区风险 MVI";
         IMviStore<WardRiskPanelState, WardRiskPanelIntent, WardRiskPanelEffect> store = new MviStore<WardRiskPanelState, WardRiskPanelIntent, WardRiskPanelEffect>(
             WardRiskPanelState.Initial,
-            new WardRiskPanelReducerDispatcher(),
+            new WardRiskPanelReducer(),
             new WardRiskPanelEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new WardRiskPanelIntent.ApplyExternalUpdate(message),
@@ -880,7 +881,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "医嘱开立 MVI";
         IMviStore<LabOrderComposerState, LabOrderComposerIntent, LabOrderComposerEffect> store = new MviStore<LabOrderComposerState, LabOrderComposerIntent, LabOrderComposerEffect>(
             LabOrderComposerState.Initial,
-            new LabOrderComposerReducerDispatcher(),
+            new LabOrderComposerReducer(),
             new LabOrderComposerEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new LabOrderComposerIntent.ApplyExternalUpdate(message),
@@ -893,7 +894,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "标本流转 MVI";
         IMviStore<SpecimenTrackerState, SpecimenTrackerIntent, SpecimenTrackerEffect> store = new MviStore<SpecimenTrackerState, SpecimenTrackerIntent, SpecimenTrackerEffect>(
             SpecimenTrackerState.Initial,
-            new SpecimenTrackerReducerDispatcher(),
+            new SpecimenTrackerReducer(),
             new SpecimenTrackerEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new SpecimenTrackerIntent.ApplyExternalUpdate(message),
@@ -906,7 +907,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "危急值闭环 MVI";
         IMviStore<CriticalValueMonitorState, CriticalValueMonitorIntent, CriticalValueMonitorEffect> store = new MviStore<CriticalValueMonitorState, CriticalValueMonitorIntent, CriticalValueMonitorEffect>(
             CriticalValueMonitorState.Initial,
-            new CriticalValueMonitorReducerDispatcher(),
+            new CriticalValueMonitorReducer(),
             new CriticalValueMonitorEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new CriticalValueMonitorIntent.ApplyExternalUpdate(message),
@@ -919,7 +920,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "TAT 监控 MVI";
         IMviStore<LabTurnaroundBoardState, LabTurnaroundBoardIntent, LabTurnaroundBoardEffect> store = new MviStore<LabTurnaroundBoardState, LabTurnaroundBoardIntent, LabTurnaroundBoardEffect>(
             LabTurnaroundBoardState.Initial,
-            new LabTurnaroundBoardReducerDispatcher(),
+            new LabTurnaroundBoardReducer(),
             new LabTurnaroundBoardEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new LabTurnaroundBoardIntent.ApplyExternalUpdate(message),
@@ -932,7 +933,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "处方审核 MVI";
         IMviStore<PrescriptionReviewBoardState, PrescriptionReviewBoardIntent, PrescriptionReviewBoardEffect> store = new MviStore<PrescriptionReviewBoardState, PrescriptionReviewBoardIntent, PrescriptionReviewBoardEffect>(
             PrescriptionReviewBoardState.Initial,
-            new PrescriptionReviewBoardReducerDispatcher(),
+            new PrescriptionReviewBoardReducer(),
             new PrescriptionReviewBoardEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new PrescriptionReviewBoardIntent.ApplyExternalUpdate(message),
@@ -945,7 +946,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "库存监控 MVI";
         IMviStore<DrugStockMonitorState, DrugStockMonitorIntent, DrugStockMonitorEffect> store = new MviStore<DrugStockMonitorState, DrugStockMonitorIntent, DrugStockMonitorEffect>(
             DrugStockMonitorState.Initial,
-            new DrugStockMonitorReducerDispatcher(),
+            new DrugStockMonitorReducer(),
             new DrugStockMonitorEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new DrugStockMonitorIntent.ApplyExternalUpdate(message),
@@ -958,7 +959,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "补货计划 MVI";
         IMviStore<ReplenishmentPlannerState, ReplenishmentPlannerIntent, ReplenishmentPlannerEffect> store = new MviStore<ReplenishmentPlannerState, ReplenishmentPlannerIntent, ReplenishmentPlannerEffect>(
             ReplenishmentPlannerState.Initial,
-            new ReplenishmentPlannerReducerDispatcher(),
+            new ReplenishmentPlannerReducer(),
             new ReplenishmentPlannerEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new ReplenishmentPlannerIntent.ApplyExternalUpdate(message),
@@ -971,7 +972,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "用药安全 MVI";
         IMviStore<MedicationSafetyPanelState, MedicationSafetyPanelIntent, MedicationSafetyPanelEffect> store = new MviStore<MedicationSafetyPanelState, MedicationSafetyPanelIntent, MedicationSafetyPanelEffect>(
             MedicationSafetyPanelState.Initial,
-            new MedicationSafetyPanelReducerDispatcher(),
+            new MedicationSafetyPanelReducer(),
             new MedicationSafetyPanelEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new MedicationSafetyPanelIntent.ApplyExternalUpdate(message),
@@ -984,7 +985,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "质量 KPI MVI";
         IMviStore<QualityKpiBoardState, QualityKpiBoardIntent, QualityKpiBoardEffect> store = new MviStore<QualityKpiBoardState, QualityKpiBoardIntent, QualityKpiBoardEffect>(
             QualityKpiBoardState.Initial,
-            new QualityKpiBoardReducerDispatcher(),
+            new QualityKpiBoardReducer(),
             new QualityKpiBoardEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new QualityKpiBoardIntent.ApplyExternalUpdate(message),
@@ -997,7 +998,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "病历质控 MVI";
         IMviStore<MedicalRecordAuditBoardState, MedicalRecordAuditBoardIntent, MedicalRecordAuditBoardEffect> store = new MviStore<MedicalRecordAuditBoardState, MedicalRecordAuditBoardIntent, MedicalRecordAuditBoardEffect>(
             MedicalRecordAuditBoardState.Initial,
-            new MedicalRecordAuditBoardReducerDispatcher(),
+            new MedicalRecordAuditBoardReducer(),
             new MedicalRecordAuditBoardEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new MedicalRecordAuditBoardIntent.ApplyExternalUpdate(message),
@@ -1010,7 +1011,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "风险事件 MVI";
         IMviStore<RiskEventBoardState, RiskEventBoardIntent, RiskEventBoardEffect> store = new MviStore<RiskEventBoardState, RiskEventBoardIntent, RiskEventBoardEffect>(
             RiskEventBoardState.Initial,
-            new RiskEventBoardReducerDispatcher(),
+            new RiskEventBoardReducer(),
             new RiskEventBoardEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new RiskEventBoardIntent.ApplyExternalUpdate(message),
@@ -1023,7 +1024,7 @@ public sealed class SampleGeneratedContainer : IMviResolver, IMviServiceGraph, I
         const string componentKey = "整改闭环 MVI";
         IMviStore<RectificationTrackerState, RectificationTrackerIntent, RectificationTrackerEffect> store = new MviStore<RectificationTrackerState, RectificationTrackerIntent, RectificationTrackerEffect>(
             RectificationTrackerState.Initial,
-            new RectificationTrackerReducerDispatcher(),
+            new RectificationTrackerReducer(),
             new RectificationTrackerEffectDispatcher(this));
         _componentUpdateHandlers[componentKey] = (message, token) => store.DispatchAsync(
             new RectificationTrackerIntent.ApplyExternalUpdate(message),
@@ -1133,7 +1134,7 @@ public sealed class SampleGeneratedScope : IMviScope
 
         store = new MviStore<LoginState, LoginIntent, LoginEffect>(
             LoginState.Initial,
-            new LoginReducerDispatcher(),
+            new LoginReducer(),
             dispatcher,
             _container.CreateDefaultMiddlewares<LoginState, LoginIntent, LoginEffect>("登录 MVI / Scope"));
 

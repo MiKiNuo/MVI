@@ -29,7 +29,7 @@ public sealed class SourceGeneratorIntegrationTests
     [Test]
     public async Task GeneratedTypes_Should_BeAvailableAtCompileTimeAsync()
     {
-        LoginReducerDispatcher dispatcher = new();
+        LoginReducer dispatcher = new();
         SampleGeneratedContainer container = new();
         LoginViewModel loginViewModel = container.Resolve<LoginViewModel>();
 

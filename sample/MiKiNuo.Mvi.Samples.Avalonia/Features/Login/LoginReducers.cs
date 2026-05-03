@@ -1,17 +1,19 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
 /// <summary>
-/// 表示登录规约器集合。
+/// 表示登录状态规约器。
 /// </summary>
-public static class LoginReducers
+public sealed partial class LoginReducer
+    : MviReducerBase<LoginState, LoginIntent, LoginEffect>
 {
     /// <summary>
     /// 处理修改账号意图。
     /// </summary>
-    [MviReducer]
-    public static MviReduceResult<LoginState, LoginEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LoginState, LoginEffect> Reduce(
         LoginState state,
         LoginIntent.ChangeUserName intent)
     {
@@ -30,8 +32,8 @@ public static class LoginReducers
     /// <summary>
     /// 处理修改密码意图。
     /// </summary>
-    [MviReducer]
-    public static MviReduceResult<LoginState, LoginEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LoginState, LoginEffect> Reduce(
         LoginState state,
         LoginIntent.ChangePassword intent)
     {
@@ -50,8 +52,8 @@ public static class LoginReducers
     /// <summary>
     /// 处理提交登录意图。
     /// </summary>
-    [MviReducer]
-    public static MviReduceResult<LoginState, LoginEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LoginState, LoginEffect> Reduce(
         LoginState state,
         LoginIntent.Submit intent)
     {
@@ -78,8 +80,8 @@ public static class LoginReducers
     /// <summary>
     /// 处理登录成功意图。
     /// </summary>
-    [MviReducer]
-    public static MviReduceResult<LoginState, LoginEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LoginState, LoginEffect> Reduce(
         LoginState state,
         LoginIntent.LoginSucceeded intent)
     {
@@ -101,8 +103,8 @@ public static class LoginReducers
     /// <summary>
     /// 处理登录失败意图。
     /// </summary>
-    [MviReducer]
-    public static MviReduceResult<LoginState, LoginEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LoginState, LoginEffect> Reduce(
         LoginState state,
         LoginIntent.LoginFailed intent)
     {

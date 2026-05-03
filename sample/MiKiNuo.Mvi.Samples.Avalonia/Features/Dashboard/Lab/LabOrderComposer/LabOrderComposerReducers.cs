@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Lab.LabOrderComposer;
 
 /// <summary>
 /// 表示医嘱开立 MVI 规约器。
 /// </summary>
-public static class LabOrderComposerReducers
+public sealed partial class LabOrderComposerReducer
+    : MviReducerBase<LabOrderComposerState, LabOrderComposerIntent, LabOrderComposerEffect>
 {
     /// <summary>
     /// 处理患者标识变更意图。
@@ -13,8 +15,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">患者标识变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ChangePatientIdentity intent)
     {
@@ -30,8 +32,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">检验项目变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ChangeTestItem intent)
     {
@@ -47,8 +49,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">优先级变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ChangePriorityLevel intent)
     {
@@ -64,8 +66,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">标本类型变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ChangeSpecimenType intent)
     {
@@ -81,8 +83,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">临床指征变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ChangeClinicalIndication intent)
     {
@@ -98,8 +100,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">提交检验医嘱意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.SubmitLabOrderForm intent)
     {
@@ -133,8 +135,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ExecutePrimaryAction intent)
     {
@@ -158,8 +160,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ExecuteSecondaryAction intent)
     {
@@ -183,8 +185,8 @@ public static class LabOrderComposerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<LabOrderComposerState, LabOrderComposerEffect> Reduce(
         LabOrderComposerState state,
         LabOrderComposerIntent.ApplyExternalUpdate intent)
     {

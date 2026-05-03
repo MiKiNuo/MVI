@@ -17,8 +17,8 @@ public sealed class LoginReducerTests
     public async Task ChangeUserNameAndPassword_Should_EnableSubmitAsync()
     {
         LoginState state = LoginState.Initial;
-        state = LoginReducers.Reduce(state, new LoginIntent.ChangeUserName("admin")).State;
-        state = LoginReducers.Reduce(state, new LoginIntent.ChangePassword("123456")).State;
+        state = new LoginReducer().Reduce(state, new LoginIntent.ChangeUserName("admin")).State;
+        state = new LoginReducer().Reduce(state, new LoginIntent.ChangePassword("123456")).State;
 
         await Assert.That(state.CanSubmit).IsTrue();
     }
@@ -36,7 +36,7 @@ public sealed class LoginReducerTests
             CanSubmit = true
         };
 
-        MviReduceResult<LoginState, LoginEffect> result = LoginReducers.Reduce(state, new LoginIntent.Submit());
+        MviReduceResult<LoginState, LoginEffect> result = new LoginReducer().Reduce(state, new LoginIntent.Submit());
 
         await Assert.That(result.State.IsBusy).IsTrue();
         await Assert.That(result.Effects.Count).IsEqualTo(1);

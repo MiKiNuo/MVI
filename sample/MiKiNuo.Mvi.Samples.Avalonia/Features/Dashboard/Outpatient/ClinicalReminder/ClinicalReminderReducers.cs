@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder;
 
 /// <summary>
 /// 表示临床提醒规约器。
 /// </summary>
-public static class ClinicalReminderReducers
+public sealed partial class ClinicalReminderReducer
+    : MviReducerBase<ClinicalReminderState, ClinicalReminderIntent, ClinicalReminderEffect>
 {
     /// <summary>
     /// 处理加载患者提醒意图。
@@ -13,8 +15,8 @@ public static class ClinicalReminderReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">加载患者意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> Reduce(
         ClinicalReminderState state,
         ClinicalReminderIntent.LoadPatient intent)
     {
@@ -40,8 +42,8 @@ public static class ClinicalReminderReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">处理提醒意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> Reduce(
         ClinicalReminderState state,
         ClinicalReminderIntent.ResolvePrimaryAlert intent)
     {

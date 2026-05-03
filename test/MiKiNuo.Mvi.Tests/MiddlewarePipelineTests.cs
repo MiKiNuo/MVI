@@ -33,7 +33,7 @@ public sealed class MiddlewarePipelineTests
 
         using MviStore<PatientSearchState, PatientSearchIntent, PatientSearchEffect> store = new(
             PatientSearchState.CreateInitial("住院床位"),
-            new PatientSearchReducerDispatcher(),
+            new PatientSearchReducer(),
             new EmptyPatientSearchEffectDispatcher(),
             middlewares);
 

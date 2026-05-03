@@ -20,7 +20,7 @@ public sealed class ComplexDashboardInteractionTests
         BedOverviewState state = BedOverviewState.Initial;
 
         MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<BedOverviewState, BedOverviewEffect> result =
-            BedOverviewReducers.Reduce(state, new BedOverviewIntent.ExecutePrimaryAction());
+            new BedOverviewReducer().Reduce(state, new BedOverviewIntent.ExecutePrimaryAction());
 
         await Assert.That(result.Effects.Count).IsEqualTo(1);
         await Assert.That(result.Effects[0]).IsTypeOf<BedOverviewEffect.RequestPrimaryWorkflow>();

@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Quality.RiskEventBoard;
 
 /// <summary>
 /// 表示风险事件 MVI 规约器。
 /// </summary>
-public static class RiskEventBoardReducers
+public sealed partial class RiskEventBoardReducer
+    : MviReducerBase<RiskEventBoardState, RiskEventBoardIntent, RiskEventBoardEffect>
 {
     /// <summary>
     /// 处理事件标题变更意图。
@@ -13,8 +15,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">事件标题变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ChangeEventTitle intent)
     {
@@ -30,8 +32,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">责任科室变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ChangeDepartmentName intent)
     {
@@ -47,8 +49,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">风险等级变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ChangeSeverityLevel intent)
     {
@@ -64,8 +66,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">责任人变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ChangeResponsibleOwner intent)
     {
@@ -81,8 +83,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">整改措施变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ChangeCorrectiveAction intent)
     {
@@ -98,8 +100,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">提交风险事件意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.SubmitRiskEventForm intent)
     {
@@ -133,8 +135,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ExecutePrimaryAction intent)
     {
@@ -158,8 +160,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ExecuteSecondaryAction intent)
     {
@@ -183,8 +185,8 @@ public static class RiskEventBoardReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<RiskEventBoardState, RiskEventBoardEffect> Reduce(
         RiskEventBoardState state,
         RiskEventBoardIntent.ApplyExternalUpdate intent)
     {

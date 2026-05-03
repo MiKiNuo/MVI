@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.AdmissionCoordinator;
 
 /// <summary>
 /// 表示入院流程 MVI 规约器。
 /// </summary>
-public static class AdmissionCoordinatorReducers
+public sealed partial class AdmissionCoordinatorReducer
+    : MviReducerBase<AdmissionCoordinatorState, AdmissionCoordinatorIntent, AdmissionCoordinatorEffect>
 {
     /// <summary>
     /// 处理患者姓名变更意图。
@@ -13,8 +15,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">患者姓名变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ChangePatientName intent)
     {
@@ -33,8 +35,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">患者年龄变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ChangePatientAge intent)
     {
@@ -53,8 +55,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">入院诊断变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ChangeAdmissionDiagnosis intent)
     {
@@ -73,8 +75,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">目标床号变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ChangeTargetBedNo intent)
     {
@@ -93,8 +95,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">护士交接备注变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ChangeNurseNote intent)
     {
@@ -113,8 +115,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">提交入院登记表单意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.SubmitAdmissionForm intent)
     {
@@ -148,8 +150,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ExecutePrimaryAction intent)
     {
@@ -173,8 +175,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ExecuteSecondaryAction intent)
     {
@@ -198,8 +200,8 @@ public static class AdmissionCoordinatorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<AdmissionCoordinatorState, AdmissionCoordinatorEffect> Reduce(
         AdmissionCoordinatorState state,
         AdmissionCoordinatorIntent.ApplyExternalUpdate intent)
     {

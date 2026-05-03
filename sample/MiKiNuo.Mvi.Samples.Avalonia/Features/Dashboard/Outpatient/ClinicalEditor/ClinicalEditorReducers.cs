@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor;
 
 /// <summary>
 /// 表示门诊病历编辑规约器。
 /// </summary>
-public static class ClinicalEditorReducers
+public sealed partial class ClinicalEditorReducer
+    : MviReducerBase<ClinicalEditorState, ClinicalEditorIntent, ClinicalEditorEffect>
 {
     /// <summary>
     /// 处理加载患者意图。
@@ -13,8 +15,8 @@ public static class ClinicalEditorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">加载患者意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> Reduce(
         ClinicalEditorState state,
         ClinicalEditorIntent.LoadPatient intent)
     {
@@ -37,8 +39,8 @@ public static class ClinicalEditorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">修改诊断意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> Reduce(
         ClinicalEditorState state,
         ClinicalEditorIntent.ChangeDiagnosis intent)
     {
@@ -59,8 +61,8 @@ public static class ClinicalEditorReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">保存草稿意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> Reduce(
         ClinicalEditorState state,
         ClinicalEditorIntent.SaveDraft intent)
     {

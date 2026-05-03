@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
 
 /// <summary>
 /// 表示可复用患者检索 MVI 规约器。
 /// </summary>
-public static class PatientSearchReducers
+public sealed partial class PatientSearchReducer
+    : MviReducerBase<PatientSearchState, PatientSearchIntent, PatientSearchEffect>
 {
     /// <summary>
     /// 处理检索关键字变更意图。
@@ -13,8 +15,8 @@ public static class PatientSearchReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">检索关键字变更意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
         PatientSearchState state,
         PatientSearchIntent.ChangeQueryText intent)
     {
@@ -38,8 +40,8 @@ public static class PatientSearchReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">执行患者检索意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
         PatientSearchState state,
         PatientSearchIntent.SearchPatient intent)
     {
@@ -71,8 +73,8 @@ public static class PatientSearchReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">选择患者意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
         PatientSearchState state,
         PatientSearchIntent.SelectFirstPatient intent)
     {
@@ -103,8 +105,8 @@ public static class PatientSearchReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
         PatientSearchState state,
         PatientSearchIntent.ApplyExternalUpdate intent)
     {

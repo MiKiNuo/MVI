@@ -18,7 +18,7 @@ public sealed class MviStoreTests
     {
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginReducerDispatcher(),
+            new LoginReducer(),
             new EmptyLoginEffectDispatcher());
 
         await store.DispatchAsync(new LoginIntent.ChangeUserName("admin"));

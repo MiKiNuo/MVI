@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Statistics;
 
 /// <summary>
 /// 表示统计组件规约器。
 /// </summary>
-public static class StatisticsReducers
+public sealed partial class StatisticsReducer
+    : MviReducerBase<StatisticsState, StatisticsIntent, StatisticsEffect>
 {
     /// <summary>
     /// 处理刷新统计数据意图。
@@ -13,8 +15,8 @@ public static class StatisticsReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">刷新统计数据意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<StatisticsState, StatisticsEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<StatisticsState, StatisticsEffect> Reduce(
         StatisticsState state,
         StatisticsIntent.Refresh intent)
     {

@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Lab.SpecimenTracker;
 
 /// <summary>
 /// 表示标本流转 MVI规约器。
 /// </summary>
-public static class SpecimenTrackerReducers
+public sealed partial class SpecimenTrackerReducer
+    : MviReducerBase<SpecimenTrackerState, SpecimenTrackerIntent, SpecimenTrackerEffect>
 {
     /// <summary>
     /// 处理主业务动作意图。
@@ -13,8 +15,8 @@ public static class SpecimenTrackerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">主业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<SpecimenTrackerState, SpecimenTrackerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<SpecimenTrackerState, SpecimenTrackerEffect> Reduce(
         SpecimenTrackerState state,
         SpecimenTrackerIntent.ExecutePrimaryAction intent)
     {
@@ -38,8 +40,8 @@ public static class SpecimenTrackerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">辅助业务动作意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<SpecimenTrackerState, SpecimenTrackerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<SpecimenTrackerState, SpecimenTrackerEffect> Reduce(
         SpecimenTrackerState state,
         SpecimenTrackerIntent.ExecuteSecondaryAction intent)
     {
@@ -63,8 +65,8 @@ public static class SpecimenTrackerReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">外部更新意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<SpecimenTrackerState, SpecimenTrackerEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<SpecimenTrackerState, SpecimenTrackerEffect> Reduce(
         SpecimenTrackerState state,
         SpecimenTrackerIntent.ApplyExternalUpdate intent)
     {

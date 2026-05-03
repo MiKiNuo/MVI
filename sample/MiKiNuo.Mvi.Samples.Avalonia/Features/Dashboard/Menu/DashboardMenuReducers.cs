@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
 
 /// <summary>
 /// 表示 Dashboard 菜单规约器。
 /// </summary>
-public static class DashboardMenuReducers
+public sealed partial class DashboardMenuReducer
+    : MviReducerBase<DashboardMenuState, DashboardMenuIntent, DashboardMenuEffect>
 {
     /// <summary>
     /// 处理选择菜单项意图。
@@ -13,8 +15,8 @@ public static class DashboardMenuReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">选择菜单意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<DashboardMenuState, DashboardMenuEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<DashboardMenuState, DashboardMenuEffect> Reduce(
         DashboardMenuState state,
         DashboardMenuIntent.SelectMenuKey intent)
     {

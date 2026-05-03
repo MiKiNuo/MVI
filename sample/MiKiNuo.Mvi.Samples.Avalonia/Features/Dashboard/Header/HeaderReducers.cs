@@ -1,11 +1,13 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header;
 
 /// <summary>
 /// 表示 Dashboard 头部组件规约器。
 /// </summary>
-public static class HeaderReducers
+public sealed partial class HeaderReducer
+    : MviReducerBase<HeaderState, HeaderIntent, HeaderEffect>
 {
     /// <summary>
     /// 处理更新标题意图。
@@ -13,8 +15,8 @@ public static class HeaderReducers
     /// <param name="state">当前状态。</param>
     /// <param name="intent">更新标题意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReducer]
-    public static MviReduceResult<HeaderState, HeaderEffect> Reduce(
+    [MviReduce]
+    private MviReduceResult<HeaderState, HeaderEffect> Reduce(
         HeaderState state,
         HeaderIntent.UpdateTitle intent)
     {
