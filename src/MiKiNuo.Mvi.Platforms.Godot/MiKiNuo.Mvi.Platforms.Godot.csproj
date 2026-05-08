@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Platforms.Godot</PackageId>
+    <Description>MiKiNuo MVI 框架的 Godot 平台适配包，包含 Godot UI 线程调度、Control 绑定、Scene Slot 组合和编译期 ViewRegistry 生成支持。</Description>
+    <PackageTags>mvi;r3;godot;source-generator;analyzer;clean-architecture;mediator;di</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
+    <ProjectReference Include="..\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" />
+    <PackageReference Include="GodotSharp" />
+    <PackageReference Include="R3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\..\README.md')" />
+    <None Include="buildTransitive\MiKiNuo.Mvi.Platforms.Godot.targets" Pack="true" PackagePath="buildTransitive\MiKiNuo.Mvi.Platforms.Godot.targets" />
+    <None Include="..\MiKiNuo.Mvi.Infrastructure\bin\$(Configuration)\netstandard2.0\MiKiNuo.Mvi.Infrastructure.dll" Pack="true" PackagePath="analyzers\dotnet\cs\MiKiNuo.Mvi.Infrastructure.dll" Condition="Exists('..\MiKiNuo.Mvi.Infrastructure\bin\$(Configuration)\netstandard2.0\MiKiNuo.Mvi.Infrastructure.dll')" />
+  </ItemGroup>
+</Project>

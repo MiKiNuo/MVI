@@ -1,0 +1,49 @@
+[gd_scene load_steps=4 format=3]
+[ext_resource type="Script" path="res://Views/AppShell/AppShellView.cs" id="1_script"]
+[ext_resource type="PackedScene" path="res://Views/Login/LoginView.tscn" id="2_login"]
+[ext_resource type="PackedScene" path="res://Views/Lobby/LobbyView.tscn" id="3_lobby"]
+[node name="AppShellView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+[node name="TitleLabel" type="Label" parent="Root"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "游戏 MVI 示例"
+[node name="MessageLabel" type="Label" parent="Root"]
+layout_mode = 2
+autowrap_mode = 3
+text = "等待 Shell 状态。"
+[node name="PageContainer" type="PanelContainer" parent="Root"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="PageSlot" type="Control" parent="Root/PageContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="LoginView" parent="Root/PageContainer/PageSlot" instance=ExtResource("2_login")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+[node name="LobbyView" parent="Root/PageContainer/PageSlot" instance=ExtResource("3_lobby")]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0

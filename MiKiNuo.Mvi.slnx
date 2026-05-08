@@ -1,16 +1,20 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" Type="Classic C#" />
-    <Project Path="src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" Type="Classic C#" />
-    <Project Path="src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" Type="Classic C#" />
-    <Project Path="src\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" Type="Classic C#" />
-    <Project Path="src\MiKiNuo.Mvi.Platforms.Avalonia\MiKiNuo.Mvi.Platforms.Avalonia.csproj" Type="Classic C#" />
+    <Project Path="src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
+    <Project Path="src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Platforms.Avalonia\MiKiNuo.Mvi.Platforms.Avalonia.csproj" Type="C#" />
   </Folder>
   <Folder Name="/sample/">
-    <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" Type="Classic C#" />
+    <Project Path="sample/MiKiNuo.Mvi.Samples.Godot/MiKiNuo.Mvi.Samples.Godot.csproj">
+      <BuildType Project="Debug" />
+    </Project>
+    <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" Type="C#" />
   </Folder>
   <Folder Name="/test/">
-    <Project Path="test\MiKiNuo.Mvi.Tests\MiKiNuo.Mvi.Tests.csproj" Type="Classic C#" />
+    <Project Path="test\MiKiNuo.Mvi.Tests\MiKiNuo.Mvi.Tests.csproj" Type="C#" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />

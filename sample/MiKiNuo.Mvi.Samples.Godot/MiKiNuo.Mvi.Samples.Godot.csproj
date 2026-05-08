@@ -1,0 +1,22 @@
+<Project Sdk="Godot.NET.Sdk/4.6.1">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <UseMiKiNuoMviBuildTimeTools>true</UseMiKiNuoMviBuildTimeTools>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors></WarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Views\DashboardView.cs" />
+    <Compile Remove="Features\Dashboard\**\*.cs" />
+    <Compile Remove="Views\Dashboard\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="GodotSharp" />
+    <PackageReference Include="R3" />
+  </ItemGroup>
+</Project>
