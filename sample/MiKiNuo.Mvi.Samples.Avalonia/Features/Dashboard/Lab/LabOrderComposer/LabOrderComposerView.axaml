@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Lab.LabOrderComposer.LabOrderComposerView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -17,23 +17,23 @@
             <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                 <StackPanel>
                     <TextBlock Text="患者号/就诊号" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding PatientIdentity, Mode=TwoWay}" Watermark="例如：OP20260502001" />
+                    <TextBox Text="{Binding PatientIdentity, Mode=TwoWay}" PlaceholderText="例如：OP20260502001" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="检验项目" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding TestItem, Mode=TwoWay}" Watermark="例如：血常规+CRP" />
+                    <TextBox Text="{Binding TestItem, Mode=TwoWay}" PlaceholderText="例如：血常规+CRP" />
                 </StackPanel>
                 <StackPanel Grid.Row="1">
                     <TextBlock Text="优先级" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding PriorityLevel, Mode=TwoWay}" Watermark="常规/急诊/危急" />
+                    <TextBox Text="{Binding PriorityLevel, Mode=TwoWay}" PlaceholderText="常规/急诊/危急" />
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1">
                     <TextBlock Text="标本类型" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding SpecimenType, Mode=TwoWay}" Watermark="血液/尿液/咽拭子" />
+                    <TextBox Text="{Binding SpecimenType, Mode=TwoWay}" PlaceholderText="血液/尿液/咽拭子" />
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.ColumnSpan="2">
                     <TextBlock Text="临床指征" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding ClinicalIndication, Mode=TwoWay}" Watermark="发热、感染指标升高、术前检查等" AcceptsReturn="True" MinHeight="56" />
+                    <TextBox Text="{Binding ClinicalIndication, Mode=TwoWay}" PlaceholderText="发热、感染指标升高、术前检查等" AcceptsReturn="True" MinHeight="56" />
                 </StackPanel>
             </Grid>
 

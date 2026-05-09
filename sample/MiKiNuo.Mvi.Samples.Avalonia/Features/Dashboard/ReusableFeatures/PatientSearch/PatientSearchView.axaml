@@ -6,7 +6,7 @@
         <StackPanel Spacing="6">
             <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
             <TextBlock Text="{Binding PageKey}" Foreground="#64748B" />
-            <TextBox Text="{Binding QueryText, Mode=TwoWay}" Watermark="输入姓名 / 住院号 / 门诊号" />
+            <TextBox Text="{Binding QueryText, Mode=TwoWay}" PlaceholderText="输入姓名 / 住院号 / 门诊号" />
             <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                 <Button Content="检索患者" Command="{Binding SearchCommand}" />
                 <Button Grid.Column="1" Content="选择并传递" Command="{Binding SelectPatientCommand}" />

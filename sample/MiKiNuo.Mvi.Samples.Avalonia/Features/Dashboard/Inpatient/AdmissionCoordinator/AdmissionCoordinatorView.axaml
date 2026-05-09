@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.AdmissionCoordinator.AdmissionCoordinatorView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -17,23 +17,23 @@
             <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                 <StackPanel>
                     <TextBlock Text="患者姓名" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding PatientName, Mode=TwoWay}" Watermark="例如：张三" />
+                    <TextBox Text="{Binding PatientName, Mode=TwoWay}" PlaceholderText="例如：张三" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="年龄" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding PatientAge, Mode=TwoWay}" Watermark="例如：68" />
+                    <TextBox Text="{Binding PatientAge, Mode=TwoWay}" PlaceholderText="例如：68" />
                 </StackPanel>
                 <StackPanel Grid.Row="1">
                     <TextBlock Text="入院诊断" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding AdmissionDiagnosis, Mode=TwoWay}" Watermark="例如：急性心衰" />
+                    <TextBox Text="{Binding AdmissionDiagnosis, Mode=TwoWay}" PlaceholderText="例如：急性心衰" />
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1">
                     <TextBlock Text="目标床号" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding TargetBedNo, Mode=TwoWay}" Watermark="例如：A12-08" />
+                    <TextBox Text="{Binding TargetBedNo, Mode=TwoWay}" PlaceholderText="例如：A12-08" />
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.ColumnSpan="2">
                     <TextBlock Text="护士交接备注" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding NurseNote, Mode=TwoWay}" Watermark="过敏史、跌倒风险、管路情况等" AcceptsReturn="True" MinHeight="56" />
+                    <TextBox Text="{Binding NurseNote, Mode=TwoWay}" PlaceholderText="过敏史、跌倒风险、管路情况等" AcceptsReturn="True" MinHeight="56" />
                 </StackPanel>
             </Grid>
 

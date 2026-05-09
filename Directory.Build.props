@@ -10,7 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors>nullable;CS1591</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS8618;CS8602;CS8603;CS8625</WarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>

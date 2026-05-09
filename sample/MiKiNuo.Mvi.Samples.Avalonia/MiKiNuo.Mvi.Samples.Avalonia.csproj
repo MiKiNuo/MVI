@@ -6,7 +6,7 @@
     <UseMiKiNuoMviBuildTimeTools>true</UseMiKiNuoMviBuildTimeTools>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors></WarningsAsErrors>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;AVLN3001</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Platforms.Avalonia\MiKiNuo.Mvi.Platforms.Avalonia.csproj" />

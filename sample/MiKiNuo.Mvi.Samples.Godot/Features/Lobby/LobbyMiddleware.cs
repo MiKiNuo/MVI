@@ -19,7 +19,7 @@ public sealed class LobbyMiddleware : IMviMiddleware<LobbyState, LobbyIntent, Lo
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nextMiddleware);
-        string before = $"Lobby Middleware Before Intent={context.Intent.GetType().Name}";
+        string before = $"Lobby Middleware Before Intent={typeof(LobbyIntent).Name}";
         MviReduceResult<LobbyState, LobbyEffect> result = await nextMiddleware(context, cancellationToken).ConfigureAwait(false);
         string after = $"Lobby Middleware After Panel={result.State.CurrentPanel}, Gold={result.State.Gold}, Stamina={result.State.Stamina}, Power={result.State.HeroTeamPower}";
         LobbyState nextState = result.State with

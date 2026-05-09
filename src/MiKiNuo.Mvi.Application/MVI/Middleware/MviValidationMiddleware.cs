@@ -57,7 +57,7 @@ public sealed class MviValidationMiddleware<TState, TIntent, TEffect> : IMviMidd
                 DateTimeOffset.Now,
                 _componentName,
                 "Validation",
-                $"阻断 {context.Intent.GetType().Name}：{validationMessage}",
+                $"阻断 {typeof(TIntent).Name}：{validationMessage}",
                 0));
             return ValueTask.FromResult(MviReduceResult.State<TState, TEffect>(context.State));
         }
@@ -66,7 +66,7 @@ public sealed class MviValidationMiddleware<TState, TIntent, TEffect> : IMviMidd
             DateTimeOffset.Now,
             _componentName,
             "Validation",
-            $"通过 {context.Intent.GetType().Name}",
+            $"通过 {typeof(TIntent).Name}",
             0));
         return nextMiddleware(context, cancellationToken);
     }

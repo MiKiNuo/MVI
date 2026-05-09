@@ -52,7 +52,7 @@ public sealed class MviPerformanceMiddleware<TState, TIntent, TEffect> : IMviMid
             DateTimeOffset.Now,
             _componentName,
             "Middleware",
-            $"{context.Intent.GetType().Name} 规约耗时",
+            $"{typeof(TIntent).Name} 规约耗时",
             stopwatch.ElapsedMilliseconds));
 
         return result;

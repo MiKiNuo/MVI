@@ -1,6 +1,6 @@
 using System;
-using System.Reflection;
 using global::Godot;
+using MiKiNuo.Mvi.Samples.Godot.Runtime;
 
 /// <summary>
 /// 表示 Godot 游戏 MVI 示例主场景根节点。
@@ -8,9 +8,6 @@ using global::Godot;
 [GlobalClass]
 public partial class MainRoot : Control
 {
-    private const string RuntimeTypeName = "MiKiNuo.Mvi.Samples.Godot.Runtime.GameLobbySampleRuntime";
-    private const string StartMethodName = "Start";
-
     private IDisposable? _runtime;
 
     /// <inheritdoc />
@@ -34,26 +31,14 @@ public partial class MainRoot : Control
 
     private void StartRuntime()
     {
-#pragma warning disable CA1031 // 根节点兜底捕获启动异常，并显示到 Godot 界面上，避免只看到 C# 脚本类加载失败。
         try
         {
-            Type runtimeType = typeof(MainRoot).Assembly.GetType(RuntimeTypeName, throwOnError: true)!;
-            MethodInfo startMethod = runtimeType.GetMethod(
-                StartMethodName,
-                BindingFlags.Public | BindingFlags.Static)
-                ?? throw new InvalidOperationException("没有找到游戏大厅示例运行时启动方法。");
-
-            startMethod.Invoke(null, new object[] { this, (Action<IDisposable>)SetRuntime });
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            ShowError(exception.InnerException);
+            GameLobbySampleRuntime.Start(this, SetRuntime);
         }
         catch (Exception exception)
         {
             ShowError(exception);
         }
-#pragma warning restore CA1031
     }
 
     private void SetRuntime(IDisposable runtime)

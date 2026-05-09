@@ -10,15 +10,16 @@ public sealed class MviCommand : MviCommandBase, IMviCommand
     private readonly Action<object?> _execute;
 
     /// <summary>
-/// 初始化 MviCommand 实例。
-/// </summary>
-/// <param name="canExecute">可执行状态流。</param>
-/// <param name="execute">同步执行委托。</param>
-public MviCommand(Observable<bool> canExecute, Action<object?> execute)
-    : base(canExecute)
-{
-    _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-}
+    /// 初始化 MviCommand 实例。
+    /// </summary>
+    /// <param name="canExecute">可执行状态流。</param>
+    /// <param name="execute">同步执行委托。</param>
+    public MviCommand(Observable<bool> canExecute, Action<object?> execute)
+        : base(canExecute)
+    {
+        ArgumentNullException.ThrowIfNull(execute);
+        _execute = execute;
+    }
 
     /// <inheritdoc />
     public override void Execute(object? parameter)

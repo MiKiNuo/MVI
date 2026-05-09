@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Pharmacy.PrescriptionReviewBoard.PrescriptionReviewBoardView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -17,23 +17,23 @@
             <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                 <StackPanel>
                     <TextBlock Text="处方号" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding PrescriptionNo, Mode=TwoWay}" Watermark="例如：RX20260502008" />
+                    <TextBox Text="{Binding PrescriptionNo, Mode=TwoWay}" PlaceholderText="例如：RX20260502008" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="患者姓名" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding PatientName, Mode=TwoWay}" Watermark="例如：李四" />
+                    <TextBox Text="{Binding PatientName, Mode=TwoWay}" PlaceholderText="例如：李四" />
                 </StackPanel>
                 <StackPanel Grid.Row="1">
                     <TextBlock Text="药品名称" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding DrugName, Mode=TwoWay}" Watermark="例如：头孢曲松钠" />
+                    <TextBox Text="{Binding DrugName, Mode=TwoWay}" PlaceholderText="例如：头孢曲松钠" />
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1">
                     <TextBlock Text="剂量用法" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding DoseText, Mode=TwoWay}" Watermark="例如：2g ivgtt qd" />
+                    <TextBox Text="{Binding DoseText, Mode=TwoWay}" PlaceholderText="例如：2g ivgtt qd" />
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.ColumnSpan="2">
                     <TextBlock Text="过敏史/药师备注" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding AllergyHistory, Mode=TwoWay}" Watermark="青霉素过敏、肾功能异常、需皮试等" AcceptsReturn="True" MinHeight="56" />
+                    <TextBox Text="{Binding AllergyHistory, Mode=TwoWay}" PlaceholderText="青霉素过敏、肾功能异常、需皮试等" AcceptsReturn="True" MinHeight="56" />
                 </StackPanel>
             </Grid>
 

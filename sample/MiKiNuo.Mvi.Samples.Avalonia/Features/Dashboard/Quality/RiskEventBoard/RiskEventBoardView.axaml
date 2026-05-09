@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Quality.RiskEventBoard.RiskEventBoardView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -17,23 +17,23 @@
             <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                 <StackPanel>
                     <TextBlock Text="事件标题" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding EventTitle, Mode=TwoWay}" Watermark="例如：抗菌药物越级使用" />
+                    <TextBox Text="{Binding EventTitle, Mode=TwoWay}" PlaceholderText="例如：抗菌药物越级使用" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="责任科室" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding DepartmentName, Mode=TwoWay}" Watermark="例如：呼吸内科" />
+                    <TextBox Text="{Binding DepartmentName, Mode=TwoWay}" PlaceholderText="例如：呼吸内科" />
                 </StackPanel>
                 <StackPanel Grid.Row="1">
                     <TextBlock Text="风险等级" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding SeverityLevel, Mode=TwoWay}" Watermark="低/中/高/严重" />
+                    <TextBox Text="{Binding SeverityLevel, Mode=TwoWay}" PlaceholderText="低/中/高/严重" />
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1">
                     <TextBlock Text="责任人" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding ResponsibleOwner, Mode=TwoWay}" Watermark="例如：王医生" />
+                    <TextBox Text="{Binding ResponsibleOwner, Mode=TwoWay}" PlaceholderText="例如：王医生" />
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.ColumnSpan="2">
                     <TextBlock Text="整改措施" FontSize="12" Foreground="#475569" />
-                    <TextBox Text="{Binding CorrectiveAction, Mode=TwoWay}" Watermark="立即暂停医嘱、科主任复核、药事会追踪等" AcceptsReturn="True" MinHeight="56" />
+                    <TextBox Text="{Binding CorrectiveAction, Mode=TwoWay}" PlaceholderText="立即暂停医嘱、科主任复核、药事会追踪等" AcceptsReturn="True" MinHeight="56" />
                 </StackPanel>
             </Grid>
 

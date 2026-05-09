@@ -43,13 +43,13 @@ public sealed class MviLoggingMiddleware<TState, TIntent, TEffect> : IMviMiddlew
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nextMiddleware);
 
-        Record("Intent", $"收到 {context.Intent.GetType().Name}", 0);
+        Record("Intent", $"收到 {typeof(TIntent).Name}", 0);
         MviReduceResult<TState, TEffect> result = await nextMiddleware(context, cancellationToken).ConfigureAwait(false);
-        Record("Reducer", $"完成 {context.Intent.GetType().Name}，产生 {result.Effects.Count} 个 Effect", 0);
+        Record("Reducer", $"完成 {typeof(TIntent).Name}，产生 {result.Effects.Count} 个 Effect", 0);
 
         foreach (TEffect effect in result.Effects)
         {
-            Record("Effect", $"产生 {effect.GetType().Name}", 0);
+            Record("Effect", $"产生 {typeof(TEffect).Name}", 0);
         }
 
         return result;

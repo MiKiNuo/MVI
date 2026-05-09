@@ -17,7 +17,8 @@ public sealed class MviAsyncCommand : MviCommandBase, IMviAsyncCommand
     public MviAsyncCommand(Observable<bool> canExecute, Func<object?, CancellationToken, ValueTask> executeAsync)
         : base(canExecute)
     {
-        _executeAsync = executeAsync ?? throw new ArgumentNullException(nameof(executeAsync));
+        ArgumentNullException.ThrowIfNull(executeAsync);
+        _executeAsync = executeAsync;
     }
 
     /// <inheritdoc />

@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel;
 using System.Windows.Input;
 using global::Godot;
@@ -92,7 +91,8 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
             if (string.IsNullOrEmpty(args.PropertyName) ||
                 string.Equals(args.PropertyName, propertyName, StringComparison.Ordinal))
             {
-                GD.Print($"[Godot MVI Binding] {source.GetType().Name}.{propertyName} changed");
+                string sourceTypeName = source.GetType().Name;
+                GD.Print($"[Godot MVI Binding] {sourceTypeName}.{propertyName} changed");
                 update();
             }
         }
