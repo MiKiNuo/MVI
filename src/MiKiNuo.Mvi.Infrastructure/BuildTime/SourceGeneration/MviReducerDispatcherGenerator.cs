@@ -1,53 +1,58 @@
-﻿
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 
 /// <summary>
-/// 表示根据 Reducer 方法生成规约分发器的源生成器。
+/// 表示根据静态 Reducer 类中的 Reduce 方法生成规约分发器的源生成器。
+/// 扫描名称以 "Reducers" 结尾的类，为其中的静态 Reduce 方法生成分发调度代码。
 /// </summary>
 [Generator]
-public sealed class MviReducerDispatcherGenerator : IIncrementalGenerator
+public sealed class MviReducerDispatcherGenerator : MviReducerGeneratorBase
 {
-    private static readonly SymbolDisplayFormat TypeFormat = SymbolDisplayFormat.FullyQualifiedFormat
-        .WithMiscellaneousOptions(
-            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
-            | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+    /// <inheritdoc />
+    protected override bool IsTargetClass(INamedTypeSymbol symbol)
+    {
+        return symbol.Name.EndsWith("Reducers", System.StringComparison.Ordinal);
+    }
 
     /// <inheritdoc />
-    public void Initialize(IncrementalGeneratorInitializationContext context)
+    protected override List<ReducerMethodModel> GetReducerMethods(INamedTypeSymbol reducersType)
     {
-        context.RegisterSourceOutput(context.CompilationProvider, Execute);
-    }
+        List<ReducerMethodModel> result = [];
 
-    private static void Execute(SourceProductionContext context, Compilation compilation)
-    {
-        foreach (INamedTypeSymbol reducersType in FindAllClasses(compilation, context.CancellationToken))
+        foreach (IMethodSymbol method in reducersType.GetMembers().OfType<IMethodSymbol>())
         {
-            if (!reducersType.Name.EndsWith("Reducers", StringComparison.Ordinal))
+            if (!method.IsStatic || method.Name != "Reduce" || method.Parameters.Length != 2)
             {
                 continue;
             }
 
-            List<ReducerMethodModel> methods = GetReducerMethods(reducersType);
-            if (methods.Count == 0)
+            if (method.ReturnType is not INamedTypeSymbol returnType || returnType.TypeArguments.Length != 2)
             {
                 continue;
             }
 
-            string source = GenerateDispatcher(reducersType, methods);
-            string dispatcherName = reducersType.Name.Substring(0, reducersType.Name.Length - "Reducers".Length) + "ReducerDispatcher";
-            context.AddSource($"{dispatcherName}.g.cs", SourceText.From(source, Encoding.UTF8));
+            ITypeSymbol stateType = method.Parameters[0].Type;
+            ITypeSymbol intentType = method.Parameters[1].Type;
+            ITypeSymbol effectType = returnType.TypeArguments[1];
+            ITypeSymbol rootIntentType = GetRootIntentType(intentType);
+
+            result.Add(new ReducerMethodModel(
+                method.Name,
+                stateType.ToDisplayString(TypeFormat),
+                intentType.ToDisplayString(TypeFormat),
+                rootIntentType.ToDisplayString(TypeFormat),
+                effectType.ToDisplayString(TypeFormat)));
         }
+
+        return result;
     }
 
-    private static string GenerateDispatcher(INamedTypeSymbol reducersType, IReadOnlyList<ReducerMethodModel> methods)
+    /// <inheritdoc />
+    protected override string GenerateSource(INamedTypeSymbol reducersType, IReadOnlyList<ReducerMethodModel> methods)
     {
         ReducerMethodModel first = methods[0];
         string namespaceName = reducersType.ContainingNamespace.ToDisplayString();
@@ -87,90 +92,10 @@ public sealed class MviReducerDispatcherGenerator : IIncrementalGenerator
         return builder.ToString();
     }
 
-    private static List<ReducerMethodModel> GetReducerMethods(INamedTypeSymbol reducersType)
+    /// <inheritdoc />
+    protected override string GetOutputFileName(INamedTypeSymbol symbol)
     {
-        List<ReducerMethodModel> result = new();
-
-        foreach (IMethodSymbol method in reducersType.GetMembers().OfType<IMethodSymbol>())
-        {
-            if (!method.IsStatic || method.Name != "Reduce" || method.Parameters.Length != 2)
-            {
-                continue;
-            }
-
-            if (method.ReturnType is not INamedTypeSymbol returnType || returnType.TypeArguments.Length != 2)
-            {
-                continue;
-            }
-
-            ITypeSymbol stateType = method.Parameters[0].Type;
-            ITypeSymbol intentType = method.Parameters[1].Type;
-            ITypeSymbol effectType = returnType.TypeArguments[1];
-            ITypeSymbol rootIntentType = GetRootIntentType(intentType);
-
-            result.Add(new ReducerMethodModel(
-                method.Name,
-                stateType.ToDisplayString(TypeFormat),
-                intentType.ToDisplayString(TypeFormat),
-                rootIntentType.ToDisplayString(TypeFormat),
-                effectType.ToDisplayString(TypeFormat)));
-        }
-
-        return result;
-    }
-
-    private static ITypeSymbol GetRootIntentType(ITypeSymbol intentType)
-    {
-        ITypeSymbol current = intentType;
-        while (current.BaseType is not null && current.BaseType.SpecialType != SpecialType.System_Object)
-        {
-            current = current.BaseType;
-        }
-
-        return current;
-    }
-
-    private static IEnumerable<INamedTypeSymbol> FindAllClasses(Compilation compilation, System.Threading.CancellationToken cancellationToken)
-    {
-        foreach (SyntaxTree tree in compilation.SyntaxTrees)
-        {
-            SyntaxNode root = tree.GetRoot(cancellationToken);
-            SemanticModel semanticModel = compilation.GetSemanticModel(tree);
-            foreach (ClassDeclarationSyntax declaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (semanticModel.GetDeclaredSymbol(declaration, cancellationToken) is INamedTypeSymbol symbol)
-                {
-                    yield return symbol;
-                }
-            }
-        }
-    }
-
-    private sealed class ReducerMethodModel
-    {
-        public ReducerMethodModel(
-            string methodName,
-            string stateTypeName,
-            string intentTypeName,
-            string rootIntentTypeName,
-            string effectTypeName)
-        {
-            MethodName = methodName;
-            StateTypeName = stateTypeName;
-            IntentTypeName = intentTypeName;
-            RootIntentTypeName = rootIntentTypeName;
-            EffectTypeName = effectTypeName;
-        }
-
-        public string MethodName { get; }
-
-        public string StateTypeName { get; }
-
-        public string IntentTypeName { get; }
-
-        public string RootIntentTypeName { get; }
-
-        public string EffectTypeName { get; }
+        string dispatcherName = symbol.Name.Substring(0, symbol.Name.Length - "Reducers".Length) + "ReducerDispatcher";
+        return $"{dispatcherName}.g.cs";
     }
 }

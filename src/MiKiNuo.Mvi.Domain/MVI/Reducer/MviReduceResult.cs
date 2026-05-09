@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Effect;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.State;
 
 namespace MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -23,6 +23,7 @@ public static class MviReduceResult
 {
     /// <summary>
     /// 创建仅包含状态的规约结果。
+    /// 使用 Array.Empty 共享引用避免每次分配新数组。
     /// </summary>
     /// <typeparam name="TState">状态类型。</typeparam>
     /// <typeparam name="TEffect">副作用类型。</typeparam>
@@ -32,7 +33,7 @@ public static class MviReduceResult
         where TState : IMviState
         where TEffect : IMviEffect
     {
-        return new MviReduceResult<TState, TEffect>(state, []);
+        return new MviReduceResult<TState, TEffect>(state, System.Array.Empty<TEffect>());
     }
 
     /// <summary>
@@ -49,7 +50,7 @@ public static class MviReduceResult
         where TState : IMviState
         where TEffect : IMviEffect
     {
-        return new MviReduceResult<TState, TEffect>(state, [effect]);
+        return new MviReduceResult<TState, TEffect>(state, new TEffect[] { effect });
     }
 
     /// <summary>
