@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Diagnostics;
+using MiKiNuo.Mvi.Application.MVI.Diagnostics;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
@@ -18,7 +18,7 @@ public sealed class MiddlewarePipelineTests
     [Test]
     public async Task MiddlewarePipeline_Should_RecordIntentValidationAndPerformanceAsync()
     {
-        MviMemoryDiagnosticSink diagnosticSink = new();
+        using MviMemoryDiagnosticSink diagnosticSink = new();
         IReadOnlyList<IMviMiddleware<PatientSearchState, PatientSearchIntent, PatientSearchEffect>> middlewares =
         [
             new MviValidationMiddleware<PatientSearchState, PatientSearchIntent, PatientSearchEffect>(

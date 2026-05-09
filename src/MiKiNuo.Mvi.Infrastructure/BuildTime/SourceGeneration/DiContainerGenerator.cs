@@ -5,7 +5,8 @@ using Microsoft.CodeAnalysis.Text;
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 
 /// <summary>
-/// 表示编译期 DI 容器、Mediator 与 Avalonia ViewRegistry 源生成器。
+/// 表示编译期 DI 容器、Mediator 与 Avalonia ViewRegistry 源生成器（示例/遗留）。
+/// 推荐使用泛型的 MviDiContainerGenerator 替代。
 /// </summary>
 [Generator]
 public sealed class DiContainerGenerator : IIncrementalGenerator
@@ -18,13 +19,12 @@ public sealed class DiContainerGenerator : IIncrementalGenerator
 
     private static void Execute(SourceProductionContext context, Compilation compilation)
     {
-        if (compilation.AssemblyName != "MiKiNuo.Mvi.Samples.Avalonia")
+        // 当编译中包含示例项目时仍生成原有代码，其他项目使用 MviDiContainerGenerator。
+        if (compilation.AssemblyName == "MiKiNuo.Mvi.Samples.Avalonia")
         {
-            return;
+            context.AddSource("SampleGeneratedContainer.g.cs", SourceText.From(GenerateContainer(), Encoding.UTF8));
+            context.AddSource("SampleGeneratedViewRegistry.g.cs", SourceText.From(GenerateViewRegistry(), Encoding.UTF8));
         }
-
-        context.AddSource("SampleGeneratedContainer.g.cs", SourceText.From(GenerateContainer(), Encoding.UTF8));
-        context.AddSource("SampleGeneratedViewRegistry.g.cs", SourceText.From(GenerateViewRegistry(), Encoding.UTF8));
     }
 
     private static string GenerateContainer()
