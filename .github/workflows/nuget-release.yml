@@ -83,7 +83,7 @@ jobs:
         shell: pwsh
         run: |
           $projects = @(
-			"src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
+            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
             "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
             "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
             "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
@@ -112,7 +112,7 @@ jobs:
         shell: pwsh
         run: |
           $projects = @(
-			"src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
+            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
             "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
             "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
             "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
