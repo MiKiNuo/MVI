@@ -67,7 +67,7 @@ jobs:
             "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
             "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
             "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj"
+            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
             "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
             "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
           )
