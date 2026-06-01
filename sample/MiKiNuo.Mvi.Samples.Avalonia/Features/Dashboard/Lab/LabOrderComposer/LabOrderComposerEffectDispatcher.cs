@@ -29,24 +29,21 @@ public sealed class LabOrderComposerEffectDispatcher : IMviEffectDispatcher<LabO
 
         if (effect is LabOrderComposerEffect.RequestLabOrderSubmission labOrderSubmission)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("检验医嘱", "医嘱开立 MVI", "提交检验医嘱", labOrderSubmission.ContextText),
+            await _mediator.SendComponentInteractionAsync("检验医嘱", "医嘱开立 MVI", "提交检验医嘱", labOrderSubmission.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is LabOrderComposerEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("检验医嘱", "医嘱开立 MVI", "Primary", primaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("检验医嘱", "医嘱开立 MVI", DashboardComponentActionKeys.Primary, primaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is LabOrderComposerEffect.RequestSecondaryWorkflow secondaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("检验医嘱", "医嘱开立 MVI", "Secondary", secondaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("检验医嘱", "医嘱开立 MVI", DashboardComponentActionKeys.Secondary, secondaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
         }
     }

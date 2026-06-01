@@ -29,16 +29,14 @@ public sealed class MedicalRecordAuditBoardEffectDispatcher : IMviEffectDispatch
 
         if (effect is MedicalRecordAuditBoardEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("运营质控", "病历质控 MVI", "Primary", primaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("运营质控", "病历质控 MVI", DashboardComponentActionKeys.Primary, primaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is MedicalRecordAuditBoardEffect.RequestSecondaryWorkflow secondaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("运营质控", "病历质控 MVI", "Secondary", secondaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("运营质控", "病历质控 MVI", DashboardComponentActionKeys.Secondary, secondaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
         }
     }

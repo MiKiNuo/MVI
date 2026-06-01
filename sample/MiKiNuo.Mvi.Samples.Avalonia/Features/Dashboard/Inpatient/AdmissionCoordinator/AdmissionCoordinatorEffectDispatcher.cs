@@ -29,24 +29,21 @@ public sealed class AdmissionCoordinatorEffectDispatcher : IMviEffectDispatcher<
 
         if (effect is AdmissionCoordinatorEffect.RequestAdmissionRegistration admissionRegistration)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("住院床位", "入院流程 MVI", "提交入院登记", admissionRegistration.ContextText),
+            await _mediator.SendComponentInteractionAsync("住院床位", "入院流程 MVI", "提交入院登记", admissionRegistration.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is AdmissionCoordinatorEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("住院床位", "入院流程 MVI", "Primary", primaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("住院床位", "入院流程 MVI", DashboardComponentActionKeys.Primary, primaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is AdmissionCoordinatorEffect.RequestSecondaryWorkflow secondaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("住院床位", "入院流程 MVI", "Secondary", secondaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("住院床位", "入院流程 MVI", DashboardComponentActionKeys.Secondary, secondaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
         }
     }

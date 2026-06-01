@@ -29,16 +29,14 @@ public sealed class MedicationSafetyPanelEffectDispatcher : IMviEffectDispatcher
 
         if (effect is MedicationSafetyPanelEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("药房库存", "用药安全 MVI", "Primary", primaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("药房库存", "用药安全 MVI", DashboardComponentActionKeys.Primary, primaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is MedicationSafetyPanelEffect.RequestSecondaryWorkflow secondaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("药房库存", "用药安全 MVI", "Secondary", secondaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("药房库存", "用药安全 MVI", DashboardComponentActionKeys.Secondary, secondaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
         }
     }

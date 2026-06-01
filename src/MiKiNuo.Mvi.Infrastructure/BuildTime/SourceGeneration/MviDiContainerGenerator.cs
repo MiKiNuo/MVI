@@ -101,7 +101,7 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("/// 表示由 MVI 源生成器自动生成的泛型 DI 容器。");
         builder.AppendLine("/// 所有服务通过 [DiService] 特性自动注册。");
         builder.AppendLine("/// </summary>");
-        builder.Append("public sealed class GeneratedMviContainer : IMviResolver");
+        builder.Append("public sealed class GeneratedMviContainer : IMviResolver, IMviServiceGraph");
         builder.AppendLine();
         builder.AppendLine("{");
         builder.AppendLine("    private readonly Dictionary<Type, object> _singletons = new();");
@@ -263,16 +263,24 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             string lifetime = "Singleton";
             string? @namespace = classSymbol.ContainingNamespace?.ToDisplayString();
 
-            if (attr.ConstructorArguments.Length > 1)
+            if (attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is int lifetimeValue)
             {
-                if (attr.ConstructorArguments[0].Value is INamedTypeSymbol serviceType)
+                lifetime = lifetimeValue switch
+                {
+                    0 => "Singleton",
+                    1 => "Scoped",
+                    2 => "Transient",
+                    _ => "Singleton"
+                };
+            }
+
+            foreach (KeyValuePair<string, TypedConstant> namedArgument in attr.NamedArguments)
+            {
+                if (namedArgument.Key == "ServiceType"
+                    && namedArgument.Value.Value is INamedTypeSymbol serviceType)
                 {
                     serviceTypeName = serviceType.ToDisplayString(TypeFormat);
-                }
-
-                if (attr.ConstructorArguments[1].Value is int lifetimeInt)
-                {
-                    lifetime = new[] { "Transient", "Singleton", "Scoped" }[lifetimeInt];
                 }
             }
 

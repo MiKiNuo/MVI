@@ -29,16 +29,14 @@ public sealed class NursingTaskBoardEffectDispatcher : IMviEffectDispatcher<Nurs
 
         if (effect is NursingTaskBoardEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("住院床位", "护理任务 MVI", "Primary", primaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("住院床位", "护理任务 MVI", DashboardComponentActionKeys.Primary, primaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is NursingTaskBoardEffect.RequestSecondaryWorkflow secondaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("住院床位", "护理任务 MVI", "Secondary", secondaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("住院床位", "护理任务 MVI", DashboardComponentActionKeys.Secondary, secondaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
         }
     }

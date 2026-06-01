@@ -58,3 +58,5 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+/AGENTS.md
+/.gsd

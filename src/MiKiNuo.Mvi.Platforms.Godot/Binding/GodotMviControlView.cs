@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows.Input;
 using global::Godot;
+using MiKiNuo.Mvi.Presentation.Events;
 
 namespace MiKiNuo.Mvi.Platforms.Godot.Binding;
 
@@ -129,35 +130,165 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
             button.Disabled = !command.CanExecute(CreateParameter());
         }
 
-        void Pressed()
-        {
-            object? parameter = CreateParameter();
-            bool canExecute = command.CanExecute(parameter);
-            GD.Print($"[Godot MVI Button] {button.Name} pressed, CanExecute={canExecute}");
-            if (canExecute)
-            {
-                command.Execute(parameter);
-            }
-            else
-            {
-                GD.PushWarning($"Godot MVI Button {button.Name} pressed but command cannot execute.");
-            }
-        }
-
         void CanExecuteChanged(object? sender, EventArgs args)
         {
             RefreshCanExecute();
         }
 
-        button.Pressed += Pressed;
+        BindEvent(
+            handler => button.Pressed += handler,
+            handler => button.Pressed -= handler,
+            command,
+            bindings,
+            CreateParameter,
+            button.Name);
+
         command.CanExecuteChanged += CanExecuteChanged;
         RefreshCanExecute();
         GD.Print($"[Godot MVI Button] {button.Name} bound, InitialCanExecute={!button.Disabled}");
 
         bindings.Add(() =>
         {
-            button.Pressed -= Pressed;
             command.CanExecuteChanged -= CanExecuteChanged;
+        });
+    }
+
+    /// <summary>
+    /// 绑定无参数 Godot 事件到命令。
+    /// </summary>
+    /// <param name="subscribe">事件订阅动作。</param>
+    /// <param name="unsubscribe">事件取消订阅动作。</param>
+    /// <param name="command">目标命令。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
+    /// <param name="payloadFactory">命令载荷工厂。</param>
+    /// <param name="sourceName">事件来源名称。</param>
+    /// <param name="options">事件绑定选项。</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Reliability",
+        "CA2000:Dispose objects before losing scope",
+        Justification = "事件命令绑定注册到 GodotMviDisposableBag，由视图生命周期统一释放。")]
+    protected static void BindEvent(
+        Action<Action> subscribe,
+        Action<Action> unsubscribe,
+        ICommand command,
+        GodotMviDisposableBag bindings,
+        Func<object?>? payloadFactory = null,
+        string? sourceName = null,
+        MviViewEventBindingOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(subscribe);
+        ArgumentNullException.ThrowIfNull(unsubscribe);
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(bindings);
+
+        MviViewEventCommandBinding binding = new(command, options ?? MviViewEventBindingOptions.None);
+
+        void Handler()
+        {
+            binding.Handle(payloadFactory?.Invoke());
+        }
+
+        subscribe(Handler);
+        bindings.Add(() =>
+        {
+            unsubscribe(Handler);
+            binding.Dispose();
+        });
+    }
+
+    /// <summary>
+    /// 绑定带一个事件参数的 Godot 事件到命令。
+    /// </summary>
+    /// <typeparam name="TEventArgs">事件参数类型。</typeparam>
+    /// <param name="subscribe">事件订阅动作。</param>
+    /// <param name="unsubscribe">事件取消订阅动作。</param>
+    /// <param name="command">目标命令。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
+    /// <param name="payloadFactory">命令载荷工厂。</param>
+    /// <param name="sourceName">事件来源名称。</param>
+    /// <param name="options">事件绑定选项。</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Reliability",
+        "CA2000:Dispose objects before losing scope",
+        Justification = "事件命令绑定注册到 GodotMviDisposableBag，由视图生命周期统一释放。")]
+    protected static void BindEvent<TEventArgs>(
+        Action<Action<TEventArgs>> subscribe,
+        Action<Action<TEventArgs>> unsubscribe,
+        ICommand command,
+        GodotMviDisposableBag bindings,
+        Func<TEventArgs, object?> payloadFactory,
+        string? sourceName = null,
+        MviViewEventBindingOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(subscribe);
+        ArgumentNullException.ThrowIfNull(unsubscribe);
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(bindings);
+        ArgumentNullException.ThrowIfNull(payloadFactory);
+
+        MviViewEventCommandBinding binding = new(command, options ?? MviViewEventBindingOptions.None);
+
+        void Handler(TEventArgs args)
+        {
+            binding.Handle(payloadFactory(args));
+        }
+
+        subscribe(Handler);
+        bindings.Add(() =>
+        {
+            unsubscribe(Handler);
+            binding.Dispose();
+        });
+    }
+
+    /// <summary>
+    /// 绑定带一个事件参数且使用自定义委托类型的 Godot 事件到命令。
+    /// </summary>
+    /// <typeparam name="TEventArgs">事件参数类型。</typeparam>
+    /// <typeparam name="TDelegate">Godot 事件委托类型。</typeparam>
+    /// <param name="subscribe">事件订阅动作。</param>
+    /// <param name="unsubscribe">事件取消订阅动作。</param>
+    /// <param name="createHandler">委托适配工厂。</param>
+    /// <param name="command">目标命令。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
+    /// <param name="payloadFactory">命令载荷工厂。</param>
+    /// <param name="sourceName">事件来源名称。</param>
+    /// <param name="options">事件绑定选项。</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Reliability",
+        "CA2000:Dispose objects before losing scope",
+        Justification = "事件命令绑定注册到 GodotMviDisposableBag，由视图生命周期统一释放。")]
+    protected static void BindEvent<TEventArgs, TDelegate>(
+        Action<TDelegate> subscribe,
+        Action<TDelegate> unsubscribe,
+        Func<Action<TEventArgs>, TDelegate> createHandler,
+        ICommand command,
+        GodotMviDisposableBag bindings,
+        Func<TEventArgs, object?> payloadFactory,
+        string? sourceName = null,
+        MviViewEventBindingOptions? options = null)
+        where TDelegate : Delegate
+    {
+        ArgumentNullException.ThrowIfNull(subscribe);
+        ArgumentNullException.ThrowIfNull(unsubscribe);
+        ArgumentNullException.ThrowIfNull(createHandler);
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(bindings);
+        ArgumentNullException.ThrowIfNull(payloadFactory);
+
+        MviViewEventCommandBinding binding = new(command, options ?? MviViewEventBindingOptions.None);
+
+        void Handler(TEventArgs args)
+        {
+            binding.Handle(payloadFactory(args));
+        }
+
+        TDelegate eventHandler = createHandler(Handler);
+        subscribe(eventHandler);
+        bindings.Add(() =>
+        {
+            unsubscribe(eventHandler);
+            binding.Dispose();
         });
     }
 }

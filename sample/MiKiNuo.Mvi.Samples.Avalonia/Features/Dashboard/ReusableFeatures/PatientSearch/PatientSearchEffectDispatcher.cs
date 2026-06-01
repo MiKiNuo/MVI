@@ -29,12 +29,11 @@ public sealed class PatientSearchEffectDispatcher : IMviEffectDispatcher<Patient
 
         if (effect is PatientSearchEffect.RequestPatientContext patientContext)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest(
+            await _mediator.SendComponentInteractionAsync(
                     patientContext.PageKey,
                     $"{patientContext.PageKey}/患者检索 MVI",
                     "选择患者上下文",
-                    $"患者={patientContext.PatientName}；患者号={patientContext.PatientNo}"),
+                    $"患者={patientContext.PatientName}；患者号={patientContext.PatientNo}",
                 cancellationToken).ConfigureAwait(false);
         }
     }

@@ -1,0 +1,17 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench.EventBindingWorkbenchView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid RowDefinitions="Auto,*" RowSpacing="12" Margin="16">
+        <StackPanel>
+            <TextBlock Text="EventBinding Workbench" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding LastInteractionText}" FontSize="13" Foreground="#64748B" />
+            <TextBlock Text="{Binding InteractionCount, StringFormat='Mediator interactions: {0}'}" FontSize="12" Foreground="#475569" />
+        </StackPanel>
+        <Grid Grid.Row="1" ColumnDefinitions="1.1*,1.1*,1.4*" ColumnSpacing="12">
+            <ContentControl x:Name="SearchSlot" />
+            <ContentControl x:Name="SelectionSlot" Grid.Column="1" />
+            <ContentControl x:Name="DetailSlot" Grid.Column="2" />
+        </Grid>
+    </Grid>
+</UserControl>

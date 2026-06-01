@@ -16,6 +16,30 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 [Generator]
 public sealed class MviViewModelGenerator : IIncrementalGenerator
 {
+    private static readonly DiagnosticDescriptor AmbiguousPayloadConstructorRule = new(
+        id: "MVI0001",
+        title: "命令 Intent 存在多个 payload 构造函数",
+        messageFormat: "命令“{0}”绑定的 Intent“{1}”存在多个一参构造函数，请在 MviCommandAttribute.PayloadType 中指定载荷类型。",
+        category: "MviBinding",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor MissingPayloadConstructorRule = new(
+        id: "MVI0002",
+        title: "命令 Intent 缺少指定 payload 构造函数",
+        messageFormat: "命令“{0}”绑定的 Intent“{1}”没有匹配 PayloadType“{2}”的一参构造函数。",
+        category: "MviBinding",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor MissingIntentConstructorRule = new(
+        id: "MVI0003",
+        title: "命令 Intent 缺少可用构造函数",
+        messageFormat: "命令“{0}”绑定的 Intent“{1}”需要公开无参构造函数或唯一的一参 payload 构造函数。",
+        category: "MviBinding",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     private static readonly SymbolDisplayFormat TypeFormat = SymbolDisplayFormat.FullyQualifiedFormat
         .WithMiscellaneousOptions(
             SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
@@ -45,7 +69,7 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             }
 
             List<BindPropertyModel> bindProperties = GetBindProperties(viewModelSymbol);
-            List<CommandPropertyModel> commandProperties = GetCommandProperties(viewModelSymbol);
+            List<CommandPropertyModel> commandProperties = GetCommandProperties(viewModelSymbol, context);
 
             if (bindProperties.Count == 0 && commandProperties.Count == 0)
             {
@@ -66,6 +90,7 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
         string namespaceName = viewModelSymbol.ContainingNamespace.ToDisplayString();
         string className = viewModelSymbol.Name;
         string stateTypeName = mviBase.TypeArguments[0].ToDisplayString(TypeFormat);
+        string intentBaseTypeName = mviBase.TypeArguments[1].ToDisplayString(TypeFormat);
         bool hasTwoWay = bindProperties.Any(static property => property.IsTwoWay);
         StringBuilder builder = new();
 
@@ -164,18 +189,23 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
                 {
                     builder.Append("        ").Append(command.Name).Append(" = new global::MiKiNuo.Mvi.Application.MVI.Command.MviAsyncCommand(").AppendLine();
                     builder.Append("            ").Append(streamName).AppendLine(",");
-                    builder.Append("            (_, cancellationToken) => DispatchAsync(new ").Append(command.IntentTypeName).AppendLine("(), cancellationToken));");
+                    builder.Append("            (payload, cancellationToken) => DispatchAsync(Create").Append(command.Name).AppendLine("Intent(payload), cancellationToken));");
                 }
                 else
                 {
                     builder.Append("        ").Append(command.Name).Append(" = new global::MiKiNuo.Mvi.Application.MVI.Command.MviCommand(").AppendLine();
                     builder.Append("            ").Append(streamName).AppendLine(",");
-                    builder.Append("            _ => _ = DispatchAsync(new ").Append(command.IntentTypeName).AppendLine("()));");
+                    builder.Append("            payload => _ = DispatchAsync(Create").Append(command.Name).AppendLine("Intent(payload)));");
                 }
                 builder.AppendLine();
             }
             builder.AppendLine("    }");
             builder.AppendLine();
+
+            foreach (CommandPropertyModel command in commandProperties)
+            {
+                AppendCreateIntentMethod(builder, intentBaseTypeName, command);
+            }
         }
 
         builder.AppendLine("    /// <inheritdoc />");
@@ -271,7 +301,49 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
         return result;
     }
 
-    private static List<CommandPropertyModel> GetCommandProperties(INamedTypeSymbol viewModelSymbol)
+    private static void AppendCreateIntentMethod(
+        StringBuilder builder,
+        string intentBaseTypeName,
+        CommandPropertyModel command)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.Append("    /// 创建 ").Append(command.Name).AppendLine(" 对应的 Intent。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"payload\">命令载荷。</param>");
+        builder.AppendLine("    /// <returns>创建的 Intent。</returns>");
+        builder.Append("    private ").Append(intentBaseTypeName).Append(" Create").Append(command.Name).AppendLine("Intent(object? payload)");
+        builder.AppendLine("    {");
+
+        if (command.HasParameterlessConstructor)
+        {
+            builder.AppendLine("        if (payload is null)");
+            builder.AppendLine("        {");
+            builder.Append("            return new ").Append(command.IntentTypeName).AppendLine("();");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+        }
+
+        if (!string.IsNullOrWhiteSpace(command.PayloadTypeName))
+        {
+            builder.Append("        if (payload is ").Append(command.PayloadTypeName).AppendLine(" payloadValue)");
+            builder.AppendLine("        {");
+            builder.Append("            return new ").Append(command.IntentTypeName).AppendLine("(payloadValue);");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+        }
+
+        builder.Append("        throw new global::System.InvalidOperationException(\"命令 ")
+            .Append(command.Name)
+            .Append(" 无法用当前 payload 创建 Intent ")
+            .Append(command.IntentTypeName.Replace("\"", "\\\""))
+            .AppendLine("。\");");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+    }
+
+    private static List<CommandPropertyModel> GetCommandProperties(
+        INamedTypeSymbol viewModelSymbol,
+        SourceProductionContext context)
     {
         List<CommandPropertyModel> result = new();
 
@@ -285,6 +357,7 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
 
             string? canExecuteProperty = null;
             bool isAsync = false;
+            ITypeSymbol? explicitPayloadType = null;
             foreach (KeyValuePair<string, TypedConstant> namedArgument in attribute.NamedArguments)
             {
                 if (namedArgument.Key == "CanExecuteProperty")
@@ -295,12 +368,24 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
                 {
                     isAsync = namedArgument.Value.Value is true;
                 }
+                else if (namedArgument.Key == "PayloadType" && namedArgument.Value.Value is ITypeSymbol payloadType)
+                {
+                    explicitPayloadType = payloadType;
+                }
             }
+
+            ConstructorBindingModel constructorBinding = ResolveConstructorBinding(
+                property,
+                intentType,
+                explicitPayloadType,
+                context);
 
             result.Add(new CommandPropertyModel(
                 property.Name,
                 property.Type.ToDisplayString(TypeFormat),
                 intentType.ToDisplayString(TypeFormat),
+                constructorBinding.PayloadTypeName,
+                constructorBinding.HasParameterlessConstructor,
                 canExecuteProperty,
                 isAsync,
                 GetSetterAccessibility(property),
@@ -308,6 +393,80 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
         }
 
         return result;
+    }
+
+    private static ConstructorBindingModel ResolveConstructorBinding(
+        IPropertySymbol commandProperty,
+        INamedTypeSymbol intentType,
+        ITypeSymbol? explicitPayloadType,
+        SourceProductionContext context)
+    {
+        List<IMethodSymbol> publicConstructors = intentType.InstanceConstructors
+            .Where(static constructor => constructor.DeclaredAccessibility == Accessibility.Public)
+            .ToList();
+        bool hasParameterlessConstructor = publicConstructors.Any(static constructor => constructor.Parameters.Length == 0);
+        List<IMethodSymbol> payloadConstructors = publicConstructors
+            .Where(static constructor => constructor.Parameters.Length == 1)
+            .ToList();
+        ITypeSymbol? payloadType = null;
+
+        if (explicitPayloadType is not null)
+        {
+            IMethodSymbol? matchingConstructor = payloadConstructors.FirstOrDefault(
+                constructor => SymbolEqualityComparer.Default.Equals(constructor.Parameters[0].Type, explicitPayloadType));
+
+            if (matchingConstructor is null)
+            {
+                Report(
+                    context,
+                    MissingPayloadConstructorRule,
+                    commandProperty,
+                    commandProperty.Name,
+                    intentType.ToDisplayString(TypeFormat),
+                    explicitPayloadType.ToDisplayString(TypeFormat));
+            }
+            else
+            {
+                payloadType = explicitPayloadType;
+            }
+        }
+        else if (payloadConstructors.Count == 1)
+        {
+            payloadType = payloadConstructors[0].Parameters[0].Type;
+        }
+        else if (payloadConstructors.Count > 1)
+        {
+            Report(
+                context,
+                AmbiguousPayloadConstructorRule,
+                commandProperty,
+                commandProperty.Name,
+                intentType.ToDisplayString(TypeFormat));
+        }
+
+        if (!hasParameterlessConstructor && payloadType is null)
+        {
+            Report(
+                context,
+                MissingIntentConstructorRule,
+                commandProperty,
+                commandProperty.Name,
+                intentType.ToDisplayString(TypeFormat));
+        }
+
+        return new ConstructorBindingModel(
+            hasParameterlessConstructor,
+            payloadType?.ToDisplayString(TypeFormat));
+    }
+
+    private static void Report(
+        SourceProductionContext context,
+        DiagnosticDescriptor descriptor,
+        IPropertySymbol property,
+        params object[] messageArgs)
+    {
+        Location location = property.Locations.Length > 0 ? property.Locations[0] : Location.None;
+        context.ReportDiagnostic(Diagnostic.Create(descriptor, location, messageArgs));
     }
 
     private static string GetSetterAccessibility(IPropertySymbol property)
@@ -407,6 +566,8 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             string name,
             string typeName,
             string intentTypeName,
+            string? payloadTypeName,
+            bool hasParameterlessConstructor,
             string? canExecuteProperty,
             bool isAsync,
             string setterAccessibility,
@@ -415,6 +576,8 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             Name = name;
             TypeName = typeName;
             IntentTypeName = intentTypeName;
+            PayloadTypeName = payloadTypeName;
+            HasParameterlessConstructor = hasParameterlessConstructor;
             CanExecuteProperty = canExecuteProperty;
             IsAsync = isAsync;
             SetterAccessibility = setterAccessibility;
@@ -427,6 +590,10 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
 
         public string IntentTypeName { get; }
 
+        public string? PayloadTypeName { get; }
+
+        public bool HasParameterlessConstructor { get; }
+
         public string? CanExecuteProperty { get; }
 
         public bool IsAsync { get; }
@@ -434,5 +601,18 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
         public string SetterAccessibility { get; }
 
         public string FieldName { get; }
+    }
+
+    private sealed class ConstructorBindingModel
+    {
+        public ConstructorBindingModel(bool hasParameterlessConstructor, string? payloadTypeName)
+        {
+            HasParameterlessConstructor = hasParameterlessConstructor;
+            PayloadTypeName = payloadTypeName;
+        }
+
+        public bool HasParameterlessConstructor { get; }
+
+        public string? PayloadTypeName { get; }
     }
 }

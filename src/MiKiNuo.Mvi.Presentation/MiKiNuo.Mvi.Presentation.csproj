@@ -2,10 +2,9 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>MiKiNuo.Mvi.Presentation</PackageId>
-    <Description>MiKiNuo MVI 框架的平台适配层，提供 Avalonia 等 UI 平台支持。</Description>
+    <Description>MiKiNuo MVI 框架的平台无关表现层抽象，包含 ViewRegistry、UI 调度器契约和 ViewEvent payload。</Description>
 </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
-    <PackageReference Include="Avalonia" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,17 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench.EventBindingSelectionPanelView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mviEvents="clr-namespace:MiKiNuo.Mvi.Platforms.Avalonia.Events;assembly=MiKiNuo.Mvi.Platforms.Avalonia">
+    <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12">
+        <StackPanel Spacing="8">
+            <TextBlock Text="SelectionPanel" FontWeight="SemiBold" />
+            <ListBox
+                x:Name="PatientList"
+                ItemsSource="{Binding PatientIds}"
+                mviEvents:ViewEvents.SelectionChangedCommand="{Binding SelectionChangedCommand}" />
+            <TextBlock Text="{Binding SelectedPatientId}" />
+            <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#64748B" TextWrapping="Wrap" />
+        </StackPanel>
+    </Border>
+</UserControl>

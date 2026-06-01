@@ -411,6 +411,8 @@ MiKiNuo.Mvi.Platforms.Avalonia
 `MiKiNuo.Mvi.Infrastructure` 不作为运行时引用。  
 源码开发时通过 `Directory.Build.targets` 作为 Analyzer / Source Generator 注入编译流程。
 
+跨平台 View 自带事件绑定的设计决策见 [ViewEvent 到 Command 绑定设计决策](docs/view-event-command-binding.md)。
+
 ---
 
 ## 安装方式
@@ -592,93 +594,7 @@ public sealed class LoginEffectDispatcher
 
 ---
 
-## 推荐开发流程
 
-建议使用 TDD 开发一个 MVI Feature：
-
-```text
-1. 定义 State
-2. 定义 Intent
-3. 编写 Reducer 测试
-4. 实现 Reducer
-5. 定义 Effect
-6. 实现 EffectDispatcher
-7. 声明 ViewModel 绑定属性和命令
-8. 编写 View 绑定
-9. 添加 Middleware
-10. 添加 Mediator 协调
-11. 编写端到端数据流测试
-```
-
-优先测试：
-
-```text
-Reducer 是否根据 Intent 返回正确 State
-Reducer 是否产生正确 Effect
-Middleware 是否按顺序执行
-EffectDispatcher 是否派发后续 Intent
-Mediator 是否完成父子 / 兄弟 MVI 协调
-ViewModel 双向绑定是否派发正确 Intent
-Source Generator 是否生成预期代码
-DI 容器是否正确创建 Store / ViewModel / Reducer
-```
-
----
-
-## 示例项目
-
-仓库内置 Avalonia 示例：
-
-```text
-sample/MiKiNuo.Mvi.Samples.Avalonia
-```
-
-示例展示：
-
-```text
-登录页
-Dashboard
-左侧菜单
-复杂 HIS / EMR 风格业务页面
-组合式 MVI
-父子 MVI 通信
-兄弟 MVI 通信
-中间件日志
-可复用 MVI 模块
-```
-
-示例项目只直接引用 Avalonia 平台入口项目：
-
-```text
-MiKiNuo.Mvi.Platforms.Avalonia
-```
-
-而不是直接引用所有底层项目。
-
----
-
-## 单元测试
-
-测试项目：
-
-```text
-test/MiKiNuo.Mvi.Tests
-```
-
-覆盖内容包括：
-
-```text
-Store 派发
-Reducer 实例模型
-ViewModel 双向绑定
-Source Generator 集成
-DI 生命周期
-Middleware 管线
-MVI 标记接口
-可复用 MVI Feature
-复杂 Dashboard 交互
-架构目录约束
-```
 
 ---
 

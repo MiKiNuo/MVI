@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using MiKiNuo.Mvi.Platforms.Avalonia.Slot;
@@ -43,13 +44,15 @@ public sealed partial class DashboardView : MviAvaloniaView<DashboardViewModel>
         _headerSlot.Content = _viewRegistry.CreateView(viewModel.HeaderViewModel);
         _menuSlot.Content = _viewRegistry.CreateView(viewModel.MenuViewModel);
         RenderPage(viewModel.CurrentPageViewModel);
-        viewModel.PropertyChanged += (_, args) =>
+        PropertyChangedEventHandler handler = (_, args) =>
         {
             if (args.PropertyName == nameof(DashboardViewModel.CurrentPageViewModel))
             {
                 RenderPage(viewModel.CurrentPageViewModel);
             }
         };
+        viewModel.PropertyChanged += handler;
+        RegisterBinding(() => viewModel.PropertyChanged -= handler);
     }
 
     private void RenderPage(object pageViewModel)

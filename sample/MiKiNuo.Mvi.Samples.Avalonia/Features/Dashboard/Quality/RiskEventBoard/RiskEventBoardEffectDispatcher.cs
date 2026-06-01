@@ -29,24 +29,21 @@ public sealed class RiskEventBoardEffectDispatcher : IMviEffectDispatcher<RiskEv
 
         if (effect is RiskEventBoardEffect.RequestRiskEventSubmission riskEventSubmission)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("运营质控", "风险事件 MVI", "提交风险事件", riskEventSubmission.ContextText),
+            await _mediator.SendComponentInteractionAsync("运营质控", "风险事件 MVI", "提交风险事件", riskEventSubmission.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is RiskEventBoardEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("运营质控", "风险事件 MVI", "Primary", primaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("运营质控", "风险事件 MVI", DashboardComponentActionKeys.Primary, primaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is RiskEventBoardEffect.RequestSecondaryWorkflow secondaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("运营质控", "风险事件 MVI", "Secondary", secondaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("运营质控", "风险事件 MVI", DashboardComponentActionKeys.Secondary, secondaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
         }
     }

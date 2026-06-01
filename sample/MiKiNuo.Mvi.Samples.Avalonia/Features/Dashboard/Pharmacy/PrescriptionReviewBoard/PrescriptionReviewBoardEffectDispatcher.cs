@@ -29,24 +29,21 @@ public sealed class PrescriptionReviewBoardEffectDispatcher : IMviEffectDispatch
 
         if (effect is PrescriptionReviewBoardEffect.RequestPrescriptionReviewSubmission prescriptionReviewSubmission)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("药房库存", "处方审核 MVI", "提交处方审核", prescriptionReviewSubmission.ContextText),
+            await _mediator.SendComponentInteractionAsync("药房库存", "处方审核 MVI", "提交处方审核", prescriptionReviewSubmission.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is PrescriptionReviewBoardEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("药房库存", "处方审核 MVI", "Primary", primaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("药房库存", "处方审核 MVI", DashboardComponentActionKeys.Primary, primaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
             return;
         }
 
         if (effect is PrescriptionReviewBoardEffect.RequestSecondaryWorkflow secondaryWorkflow)
         {
-            await _mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
-                new DashboardComponentInteractionRequest("药房库存", "处方审核 MVI", "Secondary", secondaryWorkflow.ContextText),
+            await _mediator.SendComponentInteractionAsync("药房库存", "处方审核 MVI", DashboardComponentActionKeys.Secondary, secondaryWorkflow.ContextText,
                 cancellationToken).ConfigureAwait(false);
         }
     }

@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Presentation.ViewRegistry;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 
@@ -34,6 +35,7 @@ public sealed class SampleCompositionRoot
             showPageTask.AsTask().GetAwaiter().GetResult();
         }
         IMviViewRegistry viewRegistry = _container.Resolve<IMviViewRegistry>();
-        return new MainWindow(shellViewModel, viewRegistry);
+        EventBindingWorkbenchComposition eventBindingWorkbenchComposition = EventBindingWorkbenchComposition.Create();
+        return new MainWindow(shellViewModel, viewRegistry, eventBindingWorkbenchComposition);
     }
 }
