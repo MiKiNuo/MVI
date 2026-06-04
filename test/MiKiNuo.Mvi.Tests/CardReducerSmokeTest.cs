@@ -1,0 +1,168 @@
+using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using TUnit.Assertions;
+using TUnit.Core;
+using ZLinq;
+
+namespace MiKiNuo.Mvi.Tests;
+
+/// <summary>
+/// 表示 CardReducer 端到端冒烟测试。
+/// </summary>
+public sealed class CardReducerSmokeTest
+{
+    /// <summary>
+    /// 验证从 CardDefinition 构造的初始状态字段与定义一致。
+    /// </summary>
+    [Test]
+    public async Task FromDefinitionSimpleCardShouldPopulateStateAsync()
+    {
+        CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.BedOverview)!;
+        CardState state = CardState.FromDefinition(definition);
+
+        await Assert.That(state.PageKey).IsEqualTo(PageKey.BedOverview);
+        await Assert.That(state.Title).IsEqualTo(definition.Title);
+        await Assert.That(state.MainValue).IsEqualTo(definition.MainValue);
+        await Assert.That(state.FormValues).IsEmpty();
+    }
+
+    /// <summary>
+    /// 验证 Form Card 的初始状态填入 FormValues 初值。
+    /// </summary>
+    [Test]
+    public async Task FromDefinitionFormCardShouldPopulateFormValuesAsync()
+    {
+        CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.AdmissionCoordinator)!;
+        CardState state = CardState.FromDefinition(definition);
+
+        await Assert.That(state.FormValues).IsNotEmpty();
+        await Assert.That(state.FormValues.Count).IsEqualTo(definition.FormFields!.Count);
+    }
+
+    /// <summary>
+    /// 验证 Registry 注册了全部 16 个 PageKey。
+    /// </summary>
+    [Test]
+    public async Task RegistryShouldHaveAll16PageKeysAsync()
+    {
+        PageKey[] allKeys = DashboardCardRegistry.All.Keys.ToArray();
+        await Assert.That(allKeys.Length).IsEqualTo(16);
+    }
+
+    /// <summary>
+    /// 验证 FormFields 列表引用在多次 RebuildDerivedProperties 调用后保持稳定（焦点不丢失的根因修复）。
+    /// 这是 "TextBox 每次输入都丢失焦点" 症状的回归测试：
+    /// 之前 RebuildDerivedProperties 每次都 .Select(field => new CardFormFieldEntry(...))，
+    /// 导致 IReadOnlyList&lt;CardFormFieldEntry&gt; 引用变化，ItemsControl 重建容器 → TextBox 焦点丢失。
+    /// </summary>
+    [Test]
+    public async Task CardViewModel_FormFieldsList_Should_BeReferenceStableAcrossRebuildsAsync()
+    {
+        CardReducer reducer = new();
+        IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> siblingStores =
+            new Dictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>>();
+        CardEffectDispatcher dispatcher = new(new NoopMediator(), PageKey.AdmissionCoordinator, siblingStores);
+        PageKey key = PageKey.AdmissionCoordinator;
+        CardDefinition definition = DashboardCardRegistry.GetDefinition(key)!;
+        IReadOnlyList<CardFormField> fields = definition.FormFields!;
+        IReadOnlyList<CardFormValueEntry> initialValues = fields
+            .Select(static field => new CardFormValueEntry(field.Key, field.InitialValue))
+            .ToArray();
+        CardState initial = new(
+            definition.Key,
+            definition.SourceKey,
+            definition.SourceDisplayName,
+            definition.Title,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            definition.PrimaryActionText,
+            definition.SecondaryActionText,
+            true,
+            true,
+            string.Empty,
+            initialValues);
+        IMviStore<CardState, CardIntent, CardEffect> store = new MviStore<CardState, CardIntent, CardEffect>(
+            initial,
+            reducer,
+            dispatcher);
+        using IDisposable __ = store;
+#pragma warning disable CA2000
+        CardViewModel cardViewModel = new(store);
+#pragma warning restore CA2000
+        using IDisposable _ = cardViewModel;
+        IReadOnlyList<CardFormFieldEntry> firstList = cardViewModel.FormFields;
+        await Assert.That(firstList.Count).IsEqualTo(fields.Count);
+        CardFormFieldEntry firstFieldEntry = firstList[0];
+
+        await store.DispatchAsync(new CardIntent.SetFormField(fields[0].Key, "新值"));
+        IReadOnlyList<CardFormFieldEntry> secondList = cardViewModel.FormFields;
+
+        await Assert.That(ReferenceEquals(secondList, firstList)).IsTrue();
+        await Assert.That(ReferenceEquals(secondList[0], firstFieldEntry)).IsTrue();
+        await Assert.That(secondList[0].Value).IsEqualTo("新值");
+    }
+
+    /// <summary>
+    /// 验证 Form Card 的必填校验在缺少必填字段时拒绝提交。
+    /// </summary>
+    [Test]
+    public async Task AdmissionCoordinatorValidatorShouldRejectEmptyRequiredFieldsAsync()
+    {
+        CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.AdmissionCoordinator)!;
+        CardState state = CardState.FromDefinition(definition);
+        IReadOnlyList<CardFormValueEntry> emptyValues = definition.FormFields!
+            .Select(static f => new CardFormValueEntry(f.Key, string.Empty))
+            .ToArray();
+
+        (bool canSubmit, string _, string _) = definition.Validator!(emptyValues);
+
+        await Assert.That(canSubmit).IsFalse();
+        await Assert.That(definition.IsFormCard).IsTrue();
+        await Assert.That(state.FormValues).IsNotEmpty();
+    }
+
+    /// <summary>
+    /// 验证 CardReducer 的 SetFormField 归约在 Form Card 上更新对应键的值。
+    /// </summary>
+    [Test]
+    public async Task CardReducerSetFormFieldShouldUpdateValueAsync()
+    {
+        CardReducer reducer = new();
+        CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.AdmissionCoordinator)!;
+        CardState state = CardState.FromDefinition(definition);
+        string firstKey = definition.FormFields![0].Key;
+        string firstInitial = state.FormValues[0].Value;
+
+        MviReduceResult<CardState, CardEffect> result = reducer.Reduce(
+            state,
+            new CardIntent.SetFormField(firstKey, "TEST-VALUE"));
+        CardState nextState = result.State;
+
+        await Assert.That(nextState.FormValues[0].Key).IsEqualTo(firstKey);
+        await Assert.That(nextState.FormValues[0].Value).IsEqualTo("TEST-VALUE");
+        await Assert.That(firstInitial).IsNotEqualTo("TEST-VALUE");
+    }
+}
+
+/// <summary>
+/// 内部测试辅助 Mediator：空实现，避免 CardEffectDispatcher 在测试中需要真实 Mediator。
+/// </summary>
+file sealed class NoopMediator : MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator
+{
+    /// <summary>
+    /// 始终返回 TResponse 默认实例；不派发任何请求。
+    /// </summary>
+    /// <typeparam name="TRequest">请求类型。</typeparam>
+    /// <typeparam name="TResponse">响应类型。</typeparam>
+    /// <param name="request">请求对象（忽略）。</param>
+    /// <param name="cancellationToken">取消标记（忽略）。</param>
+    /// <returns>默认构造的响应实例。</returns>
+    public ValueTask<TResponse> SendAsync<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken = default)
+        where TRequest : notnull
+    {
+        return new ValueTask<TResponse>(Activator.CreateInstance<TResponse>()!);
+    }
+}

@@ -14,5 +14,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="TUnit" />
+    <PackageReference Include="ZLinq" />
   </ItemGroup>
 </Project>

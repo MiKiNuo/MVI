@@ -8,14 +8,18 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 
 /// <summary>
 /// 表示生产业务组合页面视图。
+/// <para>
+/// 4 个业务域（Inpatient / Lab / Pharmacy / Quality）共用同一套 2×2 「数据流节点」布局；
+/// 视图本身不再按 PageLayout 切换 4 套子布局，仅需把 4 个数据流节点卡片渲染到 Node1..Node4 槽位。
+/// </para>
 /// </summary>
 public sealed partial class BusinessCompositePageView : MviAvaloniaView<BusinessCompositePageViewModel>
 {
     private readonly IMviViewRegistry _viewRegistry;
-    private readonly Grid _inpatientLayout;
-    private readonly Grid _labLayout;
-    private readonly Grid _pharmacyLayout;
-    private readonly Grid _qualityLayout;
+    private readonly MviSlotHost _node1Slot;
+    private readonly MviSlotHost _node2Slot;
+    private readonly MviSlotHost _node3Slot;
+    private readonly MviSlotHost _node4Slot;
 
     /// <summary>
     /// 初始化生产业务组合页面视图。
@@ -27,10 +31,10 @@ public sealed partial class BusinessCompositePageView : MviAvaloniaView<Business
 
         _viewRegistry = viewRegistry;
         AvaloniaXamlLoader.Load(this);
-        _inpatientLayout = FindRequired<Grid>("InpatientLayout");
-        _labLayout = FindRequired<Grid>("LabLayout");
-        _pharmacyLayout = FindRequired<Grid>("PharmacyLayout");
-        _qualityLayout = FindRequired<Grid>("QualityLayout");
+        _node1Slot = FindRequired<MviSlotHost>("Node1Slot");
+        _node2Slot = FindRequired<MviSlotHost>("Node2Slot");
+        _node3Slot = FindRequired<MviSlotHost>("Node3Slot");
+        _node4Slot = FindRequired<MviSlotHost>("Node4Slot");
     }
 
     /// <inheritdoc />
@@ -39,81 +43,10 @@ public sealed partial class BusinessCompositePageView : MviAvaloniaView<Business
         ArgumentNullException.ThrowIfNull(viewModel);
 
         base.Bind(viewModel);
-        RenderBusinessLayout(viewModel);
-    }
-
-    private void RenderBusinessLayout(BusinessCompositePageViewModel viewModel)
-    {
-        HideAllLayouts();
-
-        switch (viewModel.PageLayout)
-        {
-            case "Inpatient":
-                RenderInpatientLayout(viewModel);
-                break;
-            case "Lab":
-                RenderLabLayout(viewModel);
-                break;
-            case "Pharmacy":
-                RenderPharmacyLayout(viewModel);
-                break;
-            case "Quality":
-                RenderQualityLayout(viewModel);
-                break;
-            default:
-                RenderInpatientLayout(viewModel);
-                break;
-        }
-    }
-
-    private void HideAllLayouts()
-    {
-        _inpatientLayout.IsVisible = false;
-        _labLayout.IsVisible = false;
-        _pharmacyLayout.IsVisible = false;
-        _qualityLayout.IsVisible = false;
-    }
-
-    private void RenderInpatientLayout(BusinessCompositePageViewModel viewModel)
-    {
-        _inpatientLayout.IsVisible = true;
-        SetSlotContent("InpatientBedOverviewSlot", viewModel.PrimaryPanelViewModel);
-        SetSlotContent("InpatientAdmissionSlot", viewModel.SecondaryPanelViewModel);
-        SetSlotContent("InpatientNursingSlot", viewModel.TertiaryPanelViewModel);
-        SetSlotContent("InpatientRiskSlot", viewModel.QuaternaryPanelViewModel);
-    }
-
-    private void RenderLabLayout(BusinessCompositePageViewModel viewModel)
-    {
-        _labLayout.IsVisible = true;
-        SetSlotContent("LabOrderSlot", viewModel.PrimaryPanelViewModel);
-        SetSlotContent("LabSpecimenSlot", viewModel.SecondaryPanelViewModel);
-        SetSlotContent("LabCriticalSlot", viewModel.TertiaryPanelViewModel);
-        SetSlotContent("LabTatSlot", viewModel.QuaternaryPanelViewModel);
-    }
-
-    private void RenderPharmacyLayout(BusinessCompositePageViewModel viewModel)
-    {
-        _pharmacyLayout.IsVisible = true;
-        SetSlotContent("PharmacyPrescriptionSlot", viewModel.PrimaryPanelViewModel);
-        SetSlotContent("PharmacyStockSlot", viewModel.SecondaryPanelViewModel);
-        SetSlotContent("PharmacyReplenishmentSlot", viewModel.TertiaryPanelViewModel);
-        SetSlotContent("PharmacySafetySlot", viewModel.QuaternaryPanelViewModel);
-    }
-
-    private void RenderQualityLayout(BusinessCompositePageViewModel viewModel)
-    {
-        _qualityLayout.IsVisible = true;
-        SetSlotContent("QualityKpiSlot", viewModel.PrimaryPanelViewModel);
-        SetSlotContent("QualityAuditSlot", viewModel.SecondaryPanelViewModel);
-        SetSlotContent("QualityRiskSlot", viewModel.TertiaryPanelViewModel);
-        SetSlotContent("QualityRectificationSlot", viewModel.QuaternaryPanelViewModel);
-    }
-
-    private void SetSlotContent(string slotName, object viewModel)
-    {
-        MviSlotHost slot = FindRequired<MviSlotHost>(slotName);
-        slot.Content = _viewRegistry.CreateView(viewModel);
+        _node1Slot.Content = _viewRegistry.CreateView(viewModel.Node1);
+        _node2Slot.Content = _viewRegistry.CreateView(viewModel.Node2);
+        _node3Slot.Content = _viewRegistry.CreateView(viewModel.Node3);
+        _node4Slot.Content = _viewRegistry.CreateView(viewModel.Node4);
     }
 
     private TControl FindRequired<TControl>(string name)

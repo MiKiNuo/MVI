@@ -11,8 +11,15 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Platforms.Avalonia\MiKiNuo.Mvi.Platforms.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" />
+    <ProjectReference Include="..\MiKiNuo.Mvi.Samples.Avalonia.BuildTime\MiKiNuo.Mvi.Samples.Avalonia.BuildTime.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="R3" />
+    <PackageReference Include="ZLinq" />
+    <PackageReference Include="UniTask" />
   </ItemGroup>
 </Project>

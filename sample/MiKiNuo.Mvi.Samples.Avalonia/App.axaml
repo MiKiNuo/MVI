@@ -6,4 +6,46 @@
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- 通用中性色 -->
+            <SolidColorBrush x:Key="BrushSurface" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="BrushSurfaceMuted" Color="#F8FAFC" />
+            <SolidColorBrush x:Key="BrushBorder" Color="#E2E8F0" />
+            <SolidColorBrush x:Key="BrushBorderStrong" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="BrushTextPrimary" Color="#0F172A" />
+            <SolidColorBrush x:Key="BrushTextSecondary" Color="#475569" />
+            <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8" />
+
+            <!-- 业务域 1：住院床位（医疗蓝） -->
+            <SolidColorBrush x:Key="BrushDomainInpatient" Color="#0EA5E9" />
+            <SolidColorBrush x:Key="BrushDomainInpatientSoft" Color="#E0F2FE" />
+            <SolidColorBrush x:Key="BrushDomainInpatientBorder" Color="#BAE6FD" />
+            <SolidColorBrush x:Key="BrushDomainInpatientDark" Color="#0369A1" />
+
+            <!-- 业务域 2：检验医嘱（检验紫） -->
+            <SolidColorBrush x:Key="BrushDomainLab" Color="#8B5CF6" />
+            <SolidColorBrush x:Key="BrushDomainLabSoft" Color="#EDE9FE" />
+            <SolidColorBrush x:Key="BrushDomainLabBorder" Color="#DDD6FE" />
+            <SolidColorBrush x:Key="BrushDomainLabDark" Color="#6D28D9" />
+
+            <!-- 业务域 3：药房库存（药房琥珀） -->
+            <SolidColorBrush x:Key="BrushDomainPharmacy" Color="#F59E0B" />
+            <SolidColorBrush x:Key="BrushDomainPharmacySoft" Color="#FEF3C7" />
+            <SolidColorBrush x:Key="BrushDomainPharmacyBorder" Color="#FDE68A" />
+            <SolidColorBrush x:Key="BrushDomainPharmacyDark" Color="#B45309" />
+
+            <!-- 业务域 4：运营质控（质控绿） -->
+            <SolidColorBrush x:Key="BrushDomainQuality" Color="#10B981" />
+            <SolidColorBrush x:Key="BrushDomainQualitySoft" Color="#D1FAE5" />
+            <SolidColorBrush x:Key="BrushDomainQualityBorder" Color="#A7F3D0" />
+            <SolidColorBrush x:Key="BrushDomainQualityDark" Color="#047857" />
+
+            <!-- 数据流指示色 -->
+            <SolidColorBrush x:Key="BrushFlowSent" Color="#0EA5E9" />
+            <SolidColorBrush x:Key="BrushFlowReceived" Color="#10B981" />
+            <SolidColorBrush x:Key="BrushFlowError" Color="#EF4444" />
+            <SolidColorBrush x:Key="BrushFlowIdle" Color="#94A3B8" />
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>

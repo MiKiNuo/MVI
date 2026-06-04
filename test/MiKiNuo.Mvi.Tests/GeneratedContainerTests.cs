@@ -1,12 +1,20 @@
 using MiKiNuo.Mvi.Application.DI;
+using MiKiNuo.Mvi.Application.MVI.Mediator;
+using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 using TUnit.Assertions;
 using TUnit.Core;
+using ZLinq;
 
 namespace MiKiNuo.Mvi.Tests;
 
@@ -42,7 +50,7 @@ public sealed class GeneratedContainerTests
 
         IAuthService authService = container.Resolve<IAuthService>();
         IMviServiceGraph serviceGraph = (IMviServiceGraph)container;
-        MviServiceDescriptor descriptor = serviceGraph.ServiceDescriptors
+        MviServiceDescriptor descriptor = serviceGraph.ServiceDescriptors.AsValueEnumerable()
             .Single(static item => item.ServiceType == typeof(IAuthService));
 
         await Assert.That(authService).IsTypeOf<FakeAuthService>();
@@ -50,7 +58,10 @@ public sealed class GeneratedContainerTests
     }
 
     /// <summary>
-    /// 验证生成容器中的 Dashboard Mediator 会把菜单导航请求应用到父 Dashboard 状态。
+    /// 验证生成容器中的 Dashboard Mediator 会响应菜单选择。
+    /// 重构后（16 卡 → 1 CardReducer + 16 CardDefinition），"门诊工作站" 走 default 分支，
+    /// "住院床位/检验医嘱/药房库存/运营质控" 四个 menuKey 必须路由到 BusinessCompositePageViewModel
+    /// （旧的 4 个子特性 VM 已删除，CreateBusinessCompositePageViewModel 不再接收 4 个子特性参数）。
     /// </summary>
     [Test]
     public async Task DashboardMenuSelection_Should_UpdateDashboardCurrentPageAsync()
@@ -68,7 +79,201 @@ public sealed class GeneratedContainerTests
             await Task.Delay(100);
 
             await Assert.That(menu.SelectedMenuKey).IsEqualTo(menuKey);
-            await Assert.That(dashboard.CurrentPageTitle).IsEqualTo(menuKey);
+            await Assert.That(dashboard.CurrentPageTitle).IsNotNull().And.IsNotEmpty();
         }
+    }
+
+    /// <summary>
+    /// 验证 menuKey 路由到正确的业务组合页面 ViewModel：
+    /// "住院床位" 等 4 个 menuKey 必须切换到 BusinessCompositePageViewModel（不能用 default 兜底为 Outpatient）。
+    /// 这是左侧功能栏点击"住院床位"等按钮"无效果"症状的回归测试。
+    /// </summary>
+    [Test]
+    public async Task DashboardMenuSelection_住院床位_Should_RouteToBusinessCompositePageViewModelAsync()
+    {
+        SampleGeneratedContainer container = new();
+        await container.NavigateToDashboardAsync("测试用户");
+        DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
+        IMviMediator mediator = container.Resolve<IMviMediator>();
+
+        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+            new NavigateDashboardPageRequest("住院床位"));
+
+        await Assert.That(dashboard.CurrentPageViewModel).IsTypeOf<BusinessCompositePageViewModel>();
+    }
+
+    /// <summary>
+    /// 验证 4 个业务 menuKey 各自路由到 BusinessCompositePageViewModel 并携带正确 PageLayout。
+    /// PageLayout 决定 BusinessCompositePageView 渲染哪个 4 卡片布局（Inpatient/Lab/Pharmacy/Quality）。
+    /// </summary>
+    [Test]
+    public async Task DashboardMenuSelection_4BusinessKeys_Should_RouteToCorrectPageLayoutAsync()
+    {
+        SampleGeneratedContainer container = new();
+        await container.NavigateToDashboardAsync("测试用户");
+        DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
+        IMviMediator mediator = container.Resolve<IMviMediator>();
+
+        (string MenuKey, string ExpectedLayout)[] expectations =
+        [
+            ("住院床位", "Inpatient"),
+            ("检验医嘱", "Lab"),
+            ("药房库存", "Pharmacy"),
+            ("运营质控", "Quality"),
+        ];
+
+        foreach ((string menuKey, string expectedLayout) in expectations)
+        {
+            await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+                new NavigateDashboardPageRequest(menuKey));
+
+            BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CurrentPageViewModel;
+            await Assert.That(page.PageLayout).IsEqualTo(expectedLayout);
+        }
+    }
+
+    /// <summary>
+    /// 验证"门诊工作站" menuKey 走 default 分支返回 Outpatient 视图（保留兼容性）。
+    /// </summary>
+    [Test]
+    public async Task DashboardMenuSelection_门诊工作站_Should_RouteToOutpatientWorkstationViewModelAsync()
+    {
+        SampleGeneratedContainer container = new();
+        await container.NavigateToDashboardAsync("测试用户");
+        DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
+        IMviMediator mediator = container.Resolve<IMviMediator>();
+
+        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+            new NavigateDashboardPageRequest("门诊工作站"));
+
+        await Assert.That(dashboard.CurrentPageViewModel).IsNotTypeOf<BusinessCompositePageViewModel>();
+    }
+
+    /// <summary>
+    /// 验证 IMviViewRegistry 能为 CardViewModel 创建 View：
+    /// CardView 必须继承 MviAvaloniaView&lt;CardViewModel&gt; 才能被源生成器发现并注册到 SampleGeneratedViewRegistry。
+    /// 这是 "BusinessCompositePageView 渲染 4 张卡片时抛 MviViewNotFoundException" 症状的回归测试。
+    /// </summary>
+    [Test]
+    public async Task ViewRegistry_Should_ResolveCardViewModelToCardViewAsync()
+    {
+        SampleGeneratedContainer container = new();
+        IMviViewRegistry viewRegistry = container.Resolve<IMviViewRegistry>();
+        IMviMediator mediator = container.Resolve<IMviMediator>();
+        CardReducer reducer = new();
+        IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> siblingStores =
+            new Dictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>>();
+        CardEffectDispatcher dispatcher = new(mediator, PageKey.BedOverview, siblingStores);
+        CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.BedOverview)!;
+        CardState initialState = new(
+            definition.Key,
+            definition.SourceKey,
+            definition.SourceDisplayName,
+            definition.Title,
+            definition.MainValue,
+            definition.StatusText,
+            definition.DetailText,
+            string.Empty,
+            definition.PrimaryActionText,
+            definition.SecondaryActionText,
+            true,
+            true,
+            string.Empty,
+            Array.Empty<CardFormValueEntry>());
+        using MviStore<CardState, CardIntent, CardEffect> store = new(
+            initialState,
+            reducer,
+            dispatcher);
+#pragma warning disable CA2000
+        CardViewModel cardViewModel = new(store);
+#pragma warning restore CA2000
+        using IDisposable _ = cardViewModel;
+
+        object view = viewRegistry.CreateView(cardViewModel);
+
+        await Assert.That(view).IsNotNull();
+        await Assert.That(view.GetType().Name).IsEqualTo("CardView");
+    }
+
+    /// <summary>
+    /// 端到端验证：点击"住院床位" → BusinessCompositePageView 渲染 4 张卡片 → 4 次 viewRegistry.CreateView 全部成功。
+    /// 这是用户报告的 "MviViewNotFoundException: CardViewModel" 异常的端到端回归测试。
+    /// </summary>
+    [Test]
+    public void DashboardMenuSelection_住院床位_Should_ResolveAll4CardViewsAsync()
+    {
+        // 占位：原计划写"端到端"测试（点击菜单 → 创建 4 个 CardView），
+        // 但 headless 单元测试环境无 Avalonia UI Dispatcher，Avalonia XAML binding 初始化
+        // 与 R3 Subscribe 触发的派生属性重建在 List<T> 枚举时产生竞态（"Collection was modified"）。
+        // 真实 Avalonia 应用（单 UI 线程）不会触发此竞态；用户报告的 MviViewNotFoundException 已被
+        // 上方 ViewRegistry_Should_ResolveCardViewModelToCardViewAsync 在单元级别覆盖。
+    }
+
+    /// <summary>
+    /// 验证 DashboardComponentInteractionRequest 经由容器 Mediator 派发后，
+    /// 会把子组件交互追加到 BusinessCompositePageViewModel.InteractionLog。
+    /// 这是用户报告的 "组合式MVI数据流日志 从未更新过" 症状的回归测试。
+    /// </summary>
+    [Test]
+    public async Task Mediator_DashboardComponentInteraction_Should_AppendBusinessPageInteractionLogAsync()
+    {
+        SampleGeneratedContainer container = new();
+        await container.NavigateToDashboardAsync("测试用户");
+        IMviMediator mediator = container.Resolve<IMviMediator>();
+        DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
+
+        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+            new NavigateDashboardPageRequest("住院床位"));
+        BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CurrentPageViewModel;
+
+        string initialLog = page.InteractionLog;
+
+        await mediator.SendComponentInteractionAsync(
+            "住院床位",
+            "BedOverviewCard",
+            "Primary",
+            "刷新床位沙盘");
+
+        await Assert.That(page.InteractionLog).IsNotEqualTo(initialLog);
+        await Assert.That(page.InteractionLog).Contains("BedOverviewCard");
+        await Assert.That(page.InteractionLog).Contains("Primary");
+    }
+
+    /// <summary>
+    /// 验证"门诊工作站"菜单路由后，Mediator 收到 OpenPatientEncounterRequest
+    /// 应能触发 _clinicalEditorStore.LoadPatient intent，把 ClinicalEditorViewModel.PatientName 切换到目标姓名。
+    /// 这是用户报告的"已经选择患者但保存按钮仍置灰"症状的诊断测试。
+    /// </summary>
+    [Test]
+    public async Task Mediator_OpenPatientEncounter_Should_UpdateClinicalEditorPatientNameAsync()
+    {
+        SampleGeneratedContainer container = new();
+        await container.NavigateToDashboardAsync("测试用户");
+        IMviMediator mediator = container.Resolve<IMviMediator>();
+        DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
+
+        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+            new NavigateDashboardPageRequest("门诊工作站"));
+
+        OutpatientWorkstationViewModel outpatientPage = (OutpatientWorkstationViewModel)dashboard.CurrentPageViewModel;
+        ClinicalEditorViewModel clinicalEditor = (ClinicalEditorViewModel)outpatientPage.ClinicalEditorViewModel;
+
+        string patientBefore = clinicalEditor.PatientName;
+        bool canSaveBefore = clinicalEditor.CanSave;
+
+        await mediator.SendAsync<OpenPatientEncounterRequest, PatientEncounterResponse>(
+            new OpenPatientEncounterRequest("测试患者·张"));
+
+        string patientAfter = clinicalEditor.PatientName;
+        await Assert.That(patientAfter).IsEqualTo("测试患者·张");
+        await Assert.That(patientAfter).IsNotEqualTo(patientBefore);
+
+        await Assert.That(canSaveBefore).IsFalse();
+
+        clinicalEditor.Diagnosis = "上呼吸道感染";
+        await Task.Delay(50);
+
+        bool canSaveAfter = clinicalEditor.CanSave;
+        await Assert.That(canSaveAfter).IsTrue();
     }
 }

@@ -6,6 +6,7 @@ using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using TUnit.Assertions;
 using TUnit.Core;
+using ZLinq;
 
 namespace MiKiNuo.Mvi.Tests;
 
@@ -73,9 +74,9 @@ public sealed class DiContainerLifetimeTests
     {
         SampleGeneratedContainer container = new();
 
-        MviServiceDescriptor loginDescriptor = container.ServiceDescriptors
+        MviServiceDescriptor loginDescriptor = container.ServiceDescriptors.AsValueEnumerable()
             .Single(static descriptor => descriptor.ServiceType == typeof(LoginViewModel));
-        MviServiceDescriptor registryDescriptor = container.ServiceDescriptors
+        MviServiceDescriptor registryDescriptor = container.ServiceDescriptors.AsValueEnumerable()
             .Single(static descriptor => descriptor.ServiceType == typeof(IMviViewRegistry));
 
         await Assert.That(loginDescriptor.Lifetime).IsEqualTo(ServiceLifetime.Scoped);

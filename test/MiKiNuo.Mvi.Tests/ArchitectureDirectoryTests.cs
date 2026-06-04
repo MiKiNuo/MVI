@@ -110,13 +110,47 @@ public sealed class ArchitectureDirectoryTests
             string source = await File.ReadAllTextAsync(sourcePath);
             if (source.Contains("MiKiNuo.Mvi.Samples.", StringComparison.Ordinal)
                 || source.Contains("SampleGeneratedContainer", StringComparison.Ordinal)
-                || source.Contains("SampleGeneratedViewRegistry", StringComparison.Ordinal))
+                || source.Contains("SampleGeneratedViewRegistry", StringComparison.Ordinal)
+                || source.Contains("MviAvaloniaView", StringComparison.Ordinal)
+                || source.Contains("\"Sample\"", StringComparison.Ordinal)
+                || source.Contains("SampleCompositionPrefix", StringComparison.Ordinal)
+                || source.Contains("GetCompositionPrefix", StringComparison.Ordinal))
             {
                 sampleSpecificFiles.Add(Path.GetRelativePath(root, sourcePath));
             }
         }
 
         await Assert.That(sampleSpecificFiles).IsEmpty();
+    }
+
+    /// <summary>
+    /// 验证示例专属的组合根生成器已被拆分到 sample/MiKiNuo.Mvi.Samples.Avalonia.BuildTime，
+    /// 不再寄居在框架 Infrastructure 层。
+    /// </summary>
+    [Test]
+    public async Task AvaloniaSampleBuildTimeProject_Should_HostSampleCompositionGeneratorAsync()
+    {
+        string root = FindRepositoryRoot();
+        string generatorPath = Path.Combine(
+            root,
+            "sample",
+            "MiKiNuo.Mvi.Samples.Avalonia.BuildTime",
+            "SourceGeneration",
+            "DiContainerGenerator.cs");
+        string oldGeneratorPath = Path.Combine(
+            root,
+            "src",
+            "MiKiNuo.Mvi.Infrastructure",
+            "BuildTime",
+            "SourceGeneration",
+            "DiContainerGenerator.cs");
+
+        await Assert.That(File.Exists(generatorPath)).IsTrue();
+        await Assert.That(File.Exists(oldGeneratorPath)).IsFalse();
+
+        string generator = await File.ReadAllTextAsync(generatorPath);
+        await Assert.That(generator).Contains("AvaloniaSampleDiContainerGenerator");
+        await Assert.That(generator).Contains("MiKiNuo.Mvi.Samples.Avalonia.BuildTime.SourceGeneration");
     }
 
     private static string FindRepositoryRoot()

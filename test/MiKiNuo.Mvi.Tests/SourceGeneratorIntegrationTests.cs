@@ -39,9 +39,8 @@ public sealed class SourceGeneratorIntegrationTests
         string root = FindRepositoryRoot();
         string generator = await File.ReadAllTextAsync(Path.Combine(
             root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
+            "sample",
+            "MiKiNuo.Mvi.Samples.Avalonia.BuildTime",
             "SourceGeneration",
             "DiContainerGenerator.cs"));
 

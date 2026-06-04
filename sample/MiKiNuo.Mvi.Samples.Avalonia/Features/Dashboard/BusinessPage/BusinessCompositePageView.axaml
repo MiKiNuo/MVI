@@ -2,155 +2,148 @@
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage.BusinessCompositePageView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:cards="clr-namespace:MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards"
     xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Platforms.Avalonia.Slot;assembly=MiKiNuo.Mvi.Platforms.Avalonia">
     <Grid RowDefinitions="Auto,*,170" RowSpacing="12">
-        <Grid ColumnDefinitions="2*,*" ColumnSpacing="12">
-            <Border Background="#EFF6FF" CornerRadius="12" Padding="14">
-                <StackPanel>
-                    <TextBlock Text="{Binding ScenarioTitle}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding ScenarioSummary}" Foreground="#475569" TextWrapping="Wrap" Margin="0,4,0,0" />
+        <!-- 顶部：场景标题 + 流程摘要 + 上下文/状态（按业务域着色） -->
+        <Border Grid.Row="0" Padding="16,14,16,14"
+                Background="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Soft}"
+                BorderBrush="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Border}"
+                BorderThickness="1" CornerRadius="14">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                <!-- 业务域图标 + 标题 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border Width="40" Height="40" CornerRadius="10"
+                            Background="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}">
+                        <!-- 数据流图标：① 节点 → ② 节点 -->
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M3,12 L10,12 M8,9 L10,12 L8,15 M14,12 L21,12 M19,9 L21,12 L19,15 M3,12 L3,18 L21,18 M3,18 L0,18 M3,18 L3,21 M21,18 L24,18"
+                                  Stroke="White" StrokeThickness="1.8"
+                                  StrokeLineCap="Round" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding ScenarioTitle}" FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Dark}" />
+                        <TextBlock Text="{Binding FlowSummary}" FontSize="12"
+                                   Foreground="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Dark}"
+                                   Opacity="0.85" />
+                    </StackPanel>
                 </StackPanel>
+                <!-- 右侧：上下文 / 流程状态（与左下角 ④ 节点对齐） -->
+                <Border Grid.Column="2" Background="{DynamicResource BrushSurface}"
+                        BorderBrush="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Border}"
+                        BorderThickness="1" CornerRadius="10" Padding="10,6" VerticalAlignment="Center">
+                    <StackPanel Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Width="6" Height="6"
+                                     Fill="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}" />
+                            <TextBlock Text="上下文" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextMuted}" LetterSpacing="0.5" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding ActiveContext}" FontSize="11"
+                                   Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="NoWrap" />
+                        <TextBlock Text="{Binding FlowStatus}" FontSize="10"
+                                   Foreground="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Dark}"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 中部：统一 2×2 「数据流节点」布局（Z 形：① → ② → ③ → ④） -->
+        <Grid Grid.Row="1" RowDefinitions="*,Auto,*" ColumnDefinitions="*,Auto,*"
+              RowSpacing="0" ColumnSpacing="0">
+            <!-- ① 节点 左上 -->
+            <Border Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                <mvi:MviSlotHost x:Name="Node1Slot" />
             </Border>
-            <Grid Grid.Column="1" RowDefinitions="*,*" RowSpacing="8">
-                <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="12" Padding="10">
-                    <StackPanel>
-                        <TextBlock Text="当前业务上下文" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding ActiveContext}" Foreground="#334155" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Row="1" Background="#F0FDFA" BorderBrush="#99F6E4" BorderThickness="1" CornerRadius="12" Padding="10">
-                    <StackPanel>
-                        <TextBlock Text="流程状态" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FlowStatus}" Foreground="#0F766E" TextWrapping="Wrap" />
-                    </StackPanel>
+            <!-- ① → ② 横向数据流箭头 + 标签 -->
+            <Grid Grid.Row="0" Grid.Column="1" Width="56" Margin="0,0,0,8"
+                  HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Path Grid.Row="0" Data="M2,18 L46,18 M40,12 L46,18 L40,24"
+                      Stroke="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}"
+                      StrokeThickness="2.5" StrokeLineCap="Round"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Border Grid.Row="1" HorizontalAlignment="Center" Margin="0,2,0,0"
+                        Background="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}"
+                        CornerRadius="4" Padding="6,1">
+                    <TextBlock Text="{Binding FlowLabel12}" FontSize="10" FontWeight="SemiBold"
+                               Foreground="White" />
                 </Border>
             </Grid>
+            <!-- ② 节点 右上 -->
+            <Border Grid.Row="0" Grid.Column="2" Margin="8,0,0,8">
+                <mvi:MviSlotHost x:Name="Node2Slot" />
+            </Border>
+
+            <!-- ② → ③ 纵向数据流箭头 + 标签（位于右列） -->
+            <Grid Grid.Row="1" Grid.Column="2" Height="56" Margin="8,0,0,0"
+                  HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Path Grid.Column="0" Data="M18,2 L18,46 M12,40 L18,46 L24,40"
+                      Stroke="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}"
+                      StrokeThickness="2.5" StrokeLineCap="Round"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Border Grid.Column="1" VerticalAlignment="Center" Margin="4,0,0,0"
+                        Background="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}"
+                        CornerRadius="4" Padding="6,1">
+                    <TextBlock Text="{Binding FlowLabel23}" FontSize="10" FontWeight="SemiBold"
+                               Foreground="White" />
+                </Border>
+            </Grid>
+
+            <!-- ④ 节点 左下 -->
+            <Border Grid.Row="2" Grid.Column="0" Margin="0,8,8,0">
+                <mvi:MviSlotHost x:Name="Node4Slot" />
+            </Border>
+            <!-- ③ → ④ 横向数据流箭头 + 标签（反向：右 → 左） -->
+            <Grid Grid.Row="2" Grid.Column="1" Width="56" Margin="0,8,0,0"
+                  HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,2"
+                        Background="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}"
+                        CornerRadius="4" Padding="6,1">
+                    <TextBlock Text="{Binding FlowLabel34}" FontSize="10" FontWeight="SemiBold"
+                               Foreground="White" />
+                </Border>
+                <Path Grid.Row="1" Data="M46,18 L2,18 M8,12 L2,18 L8,24"
+                      Stroke="{Binding DomainSourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}"
+                      StrokeThickness="2.5" StrokeLineCap="Round"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+            <!-- ③ 节点 右下 -->
+            <Border Grid.Row="2" Grid.Column="2" Margin="8,8,0,0">
+                <mvi:MviSlotHost x:Name="Node3Slot" />
+            </Border>
         </Grid>
 
-        <Grid Grid.Row="1">
-            <!-- 住院床位：指挥中心布局，床位总览占左侧主区域，入院流程纵向贯穿中间，护理任务和风险面板在右侧联动。 -->
-            <Grid x:Name="InpatientLayout" ColumnDefinitions="1.35*,1*,1.1*" RowDefinitions="*,*" ColumnSpacing="12" RowSpacing="12" IsVisible="False">
-                <Border Grid.RowSpan="2" Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="病区床位沙盘" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="InpatientBedOverviewSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Column="1" Grid.RowSpan="2" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="入院协调纵向流程" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="InpatientAdmissionSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Column="2" Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="护理任务看板" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="InpatientNursingSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Column="2" Grid.Row="1" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="病区风险雷达" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="InpatientRiskSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-            </Grid>
-
-            <!-- 检验医嘱：流水线布局，从医嘱开立到标本流转，再到危急值和 TAT，体现串联流程。 -->
-            <Grid x:Name="LabLayout" RowDefinitions="Auto,*,1.1*" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowSpacing="12" IsVisible="False">
-                <Border Grid.ColumnSpan="3" Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <TextBlock Text="检验闭环流水线：医嘱开立 → 标本采集/运输/签收 → 上机检测 → 危急值确认 → TAT 预警" FontWeight="SemiBold" Foreground="#075985" />
-                </Border>
-                <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="① 医嘱开立区" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="LabOrderSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#F5F3FF" BorderBrush="#DDD6FE" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="② 标本流转区" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="LabSpecimenSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="2" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="③ 危急值闭环" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="LabCriticalSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Row="2" Grid.ColumnSpan="3" Background="#ECFEFF" BorderBrush="#A5F3FC" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="④ TAT 实时监控与超时追踪" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="LabTatSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-            </Grid>
-
-            <!-- 药房库存：处方驱动布局，左侧审核流，中间库存水位，右侧补货与安全决策。 -->
-            <Grid x:Name="PharmacyLayout" ColumnDefinitions="1.1*,1.4*,1.1*" RowDefinitions="1.1*,*" ColumnSpacing="12" RowSpacing="12" IsVisible="False">
-                <Border Grid.RowSpan="2" Background="#FFF7ED" BorderBrush="#FDBA74" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="处方审核队列" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="PharmacyPrescriptionSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Column="1" Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="库存水位与药品批号" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="PharmacyStockSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Column="1" Grid.Row="1" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="补货计划与采购建议" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="PharmacyReplenishmentSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Column="2" Grid.RowSpan="2" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="用药安全与拦截规则" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="PharmacySafetySlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-            </Grid>
-
-            <!-- 运营质控：驾驶舱布局，顶部 KPI 总览，底部三栏形成缺陷、风险、整改闭环。 -->
-            <Grid x:Name="QualityLayout" RowDefinitions="1.15*,*" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowSpacing="12" IsVisible="False">
-                <Border Grid.ColumnSpan="3" Background="#F5F3FF" BorderBrush="#DDD6FE" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="院级质量 KPI 驾驶舱" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="QualityKpiSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Row="1" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="病历缺陷抽查" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="QualityAuditSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="风险事件分级" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="QualityRiskSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="2" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="14" Padding="10">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock Text="整改闭环追踪" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <mvi:MviSlotHost x:Name="QualityRectificationSlot" Grid.Row="1" />
-                    </Grid>
-                </Border>
-            </Grid>
-        </Grid>
-
-        <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="12" Padding="10">
-            <StackPanel>
-                <TextBlock Text="组合式 MVI 数据流日志" Foreground="#0F172A" FontWeight="SemiBold" />
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding InteractionLog}" Foreground="#0369A1" TextWrapping="Wrap" />
+        <!-- 底部：组合式 MVI 数据流日志 -->
+        <Border Grid.Row="2" Background="{DynamicResource BrushSurface}"
+                BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Padding="12">
+            <Grid RowDefinitions="Auto,*" RowSpacing="6">
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource BrushFlowReceived}" />
+                    <TextBlock Text="组合式 MVI 数据流日志" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource BrushTextPrimary}" />
+                    <TextBlock Text="（父 → 子 → 兄弟卡片 → 父）" FontSize="10"
+                               Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" />
+                </StackPanel>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding InteractionLog}" FontSize="11"
+                               Foreground="{DynamicResource BrushFlowSent}" TextWrapping="Wrap" />
                 </ScrollViewer>
-            </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>
