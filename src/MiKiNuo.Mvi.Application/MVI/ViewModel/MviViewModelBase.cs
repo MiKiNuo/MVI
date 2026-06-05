@@ -21,17 +21,20 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
     where TEffect : IMviEffect
 {
     private readonly IDisposable _stateSubscription;
+    private readonly IMviUiDispatcher _uiDispatcher;
     private bool _isDisposed;
 
     /// <summary>
     /// 初始化 MVI ViewModel 基类。
     /// </summary>
     /// <param name="store">状态存储。</param>
-    protected MviViewModelBase(IMviStore<TState, TIntent, TEffect> store)
+    /// <param name="uiDispatcher">UI 调度器（可选，缺省时使用 <see cref="MviInlineUiDispatcher.Instance"/>）。</param>
+    protected MviViewModelBase(IMviStore<TState, TIntent, TEffect> store, IMviUiDispatcher? uiDispatcher = null)
     {
         ArgumentNullException.ThrowIfNull(store);
 
         Store = store;
+        _uiDispatcher = uiDispatcher ?? MviInlineUiDispatcher.Instance;
         _stateSubscription = Store.States.Subscribe(this, static (state, viewModel) => viewModel.ApplyState(state));
         ApplyState(Store.CurrentState);
     }
@@ -43,6 +46,12 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
     /// 获取状态存储。
     /// </summary>
     protected IMviStore<TState, TIntent, TEffect> Store { get; }
+
+    /// <summary>
+    /// 获取 ViewModel 用于 PropertyChanged/Command 通知的 UI 调度器。
+    /// 源生成器在创建 <c>MviCommand</c>/<c>MviAsyncCommand</c> 时复用此调度器。
+    /// </summary>
+    public IMviUiDispatcher UiDispatcher => _uiDispatcher;
 
     /// <summary>
     /// 异步派发意图。
@@ -81,7 +90,21 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
     /// <summary>
     /// 释放命令或子类资源。
     /// </summary>
+    /// <remarks>
+    /// 源生成器会为带命令的子类重写此方法以释放命令资源。
+    /// 若子类需要释放其它资源，请重写 <see cref="OnDispose"/>，避免与生成器冲突。
+    /// </remarks>
     protected virtual void DisposeManagedResources()
+    {
+    }
+
+    /// <summary>
+    /// ViewModel 释放的最终扩展点，由 <see cref="Dispose"/> 在 <see cref="DisposeManagedResources"/> 之后调用。
+    /// </summary>
+    /// <remarks>
+    /// 适用于"额外的订阅/资源"需要在 ViewModel 生命周期结束时释放，但与源生成器管理的命令资源无直接依赖关系的场景。
+    /// </remarks>
+    protected virtual void OnDispose()
     {
     }
 
@@ -106,7 +129,7 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
     /// <param name="propertyName">属性名称。</param>
     protected void OnPropertyChanged(string? propertyName)
     {
-        PostToUiThread(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
+        _uiDispatcher.Post(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
     }
 
     /// <inheritdoc />
@@ -119,12 +142,8 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
 
         _stateSubscription.Dispose();
         DisposeManagedResources();
+        OnDispose();
         _isDisposed = true;
         GC.SuppressFinalize(this);
-    }
-
-    private static void PostToUiThread(Action action)
-    {
-        MviUiNotificationDispatcher.Post(action);
     }
 }

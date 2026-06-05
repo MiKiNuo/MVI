@@ -1,4 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Diagnostics;
+using MiKiNuo.Mvi.Domain.Common.Errors;
+using MiKiNuo.Mvi.Domain.Common.Results;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -17,18 +19,18 @@ public sealed class MviValidationMiddleware<TState, TIntent, TEffect> : IMviMidd
     where TIntent : IMviIntent
     where TEffect : IMviEffect
 {
-    private readonly Func<TState, TIntent, string?> _validator;
+    private readonly Func<TState, TIntent, OperationResult> _validator;
     private readonly IMviDiagnosticSink _diagnosticSink;
     private readonly string _componentName;
 
     /// <summary>
     /// 初始化 MVI 校验中间件。
     /// </summary>
-    /// <param name="validator">校验委托，返回空表示通过，返回非空表示阻断。</param>
+    /// <param name="validator">校验委托；返回 <see cref="OperationResult.Success()"/> 表示通过，<see cref="OperationResult.Failure(DomainError)"/> 表示阻断。</param>
     /// <param name="diagnosticSink">诊断接收器。</param>
     /// <param name="componentName">组件名称。</param>
     public MviValidationMiddleware(
-        Func<TState, TIntent, string?> validator,
+        Func<TState, TIntent, OperationResult> validator,
         IMviDiagnosticSink diagnosticSink,
         string componentName)
     {
@@ -50,14 +52,15 @@ public sealed class MviValidationMiddleware<TState, TIntent, TEffect> : IMviMidd
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nextMiddleware);
 
-        string? validationMessage = _validator(context.State, context.Intent);
-        if (!string.IsNullOrWhiteSpace(validationMessage))
+        OperationResult result = _validator(context.State, context.Intent);
+        if (result.IsFailure)
         {
+            string reason = result.FailureReason?.Message ?? result.FailureReason?.Code ?? "未知校验失败";
             _diagnosticSink.Record(new MviDiagnosticEntry(
                 DateTimeOffset.Now,
                 _componentName,
                 "Validation",
-                $"阻断 {typeof(TIntent).Name}：{validationMessage}",
+                $"阻断 {typeof(TIntent).Name}：{reason}",
                 0));
             return ValueTask.FromResult(MviReduceResult.State<TState, TEffect>(context.State));
         }

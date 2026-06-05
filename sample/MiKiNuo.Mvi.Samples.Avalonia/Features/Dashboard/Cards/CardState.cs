@@ -1,5 +1,4 @@
 using MiKiNuo.Mvi.Domain.MVI.State;
-using ZLinq;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 
@@ -46,11 +45,20 @@ public sealed record CardState(
     {
         ArgumentNullException.ThrowIfNull(definition);
 
-        IReadOnlyList<CardFormValueEntry> formValues = definition.FormFields is null
-            ? Array.Empty<CardFormValueEntry>()
-            : definition.FormFields.AsValueEnumerable()
-                .Select(static field => new CardFormValueEntry(field.Key, field.InitialValue))
-                .ToArray();
+        CardFormValueEntry[] formValues;
+        if (definition.FormFields is null)
+        {
+            formValues = [];
+        }
+        else
+        {
+            formValues = new CardFormValueEntry[definition.FormFields.Count];
+            for (int i = 0; i < definition.FormFields.Count; i++)
+            {
+                CardFormField field = definition.FormFields[i];
+                formValues[i] = new CardFormValueEntry(field.Key, field.InitialValue);
+            }
+        }
 
         return new CardState(
             definition.Key,
@@ -108,14 +116,17 @@ public sealed record CardState(
     {
         ArgumentNullException.ThrowIfNull(key);
 
-        foreach (CardFormValueEntry entry in FormValues)
+        CardFormValueEntry? result = null;
+        for (int i = 0; i < FormValues.Count; i++)
         {
+            CardFormValueEntry entry = FormValues[i];
             if (entry.Key == key)
             {
-                return entry;
+                result = entry;
+                break;
             }
         }
 
-        return null;
+        return result;
     }
 }

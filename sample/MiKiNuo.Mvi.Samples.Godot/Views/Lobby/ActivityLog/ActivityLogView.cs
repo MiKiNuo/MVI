@@ -1,5 +1,6 @@
 using System;
 using global::Godot;
+using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -11,7 +12,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.ActivityLog;
 public partial class ActivityLogView : GodotMviControlView<ActivityLogViewModel>
 {
     /// <inheritdoc />
-    protected override void OnBind(ActivityLogViewModel viewModel, GodotMviDisposableBag bindings)
+    protected override void OnBind(ActivityLogViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(bindings);

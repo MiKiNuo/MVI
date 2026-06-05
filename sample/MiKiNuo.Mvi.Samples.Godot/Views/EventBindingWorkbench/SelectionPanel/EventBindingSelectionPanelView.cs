@@ -1,5 +1,6 @@
 using System;
 using global::Godot;
+using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Presentation.Events;
 using MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
@@ -12,7 +13,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.EventBindingWorkbench.SelectionPanel;
 public partial class EventBindingSelectionPanelView : GodotMviControlView<EventBindingSelectionViewModel>
 {
     /// <inheritdoc />
-    protected override void OnBind(EventBindingSelectionViewModel viewModel, GodotMviDisposableBag bindings)
+    protected override void OnBind(EventBindingSelectionViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(bindings);

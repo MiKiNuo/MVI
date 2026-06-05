@@ -145,6 +145,55 @@ public sealed class CardReducerSmokeTest
         await Assert.That(nextState.FormValues[0].Value).IsEqualTo("TEST-VALUE");
         await Assert.That(firstInitial).IsNotEqualTo("TEST-VALUE");
     }
+
+    /// <summary>
+    /// 验证 CardReducer 的有参构造函数支持外部注入卡片定义字典，
+    /// reducer 不再直接依赖 DashboardCardRegistry 全局静态，
+    /// 切断 "CardReducer 是纯函数" 的破窗。
+    /// </summary>
+    [Test]
+    public async Task CardReducer_ConstructorInjection_Should_NotTouchGlobalRegistryAsync()
+    {
+        // 构造一个孤立的"虚假"注册表，包含一个与 DashboardCardRegistry 无关的 Form Card。
+        PageKey probeKey = PageKey.AdmissionCoordinator;
+        CardFormField[] fields =
+        [
+            new("ProbeKey", "探测字段", "示例", string.Empty, isRequired: true),
+        ];
+        CardDefinition probeDefinition = new(
+            Key: probeKey,
+            SourceKey: "Probe",
+            SourceDisplayName: "Probe",
+            Title: "Probe",
+            MainValue: string.Empty,
+            StatusText: string.Empty,
+            DetailText: string.Empty,
+            PrimaryActionText: "主",
+            SecondaryActionText: "次",
+            FormFields: fields,
+            RequiredFormFields: new[] { "ProbeKey" },
+            Validator: BuildAlwaysValidProbeValidator());
+
+        IReadOnlyDictionary<PageKey, CardDefinition> isolated = new Dictionary<PageKey, CardDefinition>
+        {
+            [probeKey] = probeDefinition,
+        };
+
+        CardReducer reducer = new(isolated);
+        CardState state = CardState.FromDefinition(probeDefinition);
+
+        MviReduceResult<CardState, CardEffect> result = reducer.Reduce(
+            state,
+            new CardIntent.SetFormField("ProbeKey", "Hello"));
+
+        await Assert.That(result.State.FormValues[0].Value).IsEqualTo("Hello");
+        await Assert.That(result.State.StatusText).IsEqualTo("Probe 资料已完整，可以提交");
+    }
+
+    private static Func<IReadOnlyList<CardFormValueEntry>, (bool CanSubmit, string StatusText, string ActionLog)> BuildAlwaysValidProbeValidator()
+    {
+        return values => (true, "Probe 资料已完整，可以提交", "Probe 提交 -> 探测流程。");
+    }
 }
 
 /// <summary>

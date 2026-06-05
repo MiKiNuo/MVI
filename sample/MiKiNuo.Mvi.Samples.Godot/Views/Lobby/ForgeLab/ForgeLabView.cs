@@ -1,5 +1,6 @@
 using System;
 using global::Godot;
+using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -11,7 +12,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.ForgeLab;
 public partial class ForgeLabView : GodotMviControlView<ForgeLabViewModel>
 {
     /// <inheritdoc />
-    protected override void OnBind(ForgeLabViewModel viewModel, GodotMviDisposableBag bindings)
+    protected override void OnBind(ForgeLabViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(bindings);

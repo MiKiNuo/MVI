@@ -1,14 +1,19 @@
-using System.Windows.Input;
+using MiKiNuo.Mvi.Application.MVI.Command;
 
 namespace MiKiNuo.Mvi.Presentation.Events;
 
 /// <summary>
-/// 表示跨平台 ViewEvent 到命令的运行时绑定。
+/// 表示跨平台 ViewEvent 到 MVI 命令的运行时绑定。
 /// </summary>
+/// <remarks>
+/// 内部只依赖平台无关的 <see cref="IMviCommand"/>：
+/// 防抖、payload 转发、可执行判断等核心逻辑都不依赖 <c>System.Windows.Input</c>。
+/// 平台层需要 <c>ICommand</c> 时通过 <see cref="Command.IMviCommandBridge"/> 适配。
+/// </remarks>
 public sealed class MviViewEventCommandBinding : IDisposable
 {
     private readonly object _gate = new();
-    private readonly ICommand _command;
+    private readonly IMviCommand _command;
     private readonly MviViewEventBindingOptions _options;
     private CancellationTokenSource? _pendingDebounce;
     private bool _isDisposed;
@@ -16,9 +21,9 @@ public sealed class MviViewEventCommandBinding : IDisposable
     /// <summary>
     /// 初始化跨平台 ViewEvent 命令绑定。
     /// </summary>
-    /// <param name="command">目标命令。</param>
+    /// <param name="command">目标 MVI 命令。</param>
     /// <param name="options">绑定选项。</param>
-    public MviViewEventCommandBinding(ICommand command, MviViewEventBindingOptions options)
+    public MviViewEventCommandBinding(IMviCommand command, MviViewEventBindingOptions options)
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(options);

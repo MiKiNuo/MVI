@@ -1,5 +1,6 @@
 using System;
 using global::Godot;
+using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Samples.Godot.Features.Login;
 
@@ -11,7 +12,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Login;
 public partial class LoginView : GodotMviControlView<LoginViewModel>
 {
     /// <inheritdoc />
-    protected override void OnBind(LoginViewModel viewModel, GodotMviDisposableBag bindings)
+    protected override void OnBind(LoginViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(bindings);

@@ -1,5 +1,6 @@
 using System;
 using global::Godot;
+using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Platforms.Godot.Composition;
 using MiKiNuo.Mvi.Samples.Godot.Composition;
@@ -17,7 +18,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.AppShell;
 public partial class AppShellView : GodotMviControlView<AppShellViewModel>
 {
     /// <inheritdoc />
-    protected override void OnBind(AppShellViewModel viewModel, GodotMviDisposableBag bindings)
+    protected override void OnBind(AppShellViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(bindings);

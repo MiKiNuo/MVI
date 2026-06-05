@@ -1,5 +1,6 @@
 using System;
 using global::Godot;
+using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -11,7 +12,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.Inventory;
 public partial class InventoryView : GodotMviControlView<InventoryViewModel>
 {
     /// <inheritdoc />
-    protected override void OnBind(InventoryViewModel viewModel, GodotMviDisposableBag bindings)
+    protected override void OnBind(InventoryViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(bindings);

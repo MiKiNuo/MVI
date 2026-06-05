@@ -7,12 +7,50 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 /// <summary>
 /// 表示仪表板卡片的统一归约器。
 /// 处理器使用 <c>[MviReduce]</c> 标注的私有方法，由 MVI 源代码生成器发出 dispatch 逻辑。
-/// 内部根据 state.PageKey 检索 DashboardCardRegistry 中的 CardDefinition，从而根据 16 个不同卡片执行差异化状态更新。
-/// 设计为非泛型：1 个 reducer 覆盖 16 个 PageKey（详见 .gsd/DECISIONS.md 2026-06-02 第 5 轮 grill）。
+/// 内部根据 state.PageKey 在构造函数注入的卡片定义字典中查找 <see cref="CardDefinition"/>，
+/// 从而根据 16 个不同卡片执行差异化状态更新。设计为非泛型：1 个 reducer 覆盖 16 个 PageKey
+/// （详见 .gsd/DECISIONS.md 2026-06-02 第 5 轮 grill）。
 /// </summary>
+/// <remarks>
+/// 卡片定义字典通过构造函数注入而非直接读取 <see cref="DashboardCardRegistry"/>，从而让 reducer 自身
+/// 保持纯函数（无全局可变状态依赖）。默认无参构造函数从全局注册表填充，便于现有调用方保持兼容；
+/// 测试代码与自定义组合可通过有参构造函数注入替代字典。
+/// </remarks>
 public sealed partial class CardReducer
     : MviReducerBase<CardState, CardIntent, CardEffect>
 {
+    private readonly IReadOnlyDictionary<PageKey, CardDefinition> _definitions;
+
+    /// <summary>
+    /// 使用 <see cref="DashboardCardRegistry.All"/> 作为卡片定义来源初始化归约器。
+    /// </summary>
+    public CardReducer()
+        : this(DashboardCardRegistry.All)
+    {
+    }
+
+    /// <summary>
+    /// 使用显式传入的卡片定义字典初始化归约器。
+    /// </summary>
+    /// <param name="definitions">按 <see cref="PageKey"/> 索引的卡片定义字典。</param>
+    public CardReducer(IReadOnlyDictionary<PageKey, CardDefinition> definitions)
+    {
+        ArgumentNullException.ThrowIfNull(definitions);
+        _definitions = definitions;
+    }
+
+    /// <summary>
+    /// 根据状态携带的 <see cref="PageKey"/> 在注入的字典中查找卡片定义。
+    /// 找不到时返回 <c>null</c>，由各 reducer 自行决定是否短路。
+    /// </summary>
+    /// <param name="state">当前状态。</param>
+    /// <returns>对应的卡片定义或 null。</returns>
+    private CardDefinition? ResolveDefinition(CardState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return _definitions.TryGetValue(state.PageKey, out CardDefinition? definition) ? definition : null;
+    }
+
     /// <summary>处理 ExecutePrimaryAction。</summary>
     [MviReduce]
     private MviReduceResult<CardState, CardEffect> Reduce(
@@ -76,7 +114,7 @@ public sealed partial class CardReducer
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
 
-        CardDefinition? definition = DashboardCardRegistry.GetDefinition(state.PageKey);
+        CardDefinition? definition = ResolveDefinition(state);
         if (definition is null || !definition.IsFormCard)
         {
             return MviReduceResult.State<CardState, CardEffect>(state);
@@ -104,7 +142,7 @@ public sealed partial class CardReducer
     {
         ArgumentNullException.ThrowIfNull(state);
 
-        CardDefinition? definition = DashboardCardRegistry.GetDefinition(state.PageKey);
+        CardDefinition? definition = ResolveDefinition(state);
         if (definition is null || !definition.IsFormCard || definition.Validator is null)
         {
             return MviReduceResult.State<CardState, CardEffect>(state);

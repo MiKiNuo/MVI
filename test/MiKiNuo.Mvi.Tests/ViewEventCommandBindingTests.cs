@@ -11,8 +11,8 @@ using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
+using MiKiNuo.Mvi.Presentation.Command;
 using MiKiNuo.Mvi.Presentation.Events;
-using System.Windows.Input;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -121,6 +121,65 @@ public sealed class ViewEventCommandBindingTests
     }
 
     /// <summary>
+    /// 验证 <see cref="MviCommandBridge"/> 包装的 <c>ICommand</c> 适配器把
+    /// <see cref="System.Windows.Input.ICommand.CanExecute(object?)"/>、
+    /// <see cref="System.Windows.Input.ICommand.Execute(object?)"/> 与
+    /// <see cref="System.Windows.Input.ICommand.CanExecuteChanged"/> 事件
+    /// 正确转发到底层 <see cref="IMviCommand"/>。
+    /// </summary>
+    [Test]
+    public async Task CommandBridge_Should_ForwardCanExecuteExecuteAndEventToMviCommandAsync()
+    {
+        int executedCount = 0;
+        object? executedParameter = null;
+        RecordingMviCommand mviCommand = new(
+            canExecute: static _ => true,
+            execute: parameter =>
+            {
+                executedCount++;
+                executedParameter = parameter;
+            });
+
+        System.Windows.Input.ICommand adapter = MviCommandBridge.ToICommand(mviCommand);
+
+        await Assert.That(adapter.CanExecute("payload")).IsTrue();
+        adapter.Execute("payload");
+        await Assert.That(executedCount).IsEqualTo(1);
+        await Assert.That(executedParameter).IsEqualTo("payload");
+
+        int changedCount = 0;
+        EventHandler handler = (_, _) => changedCount++;
+        adapter.CanExecuteChanged += handler;
+        mviCommand.RaiseCanExecuteChanged();
+        await Assert.That(changedCount).IsEqualTo(1);
+        adapter.CanExecuteChanged -= handler;
+        mviCommand.RaiseCanExecuteChanged();
+        await Assert.That(changedCount).IsEqualTo(1);
+    }
+
+    /// <summary>
+    /// 验证 <see cref="MviCommandBridge.Adapt"/> 与 <see cref="MviCommandBridge.Instance"/> 行为一致。
+    /// </summary>
+    [Test]
+    public async Task CommandBridgeAdapt_Should_ReturnICommandImplAsync()
+    {
+        RecordingMviCommand mviCommand = new(static _ => true, static _ => { });
+        System.Windows.Input.ICommand adapter = MviCommandBridge.Instance.Adapt(mviCommand);
+
+        await Assert.That(adapter).IsNotNull();
+        await Assert.That(adapter.CanExecute(null)).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证 <see cref="MviCommandBridge.ToICommand"/> 对 null 入参抛 <see cref="ArgumentNullException"/>。
+    /// </summary>
+    [Test]
+    public void CommandBridge_Should_ThrowOnNullCommand()
+    {
+        Assert.Throws<ArgumentNullException>(() => MviCommandBridge.ToICommand(null!));
+    }
+
+    /// <summary>
     /// 验证平台事件适配器共享跨平台 ViewEvent 命令绑定运行时。
     /// </summary>
     [Test]
@@ -164,6 +223,20 @@ public sealed class ViewEventCommandBindingTests
         await Assert.That(viewBase).Contains("OnDetachedFromVisualTree");
     }
 
+    /// <summary>
+    /// 验证 <c>IMviCommand</c> 抽象作为 ViewEvent 命令绑定的契约（不依赖 <c>System.Windows.Input</c>）。
+    /// </summary>
+    [Test]
+    public async Task MviViewEventCommandBinding_Should_BeConstructibleFromIMviCommandAsync()
+    {
+        RecordingMviCommand command = new(static _ => true, static _ => { });
+
+        using MviViewEventCommandBinding binding = new(command, MviViewEventBindingOptions.None);
+        binding.Handle(new MviActionEventPayload("SubmitButton", "Pressed", null));
+
+        await Assert.That(command.ExecutedPayloads.Count).IsEqualTo(1);
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -191,7 +264,53 @@ public sealed class ViewEventCommandBindingTests
         }
     }
 
-    private sealed class RecordingCommand : ICommand
+    /// <summary>
+    /// 平台无关的 IMviCommand 测试替身，模拟命令的 CanExecute/Execute/CanExecuteChanged 行为。
+    /// </summary>
+    private sealed class RecordingMviCommand : IMviCommand
+    {
+        private readonly Predicate<object?> _canExecute;
+        private readonly Action<object?> _execute;
+
+        /// <summary>
+        /// 初始化记录 MVI 命令。
+        /// </summary>
+        /// <param name="canExecute">可执行判断。</param>
+        /// <param name="execute">执行动作。</param>
+        public RecordingMviCommand(Predicate<object?> canExecute, Action<object?> execute)
+        {
+            _canExecute = canExecute;
+            _execute = execute;
+        }
+
+        /// <summary>
+        /// 获取已执行的载荷集合。
+        /// </summary>
+        public List<object?> ExecutedPayloads { get; } = [];
+
+        /// <inheritdoc />
+        public bool CanExecute(object? parameter) => _canExecute(parameter);
+
+        /// <inheritdoc />
+        public void Execute(object? parameter)
+        {
+            ExecutedPayloads.Add(parameter);
+            _execute(parameter);
+        }
+
+        /// <inheritdoc />
+        public event EventHandler? CanExecuteChanged;
+
+        /// <summary>
+        /// 触发可执行状态变化。
+        /// </summary>
+        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// 平台无关的 IMviCommand 测试替身，保留旧的 CanExecute/Execute 委托风格便于 ViewEventCommandBindingTests 复用。
+    /// </summary>
+    private sealed class RecordingCommand : IMviCommand
     {
         private readonly Predicate<object?> _canExecute;
 
@@ -213,24 +332,15 @@ public sealed class ViewEventCommandBindingTests
         public List<object?> ExecutedPayloads { get; } = [];
 
         /// <inheritdoc />
-        public bool CanExecute(object? parameter)
-        {
-            return _canExecute(parameter);
-        }
+        public bool CanExecute(object? parameter) => _canExecute(parameter);
 
         /// <inheritdoc />
-        public void Execute(object? parameter)
-        {
-            ExecutedPayloads.Add(parameter);
-        }
+        public void Execute(object? parameter) => ExecutedPayloads.Add(parameter);
 
         /// <summary>
         /// 触发可执行状态变化。
         /// </summary>
-        public void RaiseCanExecuteChanged()
-        {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-        }
+        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 }
 

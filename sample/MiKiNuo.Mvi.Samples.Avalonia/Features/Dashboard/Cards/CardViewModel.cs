@@ -19,6 +19,7 @@ public sealed partial class CardViewModel
 {
     private IReadOnlyList<CardFormFieldEntry> _formFields = Array.Empty<CardFormFieldEntry>();
     private readonly Dictionary<string, CardFormFieldEntry> _formFieldsCache = new(StringComparer.Ordinal);
+    private readonly IDisposable _derivedPropertiesSubscription;
     private bool _isFormCard;
 
     /// <summary>
@@ -32,7 +33,9 @@ public sealed partial class CardViewModel
 
         InitializeGeneratedCommands();
         RebuildDerivedProperties(store.CurrentState);
-        _ = store.States.Subscribe(this, static (state, self) => self.RebuildDerivedProperties(state));
+        _derivedPropertiesSubscription = store.States.Subscribe(
+            this,
+            static (state, self) => self.RebuildDerivedProperties(state));
     }
 
     /// <summary>获取 PageKey。</summary>
@@ -228,5 +231,12 @@ public sealed partial class CardViewModel
 
             _formFieldsCache[field.Key].RefreshValue(currentValue);
         }
+    }
+
+    /// <inheritdoc />
+    protected override void OnDispose()
+    {
+        _derivedPropertiesSubscription.Dispose();
+        base.OnDispose();
     }
 }

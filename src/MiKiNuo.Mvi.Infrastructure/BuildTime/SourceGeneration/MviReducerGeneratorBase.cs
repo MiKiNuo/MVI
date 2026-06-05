@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
@@ -33,7 +32,9 @@ public abstract class MviReducerGeneratorBase : IIncrementalGenerator
     /// <param name="compilation">编译对象。</param>
     private void Execute(SourceProductionContext context, Compilation compilation)
     {
-        foreach (INamedTypeSymbol targetType in FindAllClasses(compilation, context.CancellationToken))
+        foreach (INamedTypeSymbol targetType in GeneratorSyntaxHelpers.EnumerateClassSymbols(
+            compilation,
+            context.CancellationToken))
         {
             if (!IsTargetClass(targetType))
             {
@@ -103,36 +104,6 @@ public abstract class MviReducerGeneratorBase : IIncrementalGenerator
         }
 
         return current;
-    }
-
-    /// <summary>
-    /// 扫描编译中的所有类声明。
-    /// </summary>
-    /// <param name="compilation">编译对象。</param>
-    /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>所有已命名的类型符号。</returns>
-    protected static IEnumerable<INamedTypeSymbol> FindAllClasses(
-        Compilation compilation,
-        System.Threading.CancellationToken cancellationToken)
-    {
-        if (compilation is null)
-        {
-            throw new ArgumentNullException(nameof(compilation));
-        }
-
-        foreach (SyntaxTree tree in compilation.SyntaxTrees)
-        {
-            SyntaxNode root = tree.GetRoot(cancellationToken);
-            SemanticModel semanticModel = compilation.GetSemanticModel(tree);
-            foreach (ClassDeclarationSyntax declaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (semanticModel.GetDeclaredSymbol(declaration, cancellationToken) is INamedTypeSymbol symbol)
-                {
-                    yield return symbol;
-                }
-            }
-        }
     }
 
     /// <summary>

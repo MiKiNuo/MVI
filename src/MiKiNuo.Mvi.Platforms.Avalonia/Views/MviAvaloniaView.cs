@@ -1,16 +1,19 @@
 using Avalonia;
 using Avalonia.Controls;
+using MiKiNuo.Mvi.Presentation.Disposables;
 
 namespace MiKiNuo.Mvi.Platforms.Avalonia.Views;
 
 /// <summary>
 /// 表示 Avalonia 平台 MVI 视图基类。
+/// 内部使用 <see cref="MviDisposableBag"/> 收集 View 绑定生命周期内的可释放资源，
+/// 与 Godot <c>GodotMviControlView</c> 共用同一套释放语义（重入、Dispose-after-Add 竞态等）。
 /// </summary>
 /// <typeparam name="TViewModel">视图模型类型。</typeparam>
 public abstract class MviAvaloniaView<TViewModel> : UserControl
     where TViewModel : class
 {
-    private readonly List<IDisposable> _bindings = [];
+    private MviDisposableBag? _bindings;
 
     /// <summary>
     /// 获取强类型 ViewModel。
@@ -47,7 +50,7 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
     protected void RegisterBinding(IDisposable binding)
     {
         ArgumentNullException.ThrowIfNull(binding);
-        _bindings.Add(binding);
+        EnsureBindings().Add(binding);
     }
 
     /// <summary>
@@ -57,7 +60,7 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
     protected void RegisterBinding(Action dispose)
     {
         ArgumentNullException.ThrowIfNull(dispose);
-        RegisterBinding(new ActionDisposable(dispose));
+        EnsureBindings().Add(dispose);
     }
 
     /// <inheritdoc />
@@ -67,35 +70,14 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
         base.OnDetachedFromVisualTree(e);
     }
 
-    private void ClearBindings()
+    private MviDisposableBag EnsureBindings()
     {
-        for (int index = _bindings.Count - 1; index >= 0; index--)
-        {
-            _bindings[index].Dispose();
-        }
-
-        _bindings.Clear();
+        return _bindings ??= new MviDisposableBag();
     }
 
-    private sealed class ActionDisposable : IDisposable
+    private void ClearBindings()
     {
-        private readonly Action _dispose;
-        private bool _isDisposed;
-
-        public ActionDisposable(Action dispose)
-        {
-            _dispose = dispose;
-        }
-
-        public void Dispose()
-        {
-            if (_isDisposed)
-            {
-                return;
-            }
-
-            _dispose();
-            _isDisposed = true;
-        }
+        _bindings?.Dispose();
+        _bindings = null;
     }
 }

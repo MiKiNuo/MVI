@@ -1,6 +1,7 @@
 using System.ComponentModel;
-using System.Windows.Input;
 using global::Godot;
+using MiKiNuo.Mvi.Application.MVI.Command;
+using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Presentation.Events;
 
 namespace MiKiNuo.Mvi.Platforms.Godot.Binding;
@@ -12,7 +13,7 @@ namespace MiKiNuo.Mvi.Platforms.Godot.Binding;
 public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGodotBindable<TViewModel>
     where TViewModel : class
 {
-    private GodotMviDisposableBag? _bindingBag;
+    private MviDisposableBag? _bindingBag;
 
     /// <inheritdoc />
     public TViewModel? ViewModel { get; private set; }
@@ -24,7 +25,7 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
 
         Unbind();
         ViewModel = viewModel;
-        GodotMviDisposableBag? bindingBag = new();
+        MviDisposableBag? bindingBag = new();
         try
         {
             OnBind(viewModel, bindingBag);
@@ -60,7 +61,7 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     /// </summary>
     /// <param name="viewModel">当前 ViewModel。</param>
     /// <param name="bindings">绑定生命周期集合。</param>
-    protected abstract void OnBind(TViewModel viewModel, GodotMviDisposableBag bindings);
+    protected abstract void OnBind(TViewModel viewModel, MviDisposableBag bindings);
 
     /// <summary>
     /// ViewModel 解绑后执行的扩展点。
@@ -80,7 +81,7 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
         INotifyPropertyChanged source,
         string propertyName,
         Action update,
-        GodotMviDisposableBag bindings)
+        MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
@@ -92,8 +93,6 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
             if (string.IsNullOrEmpty(args.PropertyName) ||
                 string.Equals(args.PropertyName, propertyName, StringComparison.Ordinal))
             {
-                string sourceTypeName = source.GetType().Name;
-                GD.Print($"[Godot MVI Binding] {sourceTypeName}.{propertyName} changed");
                 update();
             }
         }
@@ -104,16 +103,16 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     }
 
     /// <summary>
-    /// 把 Godot Button 绑定到 ICommand。
+    /// 把 Godot Button 绑定到 MVI 命令。
     /// </summary>
     /// <param name="button">按钮。</param>
-    /// <param name="command">命令。</param>
+    /// <param name="command">MVI 命令。</param>
     /// <param name="bindings">绑定生命周期集合。</param>
     /// <param name="parameterFactory">命令参数工厂。</param>
     protected static void BindButton(
         Button button,
-        ICommand command,
-        GodotMviDisposableBag bindings,
+        IMviCommand command,
+        MviDisposableBag bindings,
         Func<object?>? parameterFactory = null)
     {
         ArgumentNullException.ThrowIfNull(button);
@@ -145,7 +144,6 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
 
         command.CanExecuteChanged += CanExecuteChanged;
         RefreshCanExecute();
-        GD.Print($"[Godot MVI Button] {button.Name} bound, InitialCanExecute={!button.Disabled}");
 
         bindings.Add(() =>
         {
@@ -154,11 +152,11 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     }
 
     /// <summary>
-    /// 绑定无参数 Godot 事件到命令。
+    /// 绑定无参数 Godot 事件到 MVI 命令。
     /// </summary>
     /// <param name="subscribe">事件订阅动作。</param>
     /// <param name="unsubscribe">事件取消订阅动作。</param>
-    /// <param name="command">目标命令。</param>
+    /// <param name="command">目标 MVI 命令。</param>
     /// <param name="bindings">绑定生命周期集合。</param>
     /// <param name="payloadFactory">命令载荷工厂。</param>
     /// <param name="sourceName">事件来源名称。</param>
@@ -166,12 +164,12 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
-        Justification = "事件命令绑定注册到 GodotMviDisposableBag，由视图生命周期统一释放。")]
+        Justification = "事件命令绑定注册到 MviDisposableBag，由视图生命周期统一释放。")]
     protected static void BindEvent(
         Action<Action> subscribe,
         Action<Action> unsubscribe,
-        ICommand command,
-        GodotMviDisposableBag bindings,
+        IMviCommand command,
+        MviDisposableBag bindings,
         Func<object?>? payloadFactory = null,
         string? sourceName = null,
         MviViewEventBindingOptions? options = null)
@@ -197,12 +195,12 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     }
 
     /// <summary>
-    /// 绑定带一个事件参数的 Godot 事件到命令。
+    /// 绑定带一个事件参数的 Godot 事件到 MVI 命令。
     /// </summary>
     /// <typeparam name="TEventArgs">事件参数类型。</typeparam>
     /// <param name="subscribe">事件订阅动作。</param>
     /// <param name="unsubscribe">事件取消订阅动作。</param>
-    /// <param name="command">目标命令。</param>
+    /// <param name="command">目标 MVI 命令。</param>
     /// <param name="bindings">绑定生命周期集合。</param>
     /// <param name="payloadFactory">命令载荷工厂。</param>
     /// <param name="sourceName">事件来源名称。</param>
@@ -210,12 +208,12 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
-        Justification = "事件命令绑定注册到 GodotMviDisposableBag，由视图生命周期统一释放。")]
+        Justification = "事件命令绑定注册到 MviDisposableBag，由视图生命周期统一释放。")]
     protected static void BindEvent<TEventArgs>(
         Action<Action<TEventArgs>> subscribe,
         Action<Action<TEventArgs>> unsubscribe,
-        ICommand command,
-        GodotMviDisposableBag bindings,
+        IMviCommand command,
+        MviDisposableBag bindings,
         Func<TEventArgs, object?> payloadFactory,
         string? sourceName = null,
         MviViewEventBindingOptions? options = null)
@@ -242,14 +240,14 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     }
 
     /// <summary>
-    /// 绑定带一个事件参数且使用自定义委托类型的 Godot 事件到命令。
+    /// 绑定带一个事件参数且使用自定义委托类型的 Godot 事件到 MVI 命令。
     /// </summary>
     /// <typeparam name="TEventArgs">事件参数类型。</typeparam>
     /// <typeparam name="TDelegate">Godot 事件委托类型。</typeparam>
     /// <param name="subscribe">事件订阅动作。</param>
     /// <param name="unsubscribe">事件取消订阅动作。</param>
     /// <param name="createHandler">委托适配工厂。</param>
-    /// <param name="command">目标命令。</param>
+    /// <param name="command">目标 MVI 命令。</param>
     /// <param name="bindings">绑定生命周期集合。</param>
     /// <param name="payloadFactory">命令载荷工厂。</param>
     /// <param name="sourceName">事件来源名称。</param>
@@ -257,13 +255,13 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
-        Justification = "事件命令绑定注册到 GodotMviDisposableBag，由视图生命周期统一释放。")]
+        Justification = "事件命令绑定注册到 MviDisposableBag，由视图生命周期统一释放。")]
     protected static void BindEvent<TEventArgs, TDelegate>(
         Action<TDelegate> subscribe,
         Action<TDelegate> unsubscribe,
         Func<Action<TEventArgs>, TDelegate> createHandler,
-        ICommand command,
-        GodotMviDisposableBag bindings,
+        IMviCommand command,
+        MviDisposableBag bindings,
         Func<TEventArgs, object?> payloadFactory,
         string? sourceName = null,
         MviViewEventBindingOptions? options = null)

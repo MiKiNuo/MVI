@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using global::Godot;
-using MiKiNuo.Mvi.Presentation.Threading;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 
 namespace MiKiNuo.Mvi.Platforms.Godot.Threading;
 

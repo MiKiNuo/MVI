@@ -33,11 +33,11 @@ public sealed class SampleCompositionRoot
 
         AppShellViewModel shellViewModel = _container.Resolve<AppShellViewModel>();
         LoginViewModel loginViewModel = _container.Resolve<LoginViewModel>();
-        ValueTask showPageTask = shellViewModel.ShowPageAsync("登录", loginViewModel);
-        if (!showPageTask.IsCompletedSuccessfully)
-        {
-            showPageTask.AsTask().GetAwaiter().GetResult();
-        }
+        // ShowPageAsync 内部仅派发 AppShellIntent.ShowPage，reducer 同步完成，
+        // 不应在此处做 sync-over-async 阻塞。返回值被故意忽略。
+#pragma warning disable CA2012
+        _ = shellViewModel.ShowPageAsync("登录", loginViewModel);
+#pragma warning restore CA2012
         IMviViewRegistry viewRegistry = _container.Resolve<IMviViewRegistry>();
         EventBindingWorkbenchComposition eventBindingWorkbenchComposition = EventBindingWorkbenchComposition.Create();
         return new MainWindow(shellViewModel, viewRegistry, eventBindingWorkbenchComposition);

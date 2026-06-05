@@ -1,6 +1,8 @@
 using MiKiNuo.Mvi.Application.MVI.Diagnostics;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.Common.Errors;
+using MiKiNuo.Mvi.Domain.Common.Results;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -23,8 +25,8 @@ public sealed class MiddlewarePipelineTests
         [
             new MviValidationMiddleware<PatientSearchState, PatientSearchIntent, PatientSearchEffect>(
                 static (state, intent) => intent is PatientSearchIntent.SearchPatient && string.IsNullOrWhiteSpace(state.QueryText)
-                    ? "患者检索关键字不能为空"
-                    : null,
+                    ? OperationResult.Failure(new DomainError("PatientSearch.QueryEmpty", "患者检索关键字不能为空"))
+                    : OperationResult.Success(),
                 diagnosticSink,
                 "患者检索测试 MVI"),
             new MviLoggingMiddleware<PatientSearchState, PatientSearchIntent, PatientSearchEffect>(diagnosticSink, "患者检索测试 MVI"),
