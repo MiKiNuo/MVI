@@ -51,8 +51,8 @@ public sealed class GameLobbySampleRuntime : IDisposable
             errorLabel = root.GetNode<Label>("ErrorLabel");
             errorLabel.Visible = false;
 
-            GodotMviBootstrapper.Install(root);
-            compositionRoot = new AppCompositionRoot();
+            GodotMviUiDispatcher uiDispatcher = GodotMviBootstrapper.Install(root);
+            compositionRoot = new AppCompositionRoot(uiDispatcher);
             appShell = CreateAppShellView();
             Control mounted = GodotMviSceneHost.Mount(appShellSlot, appShell);
             appShell = null;

@@ -1,15 +1,24 @@
-﻿using TUnit.Assertions;
+﻿﻿﻿﻿using TUnit.Assertions;
 using TUnit.Core;
 
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示目录架构测试。
+/// 表示目录架构回归测试。
+/// <para>
+/// 仅承载 Roslyn 分析器无法表达的"文件系统级"约束：
+/// 顶层目录布局、示例项目专属源文件存在性等。
+/// 凡是能在 Compilation 上下文里表达的项目引用 / 包引用 / 命名空间反向渗透，
+/// 都已迁移到 <c>MiKiNuoArchitectureAnalyzer</c> 与
+/// <c>MiKiNuoInfrastructureSampleIsolationAnalyzer</c>（ARCH0007-0009 规则），
+/// 不再依赖运行期文件扫描。
+/// </para>
 /// </summary>
 public sealed class ArchitectureDirectoryTests
 {
     /// <summary>
     /// 验证顶层目录严格为 src、test、sample。
+    /// Roslyn 分析器只看到 Compilation，无法表达文件系统布局，保留为运行期检查。
     /// </summary>
     [Test]
     public async Task Repository_Should_UseSrcTestSampleFoldersAsync()
@@ -32,21 +41,9 @@ public sealed class ArchitectureDirectoryTests
     }
 
     /// <summary>
-    /// 验证 Presentation 抽象层不直接引用具体 UI 平台包。
-    /// </summary>
-    [Test]
-    public async Task PresentationProject_Should_NotReferenceConcretePlatformPackagesAsync()
-    {
-        string root = FindRepositoryRoot();
-        string projectPath = Path.Combine(root, "src", "MiKiNuo.Mvi.Presentation", "MiKiNuo.Mvi.Presentation.csproj");
-        string project = await File.ReadAllTextAsync(projectPath);
-
-        await Assert.That(project.Contains("PackageReference Include=\"Avalonia\"", StringComparison.Ordinal)).IsFalse();
-        await Assert.That(project.Contains("PackageReference Include=\"GodotSharp\"", StringComparison.Ordinal)).IsFalse();
-    }
-
-    /// <summary>
     /// 验证 Dashboard 子组件副作用分发器通过共享交互分发器请求中介者。
+    /// 该约束属于示例项目业务代码模式，留在示例侧或保留运行期测试，
+    /// 框架分析器不感知示例项目类型。
     /// </summary>
     [Test]
     public async Task DashboardEffectDispatchers_Should_UseSharedInteractionDispatcherAsync()
@@ -88,44 +85,9 @@ public sealed class ArchitectureDirectoryTests
     }
 
     /// <summary>
-    /// 验证框架源生成器不包含示例项目专属命名空间或示例生成类型。
-    /// </summary>
-    [Test]
-    public async Task InfrastructureSourceGenerators_Should_NotReferenceSampleSpecificCodeAsync()
-    {
-        string root = FindRepositoryRoot();
-        string sourceGenerationDirectory = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
-            "SourceGeneration");
-
-        List<string> sampleSpecificFiles = [];
-        foreach (string sourcePath in Directory.EnumerateFiles(
-                     sourceGenerationDirectory,
-                     "*.cs",
-                     SearchOption.AllDirectories))
-        {
-            string source = await File.ReadAllTextAsync(sourcePath);
-            if (source.Contains("MiKiNuo.Mvi.Samples.", StringComparison.Ordinal)
-                || source.Contains("SampleGeneratedContainer", StringComparison.Ordinal)
-                || source.Contains("SampleGeneratedViewRegistry", StringComparison.Ordinal)
-                || source.Contains("MviAvaloniaView", StringComparison.Ordinal)
-                || source.Contains("\"Sample\"", StringComparison.Ordinal)
-                || source.Contains("SampleCompositionPrefix", StringComparison.Ordinal)
-                || source.Contains("GetCompositionPrefix", StringComparison.Ordinal))
-            {
-                sampleSpecificFiles.Add(Path.GetRelativePath(root, sourcePath));
-            }
-        }
-
-        await Assert.That(sampleSpecificFiles).IsEmpty();
-    }
-
-    /// <summary>
     /// 验证示例专属的组合根生成器已被拆分到 sample/MiKiNuo.Mvi.Samples.Avalonia.BuildTime，
     /// 不再寄居在框架 Infrastructure 层。
+    /// 这是一项"文件迁移"事实检查，分析器无法表达文件存在性，保留为运行期回归。
     /// </summary>
     [Test]
     public async Task AvaloniaSampleBuildTimeProject_Should_HostSampleCompositionGeneratorAsync()

@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Samples.Avalonia.Composition;
+﻿﻿﻿﻿using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -20,6 +20,7 @@ public sealed class SourceGeneratorIntegrationTests
         string sampleDirectory = Path.Combine(root, "sample", "MiKiNuo.Mvi.Samples.Avalonia");
         string[] generatedFiles = Directory.GetFiles(sampleDirectory, "*.Generated.cs", SearchOption.AllDirectories)
             .Concat(Directory.GetFiles(sampleDirectory, "SampleGenerated*.cs", SearchOption.AllDirectories))
+            .Where(static path => !IsBuildArtifact(path))
             .ToArray();
         string[] templateFiles = Directory.GetFiles(sampleDirectory, "*.mvi.g.cs.template", SearchOption.AllDirectories)
             .Select(Path.GetFileName)
@@ -28,6 +29,17 @@ public sealed class SourceGeneratorIntegrationTests
 
         await Assert.That(generatedFiles).IsEmpty();
         await Assert.That(templateFiles).IsEmpty();
+    }
+
+    /// <summary>
+    /// 排除 <c>obj/</c> 与 <c>bin/</c> 目录下的源生成产物。
+    /// 这些文件由源生成器在编译时写入，不属于手写源码。
+    /// </summary>
+    private static bool IsBuildArtifact(string path)
+    {
+        string normalized = path.Replace('\\', '/');
+        return normalized.Contains("/obj/", StringComparison.Ordinal)
+            || normalized.Contains("/bin/", StringComparison.Ordinal);
     }
 
     /// <summary>

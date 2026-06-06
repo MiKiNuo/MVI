@@ -3,6 +3,7 @@ using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
@@ -167,8 +168,9 @@ public sealed partial class EventBindingWorkbenchViewModel
     /// 初始化事件绑定组合根 ViewModel。
     /// </summary>
     /// <param name="store">组合根 Store。</param>
-    public EventBindingWorkbenchViewModel(IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public EventBindingWorkbenchViewModel(IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
     }
 
@@ -320,8 +322,9 @@ public sealed partial class EventBindingSearchViewModel
     /// 初始化事件绑定搜索面板 ViewModel。
     /// </summary>
     /// <param name="store">搜索面板 Store。</param>
-    public EventBindingSearchViewModel(IMviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public EventBindingSearchViewModel(IMviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
         InitializeGeneratedCommands();
     }
@@ -466,8 +469,9 @@ public sealed partial class EventBindingSelectionViewModel
     /// 初始化事件绑定选择面板 ViewModel。
     /// </summary>
     /// <param name="store">选择面板 Store。</param>
-    public EventBindingSelectionViewModel(IMviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public EventBindingSelectionViewModel(IMviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
         InitializeGeneratedCommands();
     }
@@ -639,8 +643,9 @@ public sealed partial class EventBindingDetailViewModel
     /// 初始化事件绑定详情面板 ViewModel。
     /// </summary>
     /// <param name="store">详情面板 Store。</param>
-    public EventBindingDetailViewModel(IMviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public EventBindingDetailViewModel(IMviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
         InitializeGeneratedCommands();
     }

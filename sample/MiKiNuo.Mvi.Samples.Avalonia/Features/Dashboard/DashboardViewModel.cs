@@ -1,4 +1,5 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 
@@ -14,8 +15,9 @@ public sealed partial class DashboardViewModel
     /// 初始化 Dashboard 壳 ViewModel。
     /// </summary>
     /// <param name="store">Dashboard 壳状态存储。</param>
-    public DashboardViewModel(IMviStore<DashboardState, DashboardIntent, DashboardEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public DashboardViewModel(IMviStore<DashboardState, DashboardIntent, DashboardEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
     }
 

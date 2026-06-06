@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 
@@ -14,8 +15,9 @@ public sealed partial class LoginViewModel : MviViewModelBase<LoginState, LoginI
     /// 初始化游戏登录 ViewModel。
     /// </summary>
     /// <param name="store">登录状态存储。</param>
-    public LoginViewModel(IMviStore<LoginState, LoginIntent, LoginEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Godot 主线程触发 CanExecuteChanged）。</param>
+    public LoginViewModel(IMviStore<LoginState, LoginIntent, LoginEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
         InitializeGeneratedCommands();
     }

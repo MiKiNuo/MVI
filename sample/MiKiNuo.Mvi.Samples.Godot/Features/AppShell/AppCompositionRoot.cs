@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 using MiKiNuo.Mvi.Samples.Godot.Features.Login;
 using MiKiNuo.Mvi.Samples.Godot.Features.Common;
@@ -32,8 +33,11 @@ public sealed class AppCompositionRoot : IDisposable
     /// <summary>
     /// 初始化 Godot 游戏示例应用组合根。
     /// </summary>
-    public AppCompositionRoot()
+    /// <param name="uiDispatcher">Godot 主线程 UI 调度器（必填，确保 PropertyChanged/CanExecuteChanged marshal 到主线程）。</param>
+    public AppCompositionRoot(IMviUiDispatcher uiDispatcher)
     {
+        ArgumentNullException.ThrowIfNull(uiDispatcher);
+
         GameLogicService gameLogicService = new();
         AppShellReducer appShellReducer = new();
         AppShellEffectDispatcher appShellEffectDispatcher = new();
@@ -62,16 +66,16 @@ public sealed class AppCompositionRoot : IDisposable
             new LoginEffectDispatcher(navigator),
             loginMiddlewares);
 
-        _loginViewModel = new LoginViewModel(_loginStore);
-        _lobbyViewModel = new LobbyViewModel(_lobbyStore);
-        _playerHeaderViewModel = new PlayerHeaderViewModel(_lobbyStore);
-        _lobbyMenuViewModel = new LobbyMenuViewModel(_lobbyStore);
-        _missionBoardViewModel = new MissionBoardViewModel(_lobbyStore);
-        _heroRosterViewModel = new HeroRosterViewModel(_lobbyStore);
-        _inventoryViewModel = new InventoryViewModel(_lobbyStore);
-        _forgeLabViewModel = new ForgeLabViewModel(_lobbyStore);
-        _battlePrepViewModel = new BattlePrepViewModel(_lobbyStore);
-        _activityLogViewModel = new ActivityLogViewModel(_lobbyStore);
+        _loginViewModel = new LoginViewModel(_loginStore, uiDispatcher);
+        _lobbyViewModel = new LobbyViewModel(_lobbyStore, uiDispatcher);
+        _playerHeaderViewModel = new PlayerHeaderViewModel(_lobbyStore, uiDispatcher);
+        _lobbyMenuViewModel = new LobbyMenuViewModel(_lobbyStore, uiDispatcher);
+        _missionBoardViewModel = new MissionBoardViewModel(_lobbyStore, uiDispatcher);
+        _heroRosterViewModel = new HeroRosterViewModel(_lobbyStore, uiDispatcher);
+        _inventoryViewModel = new InventoryViewModel(_lobbyStore, uiDispatcher);
+        _forgeLabViewModel = new ForgeLabViewModel(_lobbyStore, uiDispatcher);
+        _battlePrepViewModel = new BattlePrepViewModel(_lobbyStore, uiDispatcher);
+        _activityLogViewModel = new ActivityLogViewModel(_lobbyStore, uiDispatcher);
 
         Wait(_lobbyStore.DispatchAsync(new LobbyIntent.AttachChildren(
             _playerHeaderViewModel,
@@ -85,7 +89,7 @@ public sealed class AppCompositionRoot : IDisposable
 
         Wait(_appShellStore.DispatchAsync(new AppShellIntent.AttachChildren(_loginViewModel, _lobbyViewModel)));
 
-        AppShellViewModel = new AppShellViewModel(_appShellStore);
+        AppShellViewModel = new AppShellViewModel(_appShellStore, uiDispatcher);
     }
 
     /// <summary>

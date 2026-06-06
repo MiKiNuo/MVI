@@ -1,5 +1,6 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
+﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
@@ -25,68 +26,72 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 public sealed partial class BusinessCompositePageViewModel
     : MviViewModelBase<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>
 {
+    private readonly CardStoreFactory _factory;
+
     /// <summary>
     /// 初始化生产业务组合页面 ViewModel。
-    /// 16 个 CardViewModel 通过 <see cref="CardStoreFactory.Current"/> 在属性 getter 中懒加载，
-    /// 因此在容器未先初始化 CardStoreFactory 的测试路径（如 GeneratedContainerTests）中 VM 构造不会抛异常；
-    /// 只有真正访问 *Card 属性时才会抛。
+    /// 16 个 CardViewModel 由 DI 容器注入的 <see cref="CardStoreFactory"/> 单例提供。
     /// </summary>
     /// <param name="store">业务页面状态存储。</param>
-    public BusinessCompositePageViewModel(IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store)
-        : base(store)
+    /// <param name="factory">卡片 Store 与 ViewModel 工厂。</param>
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public BusinessCompositePageViewModel(
+        IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store,
+        CardStoreFactory factory,
+        IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
+        ArgumentNullException.ThrowIfNull(factory);
+        _factory = factory;
     }
 
-    private static CardStoreFactory Factory => CardStoreFactory.Current
-        ?? throw new InvalidOperationException("CardStoreFactory.Current 未初始化。请在 SampleCompositionRoot.CreateMainWindow 中先实例化。");
-
     /// <summary>获取住院床位总览卡片 VM。</summary>
-    public CardViewModel InpatientBedOverviewCard => Factory.GetViewModel(PageKey.BedOverview);
+    public CardViewModel InpatientBedOverviewCard => _factory.GetViewModel(PageKey.BedOverview);
 
     /// <summary>获取入院协调卡片 VM（Form Card）。</summary>
-    public CardViewModel InpatientAdmissionCoordinatorCard => Factory.GetViewModel(PageKey.AdmissionCoordinator);
+    public CardViewModel InpatientAdmissionCoordinatorCard => _factory.GetViewModel(PageKey.AdmissionCoordinator);
 
     /// <summary>获取护理任务卡片 VM。</summary>
-    public CardViewModel InpatientNursingTaskCard => Factory.GetViewModel(PageKey.NursingTaskBoard);
+    public CardViewModel InpatientNursingTaskCard => _factory.GetViewModel(PageKey.NursingTaskBoard);
 
     /// <summary>获取病区风险事件卡片 VM（Form Card）。</summary>
-    public CardViewModel InpatientRiskEventCard => Factory.GetViewModel(PageKey.WardRiskPanel);
+    public CardViewModel InpatientRiskEventCard => _factory.GetViewModel(PageKey.WardRiskPanel);
 
     /// <summary>获取检验医嘱开立卡片 VM（Form Card）。</summary>
-    public CardViewModel LabOrderCard => Factory.GetViewModel(PageKey.LabOrderComposer);
+    public CardViewModel LabOrderCard => _factory.GetViewModel(PageKey.LabOrderComposer);
 
     /// <summary>获取标本流转卡片 VM。</summary>
-    public CardViewModel LabSpecimenFlowCard => Factory.GetViewModel(PageKey.SpecimenTracker);
+    public CardViewModel LabSpecimenFlowCard => _factory.GetViewModel(PageKey.SpecimenTracker);
 
     /// <summary>获取危急值卡片 VM。</summary>
-    public CardViewModel LabCriticalValueCard => Factory.GetViewModel(PageKey.CriticalValueMonitor);
+    public CardViewModel LabCriticalValueCard => _factory.GetViewModel(PageKey.CriticalValueMonitor);
 
     /// <summary>获取 TAT 监控卡片 VM。</summary>
-    public CardViewModel LabTatCard => Factory.GetViewModel(PageKey.LabTurnaroundBoard);
+    public CardViewModel LabTatCard => _factory.GetViewModel(PageKey.LabTurnaroundBoard);
 
     /// <summary>获取处方审核卡片 VM（Form Card）。</summary>
-    public CardViewModel PharmacyPrescriptionCard => Factory.GetViewModel(PageKey.PrescriptionReviewBoard);
+    public CardViewModel PharmacyPrescriptionCard => _factory.GetViewModel(PageKey.PrescriptionReviewBoard);
 
     /// <summary>获取库存水位卡片 VM。</summary>
-    public CardViewModel PharmacyStockCard => Factory.GetViewModel(PageKey.DrugStockMonitor);
+    public CardViewModel PharmacyStockCard => _factory.GetViewModel(PageKey.DrugStockMonitor);
 
     /// <summary>获取补货计划卡片 VM。</summary>
-    public CardViewModel PharmacyReplenishmentCard => Factory.GetViewModel(PageKey.ReplenishmentPlanner);
+    public CardViewModel PharmacyReplenishmentCard => _factory.GetViewModel(PageKey.ReplenishmentPlanner);
 
     /// <summary>获取用药安全卡片 VM。</summary>
-    public CardViewModel PharmacySafetyCard => Factory.GetViewModel(PageKey.MedicationSafetyPanel);
+    public CardViewModel PharmacySafetyCard => _factory.GetViewModel(PageKey.MedicationSafetyPanel);
 
     /// <summary>获取院级 KPI 卡片 VM。</summary>
-    public CardViewModel QualityKpiCard => Factory.GetViewModel(PageKey.QualityKpiBoard);
+    public CardViewModel QualityKpiCard => _factory.GetViewModel(PageKey.QualityKpiBoard);
 
     /// <summary>获取病历缺陷抽查卡片 VM。</summary>
-    public CardViewModel QualityAuditCard => Factory.GetViewModel(PageKey.MedicalRecordAuditBoard);
+    public CardViewModel QualityAuditCard => _factory.GetViewModel(PageKey.MedicalRecordAuditBoard);
 
     /// <summary>获取风险事件分级卡片 VM（Form Card）。</summary>
-    public CardViewModel QualityRiskCard => Factory.GetViewModel(PageKey.RiskEventBoard);
+    public CardViewModel QualityRiskCard => _factory.GetViewModel(PageKey.RiskEventBoard);
 
     /// <summary>获取整改闭环追踪卡片 VM。</summary>
-    public CardViewModel QualityRectificationCard => Factory.GetViewModel(PageKey.RectificationTracker);
+    public CardViewModel QualityRectificationCard => _factory.GetViewModel(PageKey.RectificationTracker);
 
     /// <summary>
     /// 获取场景标题。

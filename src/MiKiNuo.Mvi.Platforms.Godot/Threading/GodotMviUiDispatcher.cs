@@ -1,12 +1,14 @@
 using System.Collections.Concurrent;
 using global::Godot;
 using MiKiNuo.Mvi.Application.MVI.Threading;
+using MiKiNuo.Mvi.Domain.DI;
 
 namespace MiKiNuo.Mvi.Platforms.Godot.Threading;
 
 /// <summary>
 /// 表示 Godot 主线程上的 MVI UI 调度器。
 /// </summary>
+[DiService(ServiceLifetime.Singleton, ServiceType = typeof(IMviUiDispatcher))]
 public partial class GodotMviUiDispatcher : Node, IMviUiDispatcher
 {
     private readonly ConcurrentQueue<Action> _actions = new();

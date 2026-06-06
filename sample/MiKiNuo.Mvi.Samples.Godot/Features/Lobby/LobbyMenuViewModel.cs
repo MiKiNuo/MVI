@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 
@@ -14,8 +15,9 @@ public sealed partial class LobbyMenuViewModel : MviViewModelBase<LobbyState, Lo
     /// 初始化大厅菜单 ViewModel。
     /// </summary>
     /// <param name="store">大厅状态存储。</param>
-    public LobbyMenuViewModel(IMviStore<LobbyState, LobbyIntent, LobbyEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Godot 主线程触发 CanExecuteChanged）。</param>
+    public LobbyMenuViewModel(IMviStore<LobbyState, LobbyIntent, LobbyEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
         InitializeGeneratedCommands();
     }

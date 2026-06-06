@@ -62,13 +62,15 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         List<ViewInfo> views = DiscoverViews(classes);
         ServiceInfo? authService = DiscoverService(classes, "IAuthService", "FakeAuthService");
         INamedTypeSymbol? loginNavigationService = DiscoverInterface(compilation, cancellationToken, "ILoginNavigationService");
+        CardStoreFactoryInfo? cardStoreFactory = DiscoverCardStoreFactory(classes, cancellationToken);
 
         return new GenerationModel(
             compilation.AssemblyName ?? "GeneratedMviAssembly",
             features,
             views,
             authService,
-            loginNavigationService);
+            loginNavigationService,
+            cardStoreFactory);
     }
 
     private static List<INamedTypeSymbol> DiscoverClasses(
@@ -211,6 +213,38 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                     return symbol;
                 }
             }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 发现 <c>CardStoreFactory</c> 类型（按名称匹配），用于将其注入到 <c>BusinessCompositePageViewModel</c> 构造中。
+    /// 工厂依赖 <c>IMviMediator</c>，由 <c>SampleGeneratedContainer</c> 通过 <c>this</c> 满足。
+    /// </summary>
+    private static CardStoreFactoryInfo? DiscoverCardStoreFactory(
+        List<INamedTypeSymbol> classes,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        foreach (INamedTypeSymbol classSymbol in classes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (classSymbol.Name != "CardStoreFactory")
+            {
+                continue;
+            }
+
+            IMethodSymbol? constructor = classSymbol.Constructors
+                .Where(static ctor => ctor.DeclaredAccessibility == Accessibility.Public)
+                .OrderByDescending(static ctor => ctor.Parameters.Length)
+                .FirstOrDefault();
+
+            if (constructor is null)
+            {
+                continue;
+            }
+
+            return new CardStoreFactoryInfo(classSymbol, constructor);
         }
 
         return null;
@@ -399,6 +433,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("using MiKiNuo.Mvi.Application.MVI.Mediator;");
         builder.AppendLine("using MiKiNuo.Mvi.Application.MVI.Middleware;");
         builder.AppendLine("using MiKiNuo.Mvi.Application.MVI.Store;");
+        builder.AppendLine("using MiKiNuo.Mvi.Application.MVI.Threading;");
         builder.AppendLine("using MiKiNuo.Mvi.Domain.DI;");
         builder.AppendLine("using MiKiNuo.Mvi.Presentation.ViewRegistry;");
         builder.AppendLine();
@@ -419,6 +454,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("    private readonly Dictionary<Type, object> _singletons = new();");
         builder.AppendLine("    private readonly IReadOnlyList<MviServiceDescriptor> _serviceDescriptors;");
         builder.AppendLine("    private IMviViewRegistry? _viewRegistry;");
+        // Avalonia 平台专用 UI 调度器单例；所有 ViewModel 与 CardStoreFactory 共用同一实例，
+        // 确保 PropertyChanged/CanExecuteChanged 都能 marshal 到 Avalonia UI 线程。
+        builder.AppendLine("    private IMviUiDispatcher? _uiDispatcher;");
+        builder.AppendLine("    private IMviUiDispatcher ResolveUiDispatcher() => _uiDispatcher ??= new global::MiKiNuo.Mvi.Platforms.Avalonia.Threading.AvaloniaMviUiDispatcher();");
+        builder.AppendLine();
 
         if (dashboard is not null)
         {
@@ -440,6 +480,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         if (fieldBusinessCompositePage is not null)
         {
             builder.Append("    private ").Append(StoreType(fieldBusinessCompositePage)).AppendLine("? _businessCompositePageStore;");
+        }
+
+        if (model.CardStoreFactory is not null)
+        {
+            builder.Append("    private ").Append(model.CardStoreFactory.TypeName).AppendLine("? _cardStoreFactory;");
         }
 
         builder.AppendLine();
@@ -513,6 +558,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         AppendResolveCore(builder, model, containerName, registryName, login, shell, dashboard);
         AppendStoreHelpers(builder, login, shell);
         AppendDashboardHelpers(builder, model, dashboard);
+        AppendCardStoreFactoryResolver(builder, model);
         AppendScope(builder, containerName, login);
 
         builder.AppendLine("}");
@@ -687,6 +733,18 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            return _viewRegistry ??= new ").Append(registryName).AppendLine("();");
         builder.AppendLine("        }");
         builder.AppendLine();
+        builder.AppendLine("        if (serviceType == typeof(IMviUiDispatcher))");
+        builder.AppendLine("        {");
+        // AvaloniaMviUiDispatcher 来自 MiKiNuo.Mvi.Platforms.Avalonia 程序集，
+        // 该程序集不在本生成器的 Compilation 内可枚举类型范围（[DiService] 跨程序集不可见），
+        // 因此显式硬编码以保证示例在 Avalonia 平台上能将状态变更安全地 marshal 到 UI 线程。
+        // 若 MviCommandBase 回退到 MviInlineUiDispatcher，Avalonia 的 Button.CanExecuteChanged
+        // 处理器会在 R3 订阅线程上访问 button.Command 触发 VerifyAccess 异常。
+        // 复用 ResolveUiDispatcher() 缓存的实例，确保容器外部 Resolve<IMviUiDispatcher>()
+        // 与 ViewModel 构造函数注入拿到的是同一对象。
+        builder.AppendLine("            return GetSingleton(serviceType, ResolveUiDispatcher);");
+        builder.AppendLine("        }");
+        builder.AppendLine();
         builder.Append("        if (serviceType == typeof(").Append(shell.ViewModelTypeName).AppendLine("))");
         builder.AppendLine("        {");
         builder.AppendLine("            return ResolveShellViewModel();");
@@ -695,7 +753,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("        if (serviceType == typeof(").Append(login.ViewModelTypeName).AppendLine("))");
         builder.AppendLine("        {");
         builder.Append("            return GetSingleton(serviceType, () => new ").Append(login.ViewModelTypeName)
-            .AppendLine("(ResolveLoginStore()));");
+            .AppendLine("(ResolveLoginStore(), ResolveUiDispatcher()));");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.Append("        if (serviceType == typeof(").Append(StoreType(login)).AppendLine("))");
@@ -747,7 +805,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             .Append("            ").Append(shell.StateTypeName).AppendLine(".Initial,")
             .Append("            new ").Append(shell.ReducerTypeName).AppendLine("(),")
             .Append("            new ").Append(shell.DispatcherTypeName).AppendLine("());");
-        builder.Append("        return new ").Append(shell.ViewModelTypeName).AppendLine("(store);");
+        builder.Append("        return new ").Append(shell.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.Append("    private ").Append(StoreType(login)).AppendLine(" ResolveLoginStore()");
@@ -835,7 +893,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("                currentPageViewModel),");
         builder.Append("            new ").Append(dashboard.ReducerTypeName).AppendLine("(),");
         builder.Append("            new ").Append(dashboard.DispatcherTypeName).AppendLine("());");
-        builder.Append("        _dashboardViewModel = new ").Append(dashboard.ViewModelTypeName).AppendLine("(_dashboardStore);");
+        builder.Append("        _dashboardViewModel = new ").Append(dashboard.ViewModelTypeName).AppendLine("(_dashboardStore, ResolveUiDispatcher());");
         builder.AppendLine("        return _dashboardViewModel;");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -852,7 +910,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 .AppendLine("(\"HIS/EMR 组合式 Dashboard\", $\"欢迎，{displayName}\"),");
             builder.Append("            new ").Append(header.ReducerTypeName).AppendLine("(),");
             builder.Append("            new ").Append(header.DispatcherTypeName).AppendLine("());");
-            builder.Append("        return new ").Append(header.ViewModelTypeName).AppendLine("(store);");
+            builder.Append("        return new ").Append(header.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -914,7 +972,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 builder.Append("            new ").Append(clinicalEditor.ReducerTypeName).AppendLine("(),");
                 builder.Append("            ").Append(CreateDispatcherExpression(clinicalEditor)).AppendLine(");");
                 builder.AppendLine("        _clinicalEditorStore = editorStore;");
-                builder.Append("        object editorViewModel = new ").Append(clinicalEditor.ViewModelTypeName).AppendLine("(editorStore);");
+                builder.Append("        object editorViewModel = new ").Append(clinicalEditor.ViewModelTypeName).AppendLine("(editorStore, ResolveUiDispatcher());");
             }
             else
             {
@@ -929,7 +987,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 builder.Append("            new ").Append(clinicalReminder.ReducerTypeName).AppendLine("(),");
                 builder.Append("            ").Append(CreateDispatcherExpression(clinicalReminder)).AppendLine(");");
                 builder.AppendLine("        _clinicalReminderStore = reminderStore;");
-                builder.Append("        object reminderViewModel = new ").Append(clinicalReminder.ViewModelTypeName).AppendLine("(reminderStore);");
+                builder.Append("        object reminderViewModel = new ").Append(clinicalReminder.ViewModelTypeName).AppendLine("(reminderStore, ResolveUiDispatcher());");
             }
             else
             {
@@ -942,7 +1000,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 .AppendLine("(queueViewModel, editorViewModel, reminderViewModel),");
             builder.Append("            new ").Append(outpatient.ReducerTypeName).AppendLine("(),");
             builder.Append("            new ").Append(outpatient.DispatcherTypeName).AppendLine("());");
-            builder.Append("        return new ").Append(outpatient.ViewModelTypeName).AppendLine("(store);");
+            builder.Append("        return new ").Append(outpatient.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -1148,7 +1206,34 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.AppendLine("        _businessCompositePageStore = store;");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store);");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveCardStoreFactory(), ResolveUiDispatcher());");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+    }
+
+    /// <summary>
+    /// 生成按需构造的 <c>CardStoreFactory</c> 解析器，缓存为单例。
+    /// 工厂仅依赖 <c>IMviMediator</c>，因此通过 <c>this</c> 满足依赖。
+    /// </summary>
+    /// <param name="builder">字符串构建器。</param>
+    /// <param name="model">生成模型。</param>
+    private static void AppendCardStoreFactoryResolver(StringBuilder builder, GenerationModel model)
+    {
+        if (model.CardStoreFactory is null)
+        {
+            return;
+        }
+
+        builder.Append("    private ").Append(model.CardStoreFactory.TypeName).AppendLine(" ResolveCardStoreFactory()");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (_cardStoreFactory is not null)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return _cardStoreFactory;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.Append("        _cardStoreFactory = new ").Append(model.CardStoreFactory.TypeName)
+            .Append("(this);").AppendLine();
+        builder.AppendLine("        return _cardStoreFactory;");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1172,7 +1257,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            ").Append(feature.StateTypeName).AppendLine(".CreateInitial(pageKey),");
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store);");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1196,7 +1281,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            new ").Append(feature.StateTypeName).AppendLine("(title, value, status, detail, true),");
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store);");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1218,12 +1303,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         builder.Append("    private ").Append(feature.ViewModelTypeName).AppendLine(" CreateArchitectureValidationViewModel()");
         builder.AppendLine("    {");
-        builder.AppendLine("        object patientSearchViewModel = CreatePatientSearchViewModel(\"架构验证中心\");");
-        builder.AppendLine("        object auditTimelineViewModel = CreateAuditTimelineViewModel(\"架构验证中心\");");
-        builder.AppendLine("        object middlewareMetricViewModel = CreateMetricCardViewModel(\"中间件\", \"2\", \"Active\", \"日志与性能中间件已接入组合根。\");");
-        builder.AppendLine("        object reuseMetricViewModel = CreateMetricCardViewModel(\"复用组件\", \"2\", \"Reusable\", \"患者检索与审计时间线可复用。\");");
-        builder.AppendLine("        object mediatorMetricViewModel = CreateMetricCardViewModel(\"中介者\", \"1\", \"Routing\", \"父子组件通过 Request/Response 中介者协作。\");");
-        builder.AppendLine("        object effectMetricViewModel = CreateMetricCardViewModel(\"副作用\", \"多路\", \"Observed\", \"组件副作用通过 Dispatcher 进入业务流。\");");
+        builder.Append("        ").Append(patientSearch.ViewModelTypeName).AppendLine(" patientSearchViewModel = CreatePatientSearchViewModel(\"架构验证中心\");");
+        builder.Append("        ").Append(auditTimeline.ViewModelTypeName).AppendLine(" auditTimelineViewModel = CreateAuditTimelineViewModel(\"架构验证中心\");");
+        builder.Append("        ").Append(metricCard.ViewModelTypeName).AppendLine(" middlewareMetricViewModel = CreateMetricCardViewModel(\"中间件\", \"2\", \"Active\", \"日志与性能中间件已接入组合根。\");");
+        builder.Append("        ").Append(metricCard.ViewModelTypeName).AppendLine(" reuseMetricViewModel = CreateMetricCardViewModel(\"复用组件\", \"2\", \"Reusable\", \"患者检索与审计时间线可复用。\");");
+        builder.Append("        ").Append(metricCard.ViewModelTypeName).AppendLine(" mediatorMetricViewModel = CreateMetricCardViewModel(\"中介者\", \"1\", \"Routing\", \"父子组件通过 Request/Response 中介者协作。\");");
+        builder.Append("        ").Append(metricCard.ViewModelTypeName).AppendLine(" effectMetricViewModel = CreateMetricCardViewModel(\"副作用\", \"多路\", \"Observed\", \"组件副作用通过 Dispatcher 进入业务流。\");");
         builder.Append("        ").Append(StoreType(feature)).Append(" store = new MviStore<")
             .Append(feature.StateTypeName).Append(", ").Append(feature.IntentTypeName).Append(", ")
             .Append(feature.EffectTypeName).AppendLine(">(");
@@ -1241,7 +1326,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("                \"等待子组件交互。\"),");
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store);");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1265,7 +1350,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            ").Append(stateExpression).AppendLine(",");
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store);");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1413,13 +1498,15 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             IReadOnlyList<FeatureInfo> features,
             IReadOnlyList<ViewInfo> views,
             ServiceInfo? authService,
-            INamedTypeSymbol? loginNavigationService)
+            INamedTypeSymbol? loginNavigationService,
+            CardStoreFactoryInfo? cardStoreFactory)
         {
             CompositionNamespace = assemblyName + ".Composition";
             Features = features;
             Views = views;
             AuthService = authService;
             LoginNavigationService = loginNavigationService;
+            CardStoreFactory = cardStoreFactory;
             _featuresByName = features.ToDictionary(static feature => feature.BaseName, StringComparer.Ordinal);
         }
 
@@ -1433,6 +1520,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         public INamedTypeSymbol? LoginNavigationService { get; }
 
+        public CardStoreFactoryInfo? CardStoreFactory { get; }
+
         public FeatureInfo? LoginFeature => GetFeature("Login");
 
         public FeatureInfo? ShellFeature => GetFeature("AppShell");
@@ -1443,6 +1532,25 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 ? feature
                 : null;
         }
+    }
+
+    /// <summary>
+    /// 表示 <c>CardStoreFactory</c> 的源生成器视图：仅记录类型完整名和已选中的构造函数。
+    /// </summary>
+    private sealed class CardStoreFactoryInfo
+    {
+        public CardStoreFactoryInfo(INamedTypeSymbol type, IMethodSymbol constructor)
+        {
+            Type = type;
+            TypeName = Format(type);
+            Constructor = constructor;
+        }
+
+        public INamedTypeSymbol Type { get; }
+
+        public string TypeName { get; }
+
+        public IMethodSymbol Constructor { get; }
     }
 
     private sealed class FeatureInfo

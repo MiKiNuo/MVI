@@ -1,6 +1,7 @@
 using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
@@ -38,6 +39,44 @@ public sealed class GeneratedContainerTests
         await Assert.That(loginViewModel).IsNotNull();
         await Assert.That(shellViewModel).IsNotNull();
         await Assert.That(viewRegistry).IsNotNull();
+    }
+
+    /// <summary>
+    /// 验证容器能够解析 <c>IMviUiDispatcher</c>，并返回 Avalonia 平台实现。
+    /// 这是 "Avalonia 应用在状态变更时抛 'calling thread cannot access this object' 跨线程异常" 的回归测试：
+    /// 若示例容器未注册平台调度器，<c>MviCommandBase</c> 会回退到 <c>MviInlineUiDispatcher</c>，
+    /// 在 R3 订阅线程上同步执行 <c>CanExecuteChanged</c>，触发 Avalonia 的 <c>Dispatcher.VerifyAccess</c> 失败。
+    /// </summary>
+    [Test]
+    public async Task Resolve_Should_ReturnAvaloniaUiDispatcherAsync()
+    {
+        SampleGeneratedContainer container = new();
+
+        IMviUiDispatcher dispatcher = container.Resolve<IMviUiDispatcher>();
+
+        await Assert.That(dispatcher).IsNotNull();
+        await Assert.That(dispatcher.GetType().FullName)
+            .IsEqualTo("MiKiNuo.Mvi.Platforms.Avalonia.Threading.AvaloniaMviUiDispatcher");
+    }
+
+    /// <summary>
+    /// 验证 ViewModel 解析后其 <c>UiDispatcher</c> 与容器注册的 <c>IMviUiDispatcher</c> 是同一实例。
+    /// 这是 "ViewModel 构造函数未传递 <c>IMviUiDispatcher</c> 时 <c>MviCommandBase</c> 回退到
+    /// <c>MviInlineUiDispatcher</c>" 症状的回归测试：源生成器创建 ViewModel 时必须把容器内
+    /// 已注册的 AvaloniaMviUiDispatcher 显式注入到构造函数参数，确保 <c>PropertyChanged</c> 与
+    /// <c>CanExecuteChanged</c> 都能 marshal 到 Avalonia UI 线程。
+    /// </summary>
+    [Test]
+    public async Task Resolved_ViewModel_Should_ExposeContainerUiDispatcherAsync()
+    {
+        SampleGeneratedContainer container = new();
+
+        IMviUiDispatcher dispatcher = container.Resolve<IMviUiDispatcher>();
+        LoginViewModel loginViewModel = container.Resolve<LoginViewModel>();
+        AppShellViewModel shellViewModel = container.Resolve<AppShellViewModel>();
+
+        await Assert.That(loginViewModel.UiDispatcher).IsSameReferenceAs(dispatcher);
+        await Assert.That(shellViewModel.UiDispatcher).IsSameReferenceAs(dispatcher);
     }
 
     /// <summary>

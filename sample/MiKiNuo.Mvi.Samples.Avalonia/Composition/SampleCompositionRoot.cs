@@ -1,7 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Presentation.ViewRegistry;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
@@ -29,8 +28,6 @@ public sealed class SampleCompositionRoot
     /// <returns>主窗口。</returns>
     public MainWindow CreateMainWindow()
     {
-        _ = new CardStoreFactory(_container.Resolve<IMviMediator>());
-
         AppShellViewModel shellViewModel = _container.Resolve<AppShellViewModel>();
         LoginViewModel loginViewModel = _container.Resolve<LoginViewModel>();
         // ShowPageAsync 内部仅派发 AppShellIntent.ShowPage，reducer 同步完成，

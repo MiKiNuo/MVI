@@ -1,5 +1,4 @@
 using global::Godot;
-using MiKiNuo.Mvi.Application.MVI.Threading;
 
 namespace MiKiNuo.Mvi.Platforms.Godot.Threading;
 
@@ -9,7 +8,7 @@ namespace MiKiNuo.Mvi.Platforms.Godot.Threading;
 public static class GodotMviBootstrapper
 {
     /// <summary>
-    /// 安装 Godot MVI UI 调度器并接入通用 ViewModel UI 通知调度器。
+    /// 安装 Godot MVI UI 调度器到指定根节点，并返回该调度器供 DI 容器注册。
     /// </summary>
     /// <param name="root">Godot 根节点或当前场景根节点。</param>
     /// <param name="name">调度器节点名称。</param>
@@ -30,17 +29,6 @@ public static class GodotMviBootstrapper
             root.AddChild(dispatcher);
         }
 
-        Configure(dispatcher);
         return dispatcher;
-    }
-
-    /// <summary>
-    /// 把指定 Godot UI 调度器配置到 MVI Presentation 层。
-    /// </summary>
-    /// <param name="dispatcher">Godot UI 调度器。</param>
-    public static void Configure(GodotMviUiDispatcher dispatcher)
-    {
-        ArgumentNullException.ThrowIfNull(dispatcher);
-        MviUiNotificationDispatcher.Configure(dispatcher.Post);
     }
 }

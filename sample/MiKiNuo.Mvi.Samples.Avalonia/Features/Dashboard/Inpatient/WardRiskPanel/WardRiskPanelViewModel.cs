@@ -1,5 +1,6 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Command;
+﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 
@@ -15,8 +16,9 @@ public sealed partial class WardRiskPanelViewModel
     /// 初始化病区风险 MVI ViewModel。
     /// </summary>
     /// <param name="store">状态存储。</param>
-    public WardRiskPanelViewModel(IMviStore<WardRiskPanelState, WardRiskPanelIntent, WardRiskPanelEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public WardRiskPanelViewModel(IMviStore<WardRiskPanelState, WardRiskPanelIntent, WardRiskPanelEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
         InitializeGeneratedCommands();
     }

@@ -1,4 +1,7 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.State;
+﻿﻿﻿﻿using MiKiNuo.Mvi.Domain.MVI.State;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.AuditTimeline;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
 
@@ -19,12 +22,12 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation
 public sealed record ArchitectureValidationState(
     string Title,
     string Description,
-    object PatientSearchViewModel,
-    object AuditTimelineViewModel,
-    object MiddlewareMetricViewModel,
-    object ReuseMetricViewModel,
-    object MediatorMetricViewModel,
-    object EffectMetricViewModel,
+    PatientSearchViewModel PatientSearchViewModel,
+    AuditTimelineViewModel AuditTimelineViewModel,
+    CardViewModel MiddlewareMetricViewModel,
+    CardViewModel ReuseMetricViewModel,
+    CardViewModel MediatorMetricViewModel,
+    CardViewModel EffectMetricViewModel,
     string ActiveContext,
     string FlowStatus,
     string InteractionLog) : IMviState;

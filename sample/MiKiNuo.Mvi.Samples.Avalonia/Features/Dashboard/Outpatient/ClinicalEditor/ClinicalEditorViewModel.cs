@@ -1,5 +1,6 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Command;
+﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 
@@ -15,8 +16,9 @@ public sealed partial class ClinicalEditorViewModel
     /// 初始化门诊病历编辑 ViewModel。
     /// </summary>
     /// <param name="store">病历编辑状态存储。</param>
-    public ClinicalEditorViewModel(IMviStore<ClinicalEditorState, ClinicalEditorIntent, ClinicalEditorEffect> store)
-        : base(store)
+    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
+    public ClinicalEditorViewModel(IMviStore<ClinicalEditorState, ClinicalEditorIntent, ClinicalEditorEffect> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher)
     {
         InitializeGeneratedCommands();
     }

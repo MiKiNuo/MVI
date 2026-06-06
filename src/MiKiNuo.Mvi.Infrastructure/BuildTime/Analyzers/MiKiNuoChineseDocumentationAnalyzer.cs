@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using MiKiNuo.Mvi.Infrastructure.BuildTime.Diagnostics;
 
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.Analyzers;
 
@@ -11,7 +12,7 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.Analyzers;
 public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
 {
     private static readonly DiagnosticDescriptor TypeDocumentationRule = new(
-        id: "DOC0001",
+        id: DiagnosticIdCatalog.DocTypeMissing,
         title: "公共类型必须提供中文 XML 注释",
         messageFormat: "公共类型“{0}”必须提供良好的中文 XML 注释。",
         category: "Documentation",
@@ -20,7 +21,7 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         description: "类、接口、枚举、委托和记录类型等公共 API 必须提供中文 XML 注释.");
 
     private static readonly DiagnosticDescriptor MethodDocumentationRule = new(
-        id: "DOC0002",
+        id: DiagnosticIdCatalog.DocMethodMissing,
         title: "公共方法必须提供中文 XML 注释",
         messageFormat: "公共方法“{0}”必须提供良好的中文 XML 注释。",
         category: "Documentation",
@@ -29,7 +30,7 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         description: "公共方法、构造函数、虚方法和抽象方法必须提供中文 XML 注释.");
 
     private static readonly DiagnosticDescriptor PropertyDocumentationRule = new(
-        id: "DOC0003",
+        id: DiagnosticIdCatalog.DocPropertyMissing,
         title: "公共属性必须提供中文 XML 注释",
         messageFormat: "公共属性“{0}”必须提供良好的中文 XML 注释。",
         category: "Documentation",
@@ -38,7 +39,7 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         description: "公共属性和需要维护的受保护属性必须提供中文 XML 注释.");
 
     private static readonly DiagnosticDescriptor FieldDocumentationRule = new(
-        id: "DOC0004",
+        id: DiagnosticIdCatalog.DocFieldMissing,
         title: "公共字段和常量必须提供中文 XML 注释",
         messageFormat: "公共字段或常量“{0}”必须提供良好的中文 XML 注释。",
         category: "Documentation",
@@ -47,7 +48,7 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         description: "公共字段、公共常量和公共静态字段必须提供中文 XML 注释.");
 
     private static readonly DiagnosticDescriptor InterfaceMemberDocumentationRule = new(
-        id: "DOC0005",
+        id: DiagnosticIdCatalog.DocInterfaceMemberMissing,
         title: "接口成员必须提供中文 XML 注释",
         messageFormat: "接口成员“{0}”必须提供良好的中文 XML 注释。",
         category: "Documentation",
@@ -56,7 +57,7 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         description: "接口成员属于公共契约，必须提供中文 XML 注释.");
 
     private static readonly DiagnosticDescriptor ParameterDocumentationRule = new(
-        id: "DOC0006",
+        id: DiagnosticIdCatalog.DocParameterMissing,
         title: "公共方法参数必须提供中文说明",
         messageFormat: "公共方法“{0}”的参数必须提供中文 param 注释。",
         category: "Documentation",
@@ -65,7 +66,7 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         description: "公共方法参数必须使用中文 param 说明.");
 
     private static readonly DiagnosticDescriptor ReturnDocumentationRule = new(
-        id: "DOC0007",
+        id: DiagnosticIdCatalog.DocReturnMissing,
         title: "公共方法返回值必须提供中文说明",
         messageFormat: "公共方法“{0}”的返回值必须提供中文 returns 注释。",
         category: "Documentation",
@@ -74,7 +75,7 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         description: "有返回值的公共方法必须使用中文 returns 说明.");
 
     private static readonly DiagnosticDescriptor InvalidDocumentationRule = new(
-        id: "DOC0008",
+        id: DiagnosticIdCatalog.DocInvalidPlaceholder,
         title: "XML 注释不能为空或占位内容",
         messageFormat: "成员“{0}”的 XML 注释不能是空白、TODO 或无意义占位内容。",
         category: "Documentation",

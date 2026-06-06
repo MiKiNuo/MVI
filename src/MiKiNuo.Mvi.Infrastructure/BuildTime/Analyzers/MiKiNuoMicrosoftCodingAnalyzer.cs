@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using MiKiNuo.Mvi.Infrastructure.BuildTime.Diagnostics;
 
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.Analyzers;
 
@@ -11,7 +12,7 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.Analyzers;
 public sealed class MiKiNuoMicrosoftCodingAnalyzer : DiagnosticAnalyzer
 {
     private static readonly DiagnosticDescriptor TypeNamingRule = new(
-        id: "CODE0001",
+        id: DiagnosticIdCatalog.CodeTypeNaming,
         title: "类型命名必须符合微软 C# 编码规范",
         messageFormat: "类型“{0}”命名不符合微软 C# 编码规范。",
         category: "CodingStyle",
@@ -20,7 +21,7 @@ public sealed class MiKiNuoMicrosoftCodingAnalyzer : DiagnosticAnalyzer
         description: "公共类型应使用 PascalCase，接口应以 I 开头，避免保留关键字和含糊命名.");
 
     private static readonly DiagnosticDescriptor MemberNamingRule = new(
-        id: "CODE0002",
+        id: DiagnosticIdCatalog.CodeMemberNaming,
         title: "成员命名必须符合微软 C# 编码规范",
         messageFormat: "成员“{0}”命名不符合微软 C# 编码规范。",
         category: "CodingStyle",

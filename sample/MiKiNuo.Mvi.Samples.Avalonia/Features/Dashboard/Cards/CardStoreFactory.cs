@@ -1,27 +1,21 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Application.MVI.Threading;
+using MiKiNuo.Mvi.Domain.DI;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 
 /// <summary>
 /// 表示仪表板卡片 MVI Store 的工厂。
 /// 每个 PageKey 持有一个 store，store 内部使用统一的 CardReducer + CardEffectDispatcher。
-/// 通过 <see cref="Current"/> 暴露为进程级单例，由 SampleCompositionRoot 在容器创建后立即实例化，
-/// 以便 BusinessCompositePageViewModel 等父级 VM 能在不修改源代码生成器的前提下直接消费 16 个 CardViewModel。
+/// 通过 <see cref="DiServiceAttribute"/> 注册为 DI 单例，
+/// 由生成容器 <c>SampleGeneratedContainer</c> 在首次解析时构造并复用同一份 16 个 CardViewModel。
 /// </summary>
+[DiService(ServiceLifetime.Singleton)]
 public sealed class CardStoreFactory
 {
     private readonly IMviMediator _mediator;
     private readonly IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> _storesByKey;
     private readonly IReadOnlyDictionary<PageKey, CardViewModel> _viewModelsByKey;
-
-    /// <summary>
-    /// 获取或设置当前进程级 CardStoreFactory 单例。
-    /// 由 SampleCompositionRoot 在创建主窗口前设置；其他代码只读。
-    /// </summary>
-    public static CardStoreFactory? Current { get; set; }
 
     /// <summary>
     /// 初始化仪表板卡片 MVI Store 工厂。
@@ -47,7 +41,6 @@ public sealed class CardStoreFactory
         _viewModelsByKey = _storesByKey.ToDictionary(
             pair => pair.Key,
             pair => new CardViewModel(pair.Value));
-        Current = this;
     }
 
     /// <summary>
