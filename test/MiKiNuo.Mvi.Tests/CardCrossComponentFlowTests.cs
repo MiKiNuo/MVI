@@ -1,6 +1,7 @@
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using R3;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -171,18 +172,37 @@ file sealed class CardCrossComponentHarness
     }
 
     /// <summary>
-    /// 派发表单提交动作（带上下文文本）到指定源卡片。
+    /// 派发表单提交动作（带结构化 FormValues 与上下文文本）到指定源卡片。
+    /// </summary>
+    /// <param name="source">源卡片 PageKey。</param>
+    /// <param name="formValues">结构化字段值集合，会被 EffectDispatcher 解析为 Patient。</param>
+    /// <param name="contextText">派发的上下文文本。</param>
+    public async ValueTask DispatchFormSubmissionAsync(
+        PageKey source,
+        IReadOnlyList<CardFormValueEntry> formValues,
+        string contextText)
+    {
+        await DispatchAsync(source, new CardEffect.RequestFormSubmission(formValues, contextText));
+    }
+
+    /// <summary>
+    /// 派发表单提交动作（仅上下文文本，无 FormValues）到指定源卡片。
+    /// 兼容旧测试路径：缺少 FormValues 时 dispatcher 不会尝试解析 Patient。
     /// </summary>
     /// <param name="source">源卡片 PageKey。</param>
     /// <param name="contextText">派发的上下文文本。</param>
     public async ValueTask DispatchFormSubmissionAsync(PageKey source, string contextText)
     {
-        await DispatchAsync(source, new CardEffect.RequestFormSubmission(contextText));
+        await DispatchAsync(source, new CardEffect.RequestFormSubmission(Array.Empty<CardFormValueEntry>(), contextText));
     }
 
     private async ValueTask DispatchAsync(PageKey source, CardEffect effect)
     {
-        CardEffectDispatcher dispatcher = new(new NoopMediator(), source, _stores);
+#pragma warning disable CA2000
+        InMemoryPatientRegistry registry = new();
+#pragma warning restore CA2000
+        using IDisposable __ = registry;
+        CardEffectDispatcher dispatcher = new(new NoopMediator(), registry, source, _stores);
         await dispatcher.DispatchAsync(effect, CancellationToken.None);
     }
 

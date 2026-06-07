@@ -5,6 +5,7 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using R3;
 
 
@@ -95,6 +96,13 @@ public sealed partial class CardViewModel
     /// <summary>获取 Form 错误提示（无错误时为空串）。</summary>
     [MviBind(nameof(CardState.FormErrorMessage))]
     public partial string FormErrorMessage { get; private set; }
+
+    /// <summary>获取最近一次入院登记卡提交后流入本卡片的患者记录（同 SourceKey 组内共享）。未触发时为 null。</summary>
+    [MviBind(nameof(CardState.RecentAdmittedPatient))]
+    public partial Patient? RecentPatient { get; private set; }
+
+    /// <summary>获取当前卡片是否有最近入院的患者记录（RecentPatient != null）。</summary>
+    public bool HasRecentPatient => RecentPatient is not null;
 
     /// <summary>获取当前卡片是否为 Form Card（由 PageKey 推导）。</summary>
     public bool IsFormCard

@@ -1,4 +1,5 @@
 using MiKiNuo.Mvi.Domain.MVI.State;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 
@@ -20,6 +21,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 /// <param name="CanSecondaryAction">辅助动作是否可执行。</param>
 /// <param name="FormErrorMessage">Form 提交错误提示（无错误时为空串）。</param>
 /// <param name="FormValues">Form Card 的字段值集合（顺序保留）。Simple Card 传空集合。</param>
+/// <param name="RecentAdmittedPatient">最近一次入院登记卡提交后流入本卡片的患者记录（同一 SourceKey 组内共享）。未触发时为 null。</param>
 public sealed record CardState(
     PageKey PageKey,
     string SourceKey,
@@ -34,7 +36,8 @@ public sealed record CardState(
     bool CanPrimaryAction,
     bool CanSecondaryAction,
     string FormErrorMessage,
-    IReadOnlyList<CardFormValueEntry> FormValues) : IMviState
+    IReadOnlyList<CardFormValueEntry> FormValues,
+    Patient? RecentAdmittedPatient) : IMviState
 {
     /// <summary>
     /// 根据 CardDefinition 创建初始状态。
@@ -74,7 +77,8 @@ public sealed record CardState(
             true,
             true,
             string.Empty,
-            formValues);
+            formValues,
+            RecentAdmittedPatient: null);
     }
 
     /// <summary>

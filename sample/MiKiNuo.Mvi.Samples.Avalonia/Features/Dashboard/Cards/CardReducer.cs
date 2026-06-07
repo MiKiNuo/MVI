@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using ZLinq;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
@@ -105,6 +106,32 @@ public sealed partial class CardReducer
         });
     }
 
+    /// <summary>处理 ApplyPatientAdmitted：把新患者写入 RecentAdmittedPatient 并刷新状态文本。</summary>
+    [MviReduce]
+    private MviReduceResult<CardState, CardEffect> Reduce(
+        CardState state,
+        CardIntent.ApplyPatientAdmitted intent)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(intent);
+
+        Patient patient = intent.Patient;
+        return MviReduceResult.State<CardState, CardEffect>(state with
+        {
+            RecentAdmittedPatient = patient,
+            StatusText = $"已接收入院：{patient.Name}（床 {patient.BedNo}）",
+            DetailText = BuildPatientDetailLine(patient),
+            ActionLog = $"兄弟卡片入院通知：{patient.Name}（{patient.Diagnosis}）入住 {patient.BedNo}。",
+        });
+    }
+
+    private static string BuildPatientDetailLine(Patient patient)
+    {
+        string ageFragment = patient.Age.HasValue ? $"{patient.Age}岁" : "年龄未填";
+        string noteFragment = string.IsNullOrEmpty(patient.NurseNote) ? string.Empty : $" 备注：{patient.NurseNote}";
+        return $"{patient.Name}（{ageFragment}，{patient.Diagnosis}）于 {patient.AdmittedAt.LocalDateTime:HH:mm} 入院，目标床位 {patient.BedNo}。{noteFragment}".TrimEnd();
+    }
+
     /// <summary>处理 SetFormField。</summary>
     [MviReduce]
     private MviReduceResult<CardState, CardEffect> Reduce(
@@ -171,6 +198,6 @@ public sealed partial class CardReducer
 
         return MviReduceResult.StateAndEffect<CardState, CardEffect>(
             nextState,
-            new CardEffect.RequestFormSubmission(contextText));
+            new CardEffect.RequestFormSubmission(state.FormValues, contextText));
     }
 }

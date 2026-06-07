@@ -11,6 +11,7 @@ using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 using TUnit.Assertions;
@@ -189,6 +190,29 @@ public sealed class GeneratedContainerTests
     }
 
     /// <summary>
+    /// 验证"架构验证中心" menuKey 路由到 <c>ArchitectureValidationViewModel</c>，
+    /// 而非被 <c>default</c> 分支错误兜底为 <c>OutpatientWorkstationViewModel</c>。
+    /// 这是用户报告的"门诊工作站和架构验证中心两个菜单进去界面完全一样"症状的回归测试：
+    /// 源生成器守卫 <c>if (architectureValidation is not null &amp;&amp; patientSearch is not null
+    /// &amp;&amp; auditTimeline is not null &amp;&amp; metricCard is not null)</c> 用了 <c>GetFeature("MetricCard")</c>，
+    /// 但实际 <c>CardViewModel</c> 的 <c>BaseName</c> 是 <c>"Card"</c>，导致守卫 false、<c>case "架构验证中心"</c> 从未被生成。
+    /// </summary>
+    [Test]
+    public async Task DashboardMenuSelection_架构验证中心_Should_RouteToArchitectureValidationViewModelAsync()
+    {
+        SampleGeneratedContainer container = new();
+        await container.NavigateToDashboardAsync("测试用户");
+        DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
+        IMviMediator mediator = container.Resolve<IMviMediator>();
+
+        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+            new NavigateDashboardPageRequest("架构验证中心"));
+
+        await Assert.That(dashboard.CurrentPageViewModel)
+            .IsTypeOf<global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation.ArchitectureValidationViewModel>();
+    }
+
+    /// <summary>
     /// 验证 IMviViewRegistry 能为 CardViewModel 创建 View：
     /// CardView 必须继承 MviAvaloniaView&lt;CardViewModel&gt; 才能被源生成器发现并注册到 SampleGeneratedViewRegistry。
     /// 这是 "BusinessCompositePageView 渲染 4 张卡片时抛 MviViewNotFoundException" 症状的回归测试。
@@ -202,7 +226,11 @@ public sealed class GeneratedContainerTests
         CardReducer reducer = new();
         IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> siblingStores =
             new Dictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>>();
-        CardEffectDispatcher dispatcher = new(mediator, PageKey.BedOverview, siblingStores);
+#pragma warning disable CA2000
+        InMemoryPatientRegistry patientRegistry = new();
+#pragma warning restore CA2000
+        using IDisposable _patientRegistryDispose = patientRegistry;
+        CardEffectDispatcher dispatcher = new(mediator, patientRegistry, PageKey.BedOverview, siblingStores);
         CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.BedOverview)!;
         CardState initialState = new(
             definition.Key,
@@ -218,7 +246,8 @@ public sealed class GeneratedContainerTests
             true,
             true,
             string.Empty,
-            Array.Empty<CardFormValueEntry>());
+            Array.Empty<CardFormValueEntry>(),
+            RecentAdmittedPatient: null);
         using MviStore<CardState, CardIntent, CardEffect> store = new(
             initialState,
             reducer,

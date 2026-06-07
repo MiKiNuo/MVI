@@ -1,6 +1,7 @@
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.DI;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 
@@ -14,6 +15,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 public sealed class CardStoreFactory
 {
     private readonly IMviMediator _mediator;
+    private readonly IMviPatientRegistry _patientRegistry;
     private readonly IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> _storesByKey;
     private readonly IReadOnlyDictionary<PageKey, CardViewModel> _viewModelsByKey;
 
@@ -21,11 +23,14 @@ public sealed class CardStoreFactory
     /// 初始化仪表板卡片 MVI Store 工厂。
     /// </summary>
     /// <param name="mediator">Mediator。</param>
-    public CardStoreFactory(IMviMediator mediator)
+    /// <param name="patientRegistry">跨卡片患者注册表（单例），用于持久化入院登记卡提交的 Patient。</param>
+    public CardStoreFactory(IMviMediator mediator, IMviPatientRegistry patientRegistry)
     {
         ArgumentNullException.ThrowIfNull(mediator);
+        ArgumentNullException.ThrowIfNull(patientRegistry);
 
         _mediator = mediator;
+        _patientRegistry = patientRegistry;
         IReadOnlyDictionary<PageKey, CardDefinition> all = DashboardCardRegistry.All;
 
         // 1) 预创建 16 个 store：先放入可变字典（让所有 store 能看到同组兄弟），
@@ -33,7 +38,7 @@ public sealed class CardStoreFactory
         Dictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> mutableStores = new(all.Count);
         foreach (KeyValuePair<PageKey, CardDefinition> pair in all)
         {
-            mutableStores[pair.Key] = CreateStore(mediator, pair.Value, mutableStores);
+            mutableStores[pair.Key] = CreateStore(mediator, patientRegistry, pair.Value, mutableStores);
         }
 
         IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> readonlyStores = mutableStores;
@@ -65,13 +70,14 @@ public sealed class CardStoreFactory
 
     private static IMviStore<CardState, CardIntent, CardEffect> CreateStore(
         IMviMediator mediator,
+        IMviPatientRegistry patientRegistry,
         CardDefinition definition,
         IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> allStores)
     {
         return new MviStore<CardState, CardIntent, CardEffect>(
             initialState: CardState.FromDefinition(definition),
             reducer: new CardReducer(),
-            effectDispatcher: new CardEffectDispatcher(mediator, definition.Key, allStores),
+            effectDispatcher: new CardEffectDispatcher(mediator, patientRegistry, definition.Key, allStores),
             middlewares: null);
     }
 }

@@ -1,6 +1,7 @@
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using TUnit.Assertions;
 using TUnit.Core;
 using ZLinq;
@@ -41,13 +42,19 @@ public sealed class CardReducerSmokeTest
     }
 
     /// <summary>
-    /// 验证 Registry 注册了全部 16 个 PageKey。
+    /// 验证 Registry 注册了全部 PageKey：
+    /// 4 个业务域各 4 张共 16 张 + 架构验证中心 4 张指标卡 = 20 张。
+    /// <para>
+    /// 2026-06-06 新增架构验证中心 4 张 PageKey（Middleware/Reuse/Mediator/Effect）后
+    /// 由 16 增至 20。后续如果新增业务域 / 演示卡，必须同步更新此处的期望值，
+    /// 否则 PageKey 与 CardDefinition 的注册就漏配了。
+    /// </para>
     /// </summary>
     [Test]
-    public async Task RegistryShouldHaveAll16PageKeysAsync()
+    public async Task RegistryShouldHaveAll20PageKeysAsync()
     {
         PageKey[] allKeys = DashboardCardRegistry.All.Keys.ToArray();
-        await Assert.That(allKeys.Length).IsEqualTo(16);
+        await Assert.That(allKeys.Length).IsEqualTo(20);
     }
 
     /// <summary>
@@ -62,7 +69,11 @@ public sealed class CardReducerSmokeTest
         CardReducer reducer = new();
         IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> siblingStores =
             new Dictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>>();
-        CardEffectDispatcher dispatcher = new(new NoopMediator(), PageKey.AdmissionCoordinator, siblingStores);
+#pragma warning disable CA2000
+        InMemoryPatientRegistry patientRegistry = new();
+#pragma warning restore CA2000
+        using IDisposable _patientRegistryDispose = patientRegistry;
+        CardEffectDispatcher dispatcher = new(new NoopMediator(), patientRegistry, PageKey.AdmissionCoordinator, siblingStores);
         PageKey key = PageKey.AdmissionCoordinator;
         CardDefinition definition = DashboardCardRegistry.GetDefinition(key)!;
         IReadOnlyList<CardFormField> fields = definition.FormFields!;
@@ -83,7 +94,8 @@ public sealed class CardReducerSmokeTest
             true,
             true,
             string.Empty,
-            initialValues);
+            initialValues,
+            RecentAdmittedPatient: null);
         IMviStore<CardState, CardIntent, CardEffect> store = new MviStore<CardState, CardIntent, CardEffect>(
             initial,
             reducer,

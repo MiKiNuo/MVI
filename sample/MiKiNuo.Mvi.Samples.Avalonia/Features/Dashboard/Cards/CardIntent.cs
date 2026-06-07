@@ -1,4 +1,5 @@
 using MiKiNuo.Mvi.Domain.MVI.Intent;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 
@@ -17,6 +18,10 @@ public abstract partial record CardIntent : IMviIntent
     /// <summary>应用来自父页面或兄弟卡片的外部更新消息。</summary>
     /// <param name="Message">外部更新消息。</param>
     public sealed partial record ApplyExternalUpdate(string Message) : CardIntent;
+
+    /// <summary>应用来自兄弟入院登记卡片的新入院患者通知。</summary>
+    /// <param name="Patient">新入的患者记录（强类型载荷）。</param>
+    public sealed partial record ApplyPatientAdmitted(Patient Patient) : CardIntent;
 
     /// <summary>设置 FormValues 中指定 Key 的值。仅对 Form Card 有效。</summary>
     /// <param name="Key">字段键。</param>

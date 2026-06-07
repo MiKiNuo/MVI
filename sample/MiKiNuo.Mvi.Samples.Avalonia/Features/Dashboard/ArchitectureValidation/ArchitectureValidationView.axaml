@@ -3,27 +3,12 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Platforms.Avalonia.Slot;assembly=MiKiNuo.Mvi.Platforms.Avalonia">
-    <Grid RowDefinitions="Auto,*,180" RowSpacing="12">
+    <Grid RowDefinitions="Auto,*" RowSpacing="12">
         <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="14" Padding="14">
-            <Grid ColumnDefinitions="1.3*,*,*" ColumnSpacing="12">
-                <StackPanel>
-                    <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding Description}" Foreground="#475569" TextWrapping="Wrap" Margin="0,4,0,0" />
-                    <TextBlock Text="此页面专门验证中间件链路和可复用 MVI，不再影响住院、检验、药房、质控四个生产页面。" Foreground="#2563EB" TextWrapping="Wrap" Margin="0,8,0,0" />
-                </StackPanel>
-                <Border Grid.Column="1" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="12" Padding="10">
-                    <StackPanel>
-                        <TextBlock Text="当前验证上下文" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding ActiveContext}" Foreground="#1E3A8A" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="2" Background="#F0FDFA" BorderBrush="#99F6E4" BorderThickness="1" CornerRadius="12" Padding="10">
-                    <StackPanel>
-                        <TextBlock Text="验证流程状态" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FlowStatus}" Foreground="#0F766E" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-            </Grid>
+            <StackPanel>
+                <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Description}" Foreground="#475569" TextWrapping="Wrap" Margin="0,4,0,0" />
+            </StackPanel>
         </Border>
 
         <Grid Grid.Row="1" ColumnDefinitions="1.1*,1.4*,1.2*" RowDefinitions="*,*" ColumnSpacing="12" RowSpacing="12">
@@ -35,7 +20,7 @@
             </Border>
             <Border Grid.Column="1" Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1" CornerRadius="14" Padding="10">
                 <Grid RowDefinitions="Auto,*">
-                    <TextBlock Text="中间件与复用指标" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock Text="4 大架构支柱指标卡（静态）" FontWeight="SemiBold" Margin="0,0,0,8" />
                     <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="*,*" ColumnSpacing="8" RowSpacing="8">
                         <mvi:MviSlotHost x:Name="MiddlewareMetricSlot" />
                         <mvi:MviSlotHost x:Name="ReuseMetricSlot" Grid.Column="1" />
@@ -44,13 +29,32 @@
                     </Grid>
                 </Grid>
             </Border>
-            <Border Grid.Column="1" Grid.Row="1" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="14" Padding="10">
+            <Border Grid.Column="1" Grid.Row="1" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="14" Padding="12">
                 <StackPanel>
-                    <TextBlock Text="验证说明" FontWeight="SemiBold" />
-                    <TextBlock Text="1. 录入患者关键字并检索。" TextWrapping="Wrap" />
-                    <TextBlock Text="2. 点击选择患者后产生 Effect。" TextWrapping="Wrap" />
-                    <TextBlock Text="3. EffectDispatcher 调用 Mediator。" TextWrapping="Wrap" />
-                    <TextBlock Text="4. Mediator 更新父 MVI、审计时间线和指标卡片。" TextWrapping="Wrap" />
+                    <TextBlock Text="演示索引：4 大支柱 ↔ MVI 组件" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock TextWrapping="Wrap" Foreground="#0F172A">
+                        <Run Text="• " FontWeight="SemiBold" />
+                        <Run Text="中间件：" FontWeight="SemiBold" />
+                        <Run Text="MviStore ↔ MviMiddleware（请求/响应/事件串联）。" />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="#0F172A" Margin="0,4,0,0">
+                        <Run Text="• " FontWeight="SemiBold" />
+                        <Run Text="复用组件：" FontWeight="SemiBold" />
+                        <Run Text="左右两侧患者检索 + 审计时间线在 4 个生产页面共用同一对 ViewModel。" />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="#0F172A" Margin="0,4,0,0">
+                        <Run Text="• " FontWeight="SemiBold" />
+                        <Run Text="中介者：" FontWeight="SemiBold" />
+                        <Run Text="IMviMediator 的 Request/Response + Subscribe/Publish 路由。" />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="#0F172A" Margin="0,4,0,0">
+                        <Run Text="• " FontWeight="SemiBold" />
+                        <Run Text="副作用：" FontWeight="SemiBold" />
+                        <Run Text="IMviEffectDispatcher 在 reducer 派发后完成 IO / 导航 / 跨组件派发。" />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="#2563EB" Margin="0,10,0,0">
+                        <Run Text="→ 端到端业务流转请到「住院床位 / 检验医嘱 / 药房库存 / 运营质控」4 个生产页面验证。" FontWeight="SemiBold" />
+                    </TextBlock>
                 </StackPanel>
             </Border>
             <Border Grid.Column="2" Grid.RowSpan="2" Background="#F5F3FF" BorderBrush="#DDD6FE" BorderThickness="1" CornerRadius="14" Padding="10">
@@ -60,14 +64,5 @@
                 </Grid>
             </Border>
         </Grid>
-
-        <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="12" Padding="10">
-            <StackPanel>
-                <TextBlock Text="架构验证数据流日志" Foreground="#0F172A" FontWeight="SemiBold" />
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding InteractionLog}" Foreground="#0369A1" TextWrapping="Wrap" />
-                </ScrollViewer>
-            </StackPanel>
-        </Border>
     </Grid>
 </UserControl>

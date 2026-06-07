@@ -54,4 +54,16 @@ public enum PageKey
 
     /// <summary>整改闭环追踪。</summary>
     RectificationTracker = 16,
+
+    /// <summary>中间件指标卡（架构验证中心专用，演示中间件链路）。</summary>
+    MiddlewareMetric = 17,
+
+    /// <summary>复用指标卡（架构验证中心专用，演示可复用 MVI 组件）。</summary>
+    ReuseMetric = 18,
+
+    /// <summary>中介者指标卡（架构验证中心专用，演示父子组件中介者路由）。</summary>
+    MediatorMetric = 19,
+
+    /// <summary>副作用指标卡（架构验证中心专用，演示 EffectDispatcher 派发）。</summary>
+    EffectMetric = 20,
 }

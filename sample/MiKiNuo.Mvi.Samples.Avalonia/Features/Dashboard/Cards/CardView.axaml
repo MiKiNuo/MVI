@@ -53,6 +53,33 @@
                                TextWrapping="Wrap" LineHeight="16" />
                 </Border>
 
+                <!-- 最近入院 Section：仅当兄弟入院登记卡提交后流入新患者时显示 -->
+                <Border Background="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Soft}"
+                        BorderBrush="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Border}"
+                        BorderThickness="1" CornerRadius="8" Padding="10,8"
+                        IsVisible="{Binding HasRecentPatient}">
+                    <StackPanel Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Width="6" Height="6" CornerRadius="3"
+                                    Background="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}" />
+                            <TextBlock Text="最近入院" FontSize="10" FontWeight="Bold"
+                                       Foreground="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Dark}"
+                                       LetterSpacing="1.2" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding RecentPatient.Name}" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextPrimary}" />
+                            <TextBlock Text="→" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" />
+                            <TextBlock Text="{Binding RecentPatient.BedNo}" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Dark}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding RecentPatient.Diagnosis}" FontSize="11"
+                                   Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding RecentPatient.NurseNote, StringFormat='备注：{0}'}"
+                                   FontSize="10" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Form 字段区：仅当 IsFormCard=true 时显示 -->
                 <StackPanel IsVisible="{Binding IsFormCard}" Spacing="6">
                     <ItemsControl ItemsSource="{Binding FormFields}">

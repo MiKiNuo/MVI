@@ -67,6 +67,7 @@ public static partial class DashboardCardRegistry
         AddLabDefinitions(dict);
         AddPharmacyDefinitions(dict);
         AddQualityDefinitions(dict);
+        AddArchitectureValidationDefinitions(dict);
         return dict;
     }
 
@@ -77,6 +78,8 @@ public static partial class DashboardCardRegistry
     private static partial void AddPharmacyDefinitions(Dictionary<PageKey, CardDefinition> dict);
 
     private static partial void AddQualityDefinitions(Dictionary<PageKey, CardDefinition> dict);
+
+    private static partial void AddArchitectureValidationDefinitions(Dictionary<PageKey, CardDefinition> dict);
 
     /// <summary>
     /// 构造通用 Form Card 验证器。
