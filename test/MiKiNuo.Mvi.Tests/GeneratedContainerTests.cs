@@ -7,6 +7,7 @@ using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
@@ -247,7 +248,11 @@ public sealed class GeneratedContainerTests
             true,
             string.Empty,
             Array.Empty<CardFormValueEntry>(),
-            RecentAdmittedPatient: null);
+            RecentAdmittedPatient: null,
+            CurrentBedFilter: BedFilter.All,
+            FilteredBedCount: BedCatalog.TotalCount,
+            SelectedBedTypes: new HashSet<BedType>(),
+            SelectedBedStatuses: new HashSet<BedStatus>());
         using MviStore<CardState, CardIntent, CardEffect> store = new(
             initialState,
             reducer,

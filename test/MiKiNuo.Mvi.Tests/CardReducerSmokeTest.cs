@@ -1,6 +1,7 @@
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -95,7 +96,11 @@ public sealed class CardReducerSmokeTest
             true,
             string.Empty,
             initialValues,
-            RecentAdmittedPatient: null);
+            RecentAdmittedPatient: null,
+            CurrentBedFilter: BedFilter.All,
+            FilteredBedCount: 0,
+            SelectedBedTypes: new HashSet<BedType>(),
+            SelectedBedStatuses: new HashSet<BedStatus>());
         IMviStore<CardState, CardIntent, CardEffect> store = new MviStore<CardState, CardIntent, CardEffect>(
             initial,
             reducer,

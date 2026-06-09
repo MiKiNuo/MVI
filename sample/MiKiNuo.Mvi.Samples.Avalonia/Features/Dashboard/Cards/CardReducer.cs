@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using ZLinq;
 
@@ -130,6 +131,172 @@ public sealed partial class CardReducer
         string ageFragment = patient.Age.HasValue ? $"{patient.Age}岁" : "年龄未填";
         string noteFragment = string.IsNullOrEmpty(patient.NurseNote) ? string.Empty : $" 备注：{patient.NurseNote}";
         return $"{patient.Name}（{ageFragment}，{patient.Diagnosis}）于 {patient.AdmittedAt.LocalDateTime:HH:mm} 入院，目标床位 {patient.BedNo}。{noteFragment}".TrimEnd();
+    }
+
+    /// <summary>处理 SetBedFilter：仅 BedOverview 卡片生效；其他卡片短路返回。其他卡片触发时 reducer 静默忽略，不污染兄弟卡片状态。</summary>
+    [MviReduce]
+    private MviReduceResult<CardState, CardEffect> Reduce(
+        CardState state,
+        CardIntent.SetBedFilter intent)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(intent);
+
+        if (state.PageKey != PageKey.BedOverview)
+        {
+            return MviReduceResult.State<CardState, CardEffect>(state);
+        }
+
+        if (state.CurrentBedFilter == intent.Filter)
+        {
+            return MviReduceResult.State<CardState, CardEffect>(state);
+        }
+
+        int count = QueryCombinedCount(intent.Filter, state.SelectedBedTypes, state.SelectedBedStatuses);
+        return MviReduceResult.State<CardState, CardEffect>(state with
+        {
+            CurrentBedFilter = intent.Filter,
+            FilteredBedCount = count,
+            ActionLog = $"床位筛选已切换为：{BedFilterOption.All.Single(option => option.Value == intent.Filter).DisplayName}，匹配 {count} 张。",
+        });
+    }
+
+    /// <summary>处理 ToggleBedType：仅 BedOverview 卡片生效；其他卡片短路返回。</summary>
+    [MviReduce]
+    private MviReduceResult<CardState, CardEffect> Reduce(
+        CardState state,
+        CardIntent.ToggleBedType intent)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(intent);
+
+        if (state.PageKey != PageKey.BedOverview)
+        {
+            return MviReduceResult.State<CardState, CardEffect>(state);
+        }
+
+        HashSet<BedType> nextTypes = new(state.SelectedBedTypes);
+        if (intent.IsSelected)
+        {
+            nextTypes.Add(intent.BedType);
+        }
+        else
+        {
+            nextTypes.Remove(intent.BedType);
+        }
+
+        if (nextTypes.SetEquals(state.SelectedBedTypes))
+        {
+            return MviReduceResult.State<CardState, CardEffect>(state);
+        }
+
+        int count = QueryCombinedCount(state.CurrentBedFilter, nextTypes, state.SelectedBedStatuses);
+        string verb = intent.IsSelected ? "加入" : "移除";
+        return MviReduceResult.State<CardState, CardEffect>(state with
+        {
+            SelectedBedTypes = nextTypes,
+            FilteredBedCount = count,
+            ActionLog = $"床位类型筛选：{BedRecordRow.ToTypeText(intent.BedType)} 已{verb}；当前匹配 {count} 张。",
+        });
+    }
+
+    /// <summary>处理 ToggleBedStatus：仅 BedOverview 卡片生效；其他卡片短路返回。</summary>
+    [MviReduce]
+    private MviReduceResult<CardState, CardEffect> Reduce(
+        CardState state,
+        CardIntent.ToggleBedStatus intent)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(intent);
+
+        if (state.PageKey != PageKey.BedOverview)
+        {
+            return MviReduceResult.State<CardState, CardEffect>(state);
+        }
+
+        HashSet<BedStatus> nextStatuses = new(state.SelectedBedStatuses);
+        if (intent.IsSelected)
+        {
+            nextStatuses.Add(intent.BedStatus);
+        }
+        else
+        {
+            nextStatuses.Remove(intent.BedStatus);
+        }
+
+        if (nextStatuses.SetEquals(state.SelectedBedStatuses))
+        {
+            return MviReduceResult.State<CardState, CardEffect>(state);
+        }
+
+        int count = QueryCombinedCount(state.CurrentBedFilter, state.SelectedBedTypes, nextStatuses);
+        string verb = intent.IsSelected ? "加入" : "移除";
+        return MviReduceResult.State<CardState, CardEffect>(state with
+        {
+            SelectedBedStatuses = nextStatuses,
+            FilteredBedCount = count,
+            ActionLog = $"床位状态筛选：{BedRecordRow.ToStatusText(intent.BedStatus)} 已{verb}；当前匹配 {count} 张。",
+        });
+    }
+
+    /// <summary>
+    /// 合并三种筛选维度（ComboBox 单选 + CheckBox 多选类型 + CheckBox 多选状态）后统计匹配条数。
+    /// 行为与 <c>CardViewModel.QueryCombined</c> 保持一致；reducer 不能复用 ViewModel 私有方法，因此单独复制。
+    /// </summary>
+    /// <param name="filter">ComboBox 单选筛选维度。</param>
+    /// <param name="typeFilter">CheckBox 多选床位类型集合（空集合 = 不限类型）。</param>
+    /// <param name="statusFilter">CheckBox 多选床位状态集合（空集合 = 不限状态）。</param>
+    /// <returns>三个维度都满足的床位条数。</returns>
+    private static int QueryCombinedCount(
+        BedFilter filter,
+        IReadOnlySet<BedType> typeFilter,
+        IReadOnlySet<BedStatus> statusFilter)
+    {
+        ArgumentNullException.ThrowIfNull(typeFilter);
+        ArgumentNullException.ThrowIfNull(statusFilter);
+
+        BedStatus? filterStatus = filter == BedFilter.All ? null : ToStatusFromFilter(filter);
+        bool filterTypeEmpty = typeFilter.Count == 0;
+        bool filterStatusEmpty = statusFilter.Count == 0;
+        if (filterStatus is null && filterTypeEmpty && filterStatusEmpty)
+        {
+            return BedCatalog.TotalCount;
+        }
+
+        int count = 0;
+        foreach (BedRecord record in BedCatalog.All)
+        {
+            bool typeOk = filterTypeEmpty || typeFilter.Contains(record.Type);
+            bool statusOk = true;
+            if (filterStatus is not null)
+            {
+                statusOk = record.Status == filterStatus.Value;
+            }
+
+            if (statusOk && statusFilter.Count > 0)
+            {
+                statusOk = statusFilter.Contains(record.Status);
+            }
+
+            if (typeOk && statusOk)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static BedStatus ToStatusFromFilter(BedFilter filter)
+    {
+        return filter switch
+        {
+            BedFilter.Open => BedStatus.Open,
+            BedFilter.Occupied => BedStatus.Occupied,
+            BedFilter.Locked => BedStatus.Locked,
+            BedFilter.Isolated => BedStatus.Isolated,
+            _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "未知的 BedFilter 值。"),
+        };
     }
 
     /// <summary>处理 SetFormField。</summary>

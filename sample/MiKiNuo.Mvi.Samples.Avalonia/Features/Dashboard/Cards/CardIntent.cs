@@ -1,4 +1,5 @@
 using MiKiNuo.Mvi.Domain.MVI.Intent;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
@@ -30,4 +31,18 @@ public abstract partial record CardIntent : IMviIntent
 
     /// <summary>提交 Form Card。仅对 Form Card 有效。</summary>
     public sealed partial record SubmitForm : CardIntent;
+
+    /// <summary>设置床位筛选维度。仅对 BedOverview 卡片有效；其他卡片接收后由 reducer 忽略。</summary>
+    /// <param name="Filter">新的筛选维度。</param>
+    public sealed partial record SetBedFilter(BedFilter Filter) : CardIntent;
+
+    /// <summary>切换床位类型多选（CheckBox）。仅对 BedOverview 卡片有效；其他卡片 reducer 忽略。</summary>
+    /// <param name="BedType">被切换的床位类型。</param>
+    /// <param name="IsSelected">true = 加入筛选集合；false = 从集合中移除。</param>
+    public sealed partial record ToggleBedType(BedType BedType, bool IsSelected) : CardIntent;
+
+    /// <summary>切换床位状态多选（CheckBox）。仅对 BedOverview 卡片有效；其他卡片 reducer 忽略。</summary>
+    /// <param name="BedStatus">被切换的床位状态。</param>
+    /// <param name="IsSelected">true = 加入筛选集合；false = 从集合中移除。</param>
+    public sealed partial record ToggleBedStatus(BedStatus BedStatus, bool IsSelected) : CardIntent;
 }

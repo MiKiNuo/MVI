@@ -5,6 +5,7 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using R3;
 
@@ -22,7 +23,13 @@ public sealed partial class CardViewModel
     private IReadOnlyList<CardFormFieldEntry> _formFields = Array.Empty<CardFormFieldEntry>();
     private readonly Dictionary<string, CardFormFieldEntry> _formFieldsCache = new(StringComparer.Ordinal);
     private readonly IDisposable _derivedPropertiesSubscription;
+    private BedFilterOption _selectedBedFilterOption = BedFilterOption.All[0];
+    private IReadOnlyList<BedRecord> _filteredBeds = Array.Empty<BedRecord>();
+    private IReadOnlyList<BedRecordRow> _filteredBedRows = Array.Empty<BedRecordRow>();
+    private IReadOnlySet<BedType> _selectedBedTypes = new HashSet<BedType>();
+    private IReadOnlySet<BedStatus> _selectedBedStatuses = new HashSet<BedStatus>();
     private bool _isFormCard;
+    private bool _showBedCatalog;
 
     /// <summary>
     /// 初始化仪表板卡片 ViewModel。
@@ -104,6 +111,78 @@ public sealed partial class CardViewModel
     /// <summary>获取当前卡片是否有最近入院的患者记录（RecentPatient != null）。</summary>
     public bool HasRecentPatient => RecentPatient is not null;
 
+    /// <summary>获取床位筛选维度（仅 BedOverview 卡片消费；其他卡片保持 <see cref="BedFilter.All"/>）。</summary>
+    [MviBind(nameof(CardState.CurrentBedFilter))]
+    public partial BedFilter CurrentBedFilter { get; private set; }
+
+    /// <summary>获取 <see cref="CurrentBedFilter"/> 命中的床位条数（仅 BedOverview 卡片消费；其他卡片为 0）。</summary>
+    [MviBind(nameof(CardState.FilteredBedCount))]
+    public partial int FilteredBedCount { get; private set; }
+
+    /// <summary>获取 ComboBox 用的床位筛选选项集合（仅在 BedOverview 卡片显示）。</summary>
+    public IReadOnlyList<BedFilterOption> AvailableBedFilters => BedFilterOption.All;
+
+    /// <summary>获取 CheckBox 用的床位类型多选展示项集合（仅在 BedOverview 卡片显示）。</summary>
+    public IReadOnlyList<BedTypeOption> AvailableBedTypes => BedTypeOption.All;
+
+    /// <summary>获取 CheckBox 用的床位状态多选展示项集合（仅在 BedOverview 卡片显示）。</summary>
+    public IReadOnlyList<BedStatusOption> AvailableBedStatuses => BedStatusOption.All;
+
+    /// <summary>获取当前选中的床位类型集合（与 <see cref="CardState.SelectedBedTypes"/> 同步；由 <see cref="RebuildDerivedProperties"/> 维护）。</summary>
+    public IReadOnlySet<BedType> SelectedBedTypes
+    {
+        get => _selectedBedTypes;
+        private set => SetProperty(ref _selectedBedTypes, value);
+    }
+
+    /// <summary>获取当前选中的床位状态集合（与 <see cref="CardState.SelectedBedStatuses"/> 同步；由 <see cref="RebuildDerivedProperties"/> 维护）。</summary>
+    public IReadOnlySet<BedStatus> SelectedBedStatuses
+    {
+        get => _selectedBedStatuses;
+        private set => SetProperty(ref _selectedBedStatuses, value);
+    }
+
+    /// <summary>判断指定 <see cref="BedType"/> 是否在当前多选集合内（供 XAML CheckBox.IsChecked 绑定）。</summary>
+    /// <param name="type">床位类型。</param>
+    /// <returns>包含返回 true。</returns>
+    public bool IsBedTypeSelected(BedType type) => _selectedBedTypes.Contains(type);
+
+    /// <summary>判断指定 <see cref="BedStatus"/> 是否在当前多选集合内（供 XAML CheckBox.IsChecked 绑定）。</summary>
+    /// <param name="status">床位状态。</param>
+    /// <returns>包含返回 true。</returns>
+    public bool IsBedStatusSelected(BedStatus status) => _selectedBedStatuses.Contains(status);
+
+    /// <summary>获取按 <see cref="CurrentBedFilter"/> 过滤后的床位记录集合（DataGrid 数据源）。</summary>
+    public IReadOnlyList<BedRecord> FilteredBeds
+    {
+        get => _filteredBeds;
+        private set => SetProperty(ref _filteredBeds, value);
+    }
+
+    /// <summary>
+    /// 获取 <see cref="FilteredBeds"/> 对应的 <see cref="BedRecordRow"/> 包装集合
+    /// （DataGrid 实际绑定源；把枚举 / 可空字段翻译为中文展示名）。
+    /// </summary>
+    public IReadOnlyList<BedRecordRow> FilteredBedRows
+    {
+        get => _filteredBedRows;
+        private set => SetProperty(ref _filteredBedRows, value);
+    }
+
+    /// <summary>获取当前 ComboBox 选中的筛选选项（与 <see cref="CurrentBedFilter"/> 同步；由 <see cref="RebuildDerivedProperties"/> 维护）。</summary>
+    public BedFilterOption SelectedBedFilterOption
+    {
+        get => _selectedBedFilterOption;
+        private set => SetProperty(ref _selectedBedFilterOption, value);
+    }
+
+    /// <summary>获取当前卡片是否需要展示床位目录 ComboBox（PageKey == BedOverview）。</summary>
+    public bool ShowBedCatalog
+    {
+        get => _showBedCatalog;
+        private set => SetProperty(ref _showBedCatalog, value);
+    }
+
     /// <summary>获取当前卡片是否为 Form Card（由 PageKey 推导）。</summary>
     public bool IsFormCard
     {
@@ -149,6 +228,44 @@ public sealed partial class CardViewModel
     }
 
     /// <summary>
+    /// 派发 <see cref="CardIntent.SetBedFilter"/> 意图以切换床位筛选维度。
+    /// 由 BedOverview 卡片上 ComboBox.SelectionChanged 事件触发；reducer 内部对非 BedOverview 卡片短路忽略。
+    /// </summary>
+    /// <param name="filter">新筛选维度。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
+    public ValueTask SetBedFilterAsync(BedFilter filter, CancellationToken cancellationToken = default)
+    {
+        return DispatchAsync(new CardIntent.SetBedFilter(filter), cancellationToken);
+    }
+
+    /// <summary>
+    /// 派发 <see cref="CardIntent.ToggleBedType"/> 意图以切换床位类型多选。
+    /// 由 BedOverview 卡片上 CheckBox 点击事件触发；reducer 内部对非 BedOverview 卡片短路忽略。
+    /// </summary>
+    /// <param name="type">被切换的床位类型。</param>
+    /// <param name="isSelected">true = 加入筛选；false = 移除。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
+    public ValueTask ToggleBedTypeAsync(BedType type, bool isSelected, CancellationToken cancellationToken = default)
+    {
+        return DispatchAsync(new CardIntent.ToggleBedType(type, isSelected), cancellationToken);
+    }
+
+    /// <summary>
+    /// 派发 <see cref="CardIntent.ToggleBedStatus"/> 意图以切换床位状态多选。
+    /// 由 BedOverview 卡片上 CheckBox 点击事件触发；reducer 内部对非 BedOverview 卡片短路忽略。
+    /// </summary>
+    /// <param name="status">被切换的床位状态。</param>
+    /// <param name="isSelected">true = 加入筛选；false = 移除。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
+    public ValueTask ToggleBedStatusAsync(BedStatus status, bool isSelected, CancellationToken cancellationToken = default)
+    {
+        return DispatchAsync(new CardIntent.ToggleBedStatus(status, isSelected), cancellationToken);
+    }
+
+    /// <summary>
     /// 由 Store.States 订阅触发：每条新状态抵达后重建派生属性（IsFormCard、FormFields、HasFormError）。
     /// <para>
     /// FormFields 列表引用稳定：首次进入 isFormCard 时一次性建好所有 <see cref="CardFormFieldEntry"/> 并加入 <see cref="_formFieldsCache"/>；
@@ -160,10 +277,65 @@ public sealed partial class CardViewModel
     {
         CardDefinition? definition = DashboardCardRegistry.GetDefinition(state.PageKey);
         bool isFormCard = definition is { IsFormCard: true };
+        bool showBedCatalog = state.PageKey == PageKey.BedOverview;
 
         if (IsFormCard != isFormCard)
         {
             IsFormCard = isFormCard;
+        }
+
+        if (ShowBedCatalog != showBedCatalog)
+        {
+            ShowBedCatalog = showBedCatalog;
+        }
+
+        BedFilterOption targetOption = BedFilterOption.All[0];
+        foreach (BedFilterOption option in BedFilterOption.All)
+        {
+            if (option.Value == state.CurrentBedFilter)
+            {
+                targetOption = option;
+                break;
+            }
+        }
+
+        SelectedBedFilterOption = targetOption;
+
+        // 同步多选集合（reducer 内部会替换为新 HashSet，所以按引用比较也能正确触发）
+        if (!ReferenceEquals(state.SelectedBedTypes, _selectedBedTypes))
+        {
+            SelectedBedTypes = state.SelectedBedTypes;
+        }
+
+        if (!ReferenceEquals(state.SelectedBedStatuses, _selectedBedStatuses))
+        {
+            SelectedBedStatuses = state.SelectedBedStatuses;
+        }
+
+        IReadOnlyList<BedRecord> nextFilteredBeds = showBedCatalog
+            ? QueryCombined(state.CurrentBedFilter, state.SelectedBedTypes, state.SelectedBedStatuses)
+            : Array.Empty<BedRecord>();
+        if (!ReferenceEquals(nextFilteredBeds, _filteredBeds))
+        {
+            FilteredBeds = nextFilteredBeds;
+        }
+
+        if (nextFilteredBeds.Count == 0)
+        {
+            if (_filteredBedRows.Count != 0)
+            {
+                FilteredBedRows = Array.Empty<BedRecordRow>();
+            }
+        }
+        else
+        {
+            BedRecordRow[] nextRows = new BedRecordRow[nextFilteredBeds.Count];
+            for (int i = 0; i < nextFilteredBeds.Count; i++)
+            {
+                nextRows[i] = new BedRecordRow(nextFilteredBeds[i]);
+            }
+
+            FilteredBedRows = nextRows;
         }
 
         if (!isFormCard)
@@ -248,5 +420,67 @@ public sealed partial class CardViewModel
     {
         _derivedPropertiesSubscription.Dispose();
         base.OnDispose();
+    }
+
+    /// <summary>
+    /// 合并三种筛选维度：ComboBox 单选状态（<paramref name="filter"/>） + CheckBox 多选类型
+    /// （<paramref name="typeFilter"/>） + CheckBox 多选状态（<paramref name="statusFilter"/>）。
+    /// 三类筛选独立生效（单选状态优先取对应的 <see cref="BedStatus"/>，再与多选状态取交集）；
+    /// 多选集合为空表示该维度不过滤。
+    /// </summary>
+    /// <param name="filter">ComboBox 单选筛选维度（<see cref="BedFilter.All"/> 不参与状态过滤）。</param>
+    /// <param name="typeFilter">CheckBox 多选床位类型集合（空集合 = 不限类型）。</param>
+    /// <param name="statusFilter">CheckBox 多选床位状态集合（空集合 = 不限状态）。</param>
+    /// <returns>三个维度都满足的床位集合。</returns>
+    private static IReadOnlyList<BedRecord> QueryCombined(
+        BedFilter filter,
+        IReadOnlySet<BedType> typeFilter,
+        IReadOnlySet<BedStatus> statusFilter)
+    {
+        ArgumentNullException.ThrowIfNull(typeFilter);
+        ArgumentNullException.ThrowIfNull(statusFilter);
+
+        BedStatus? filterStatus = filter == BedFilter.All ? null : ToStatusFromFilter(filter);
+        bool filterTypeEmpty = typeFilter.Count == 0;
+        bool filterStatusEmpty = statusFilter.Count == 0;
+        if (filterStatus is null && filterTypeEmpty && filterStatusEmpty)
+        {
+            return BedCatalog.All;
+        }
+
+        List<BedRecord> result = new(BedCatalog.TotalCount);
+        foreach (BedRecord record in BedCatalog.All)
+        {
+            bool typeOk = filterTypeEmpty || typeFilter.Contains(record.Type);
+            bool statusOk = true;
+            if (filterStatus is not null)
+            {
+                statusOk = record.Status == filterStatus.Value;
+            }
+
+            if (statusOk && statusFilter.Count > 0)
+            {
+                statusOk = statusFilter.Contains(record.Status);
+            }
+
+            if (typeOk && statusOk)
+            {
+                result.Add(record);
+            }
+        }
+
+        return result;
+    }
+
+    private static BedStatus ToStatusFromFilter(BedFilter filter)
+    {
+        return filter switch
+        {
+            BedFilter.Open => BedStatus.Open,
+            BedFilter.Occupied => BedStatus.Occupied,
+            BedFilter.Locked => BedStatus.Locked,
+            BedFilter.Isolated => BedStatus.Isolated,
+            _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "未知的 BedFilter 值。"),
+        };
     }
 }

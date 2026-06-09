@@ -1,4 +1,5 @@
 using MiKiNuo.Mvi.Domain.MVI.State;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
@@ -22,6 +23,10 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 /// <param name="FormErrorMessage">Form 提交错误提示（无错误时为空串）。</param>
 /// <param name="FormValues">Form Card 的字段值集合（顺序保留）。Simple Card 传空集合。</param>
 /// <param name="RecentAdmittedPatient">最近一次入院登记卡提交后流入本卡片的患者记录（同一 SourceKey 组内共享）。未触发时为 null。</param>
+/// <param name="CurrentBedFilter">床位筛选维度（仅 BedOverview 卡片消费；其他卡片保持 <see cref="BedFilter.All"/>）。</param>
+/// <param name="FilteredBedCount"><see cref="CurrentBedFilter"/> 命中的床位条数（仅 BedOverview 卡片消费；其他卡片为 0）。</param>
+/// <param name="SelectedBedTypes">CheckBox 多选床位类型（仅 BedOverview 卡片消费；空集合 = 该维度不过滤）。</param>
+/// <param name="SelectedBedStatuses">CheckBox 多选床位状态（仅 BedOverview 卡片消费；空集合 = 该维度不过滤）。</param>
 public sealed record CardState(
     PageKey PageKey,
     string SourceKey,
@@ -37,7 +42,11 @@ public sealed record CardState(
     bool CanSecondaryAction,
     string FormErrorMessage,
     IReadOnlyList<CardFormValueEntry> FormValues,
-    Patient? RecentAdmittedPatient) : IMviState
+    Patient? RecentAdmittedPatient,
+    BedFilter CurrentBedFilter,
+    int FilteredBedCount,
+    IReadOnlySet<BedType> SelectedBedTypes,
+    IReadOnlySet<BedStatus> SelectedBedStatuses) : IMviState
 {
     /// <summary>
     /// 根据 CardDefinition 创建初始状态。
@@ -78,7 +87,11 @@ public sealed record CardState(
             true,
             string.Empty,
             formValues,
-            RecentAdmittedPatient: null);
+            RecentAdmittedPatient: null,
+            CurrentBedFilter: BedFilter.All,
+            FilteredBedCount: definition.Key == PageKey.BedOverview ? BedCatalog.TotalCount : 0,
+            SelectedBedTypes: new HashSet<BedType>(),
+            SelectedBedStatuses: new HashSet<BedStatus>());
     }
 
     /// <summary>

@@ -2,7 +2,8 @@
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.CardView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:cards="clr-namespace:MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards">
+    xmlns:cards="clr-namespace:MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards"
+    xmlns:bedCatalog="clr-namespace:MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog">
     <Border Background="{DynamicResource BrushSurface}"
             BorderBrush="{DynamicResource BrushBorder}"
             BorderThickness="1"
@@ -52,6 +53,121 @@
                                Foreground="{DynamicResource BrushTextSecondary}"
                                TextWrapping="Wrap" LineHeight="16" />
                 </Border>
+
+                <!-- 床位目录筛选：仅 BedOverview 卡片显示；用 ComboBox + CheckBox 多选 + DataGrid 让 UI 更丰富。 -->
+                <StackPanel IsVisible="{Binding ShowBedCatalog}" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="6" Height="6" CornerRadius="3"
+                                Background="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Base}" />
+                        <TextBlock Text="床位状态筛选" FontSize="10" FontWeight="Bold"
+                                   Foreground="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Dark}"
+                                   LetterSpacing="1.2" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ComboBox x:Name="BedFilterComboBox"
+                              ItemsSource="{Binding AvailableBedFilters}"
+                              SelectedItem="{Binding SelectedBedFilterOption, Mode=OneWay}"
+                              SelectionChanged="OnBedFilterSelectionChanged"
+                              HorizontalAlignment="Stretch"
+                              FontSize="12" Padding="10,6"
+                              PlaceholderText="请选择床位状态">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="bedCatalog:BedFilterOption">
+                                <TextBlock Text="{Binding DisplayName}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <!-- 床位类型多选（CheckBox 组）：与 ComboBox 叠加生效；空选 = 不限类型。 -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="床位类型多选" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrushTextMuted}" LetterSpacing="0.5" />
+                        <ItemsControl ItemsSource="{Binding AvailableBedTypes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="bedCatalog:BedTypeOption">
+                                    <CheckBox Content="{Binding DisplayName}"
+                                              IsCheckedChanged="OnBedTypeCheckBoxChanged"
+                                              Tag="{Binding Value}"
+                                              FontSize="11" Margin="0,0,8,0" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- 床位状态多选（CheckBox 组）：与 ComboBox 叠加生效；空选 = 不限状态。 -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="床位状态多选" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrushTextMuted}" LetterSpacing="0.5" />
+                        <ItemsControl ItemsSource="{Binding AvailableBedStatuses}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="bedCatalog:BedStatusOption">
+                                    <CheckBox Content="{Binding DisplayName}"
+                                              IsCheckedChanged="OnBedStatusCheckBoxChanged"
+                                              Tag="{Binding Value}"
+                                              FontSize="11" Margin="0,0,8,0" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <Border Background="{DynamicResource BrushSurfaceMuted}"
+                            BorderBrush="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Border}"
+                            BorderThickness="1" CornerRadius="6" Padding="8,6">
+                        <StackPanel Spacing="2">
+                            <TextBlock FontSize="10" Foreground="{DynamicResource BrushTextMuted}">
+                                <Run Text="当前筛选：" />
+                                <Run Text="{Binding SelectedBedFilterOption.DisplayName}" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource BrushTextPrimary}" />
+                            </TextBlock>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="匹配床位数：" FontSize="10" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource BrushTextMuted}" />
+                                <TextBlock Text="{Binding FilteredBedCount}" FontSize="18" FontWeight="Bold"
+                                           Foreground="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Dark}" />
+                                <TextBlock FontSize="10" VerticalAlignment="Bottom" Margin="0,0,0,2"
+                                           Foreground="{DynamicResource BrushTextMuted}">
+                                    <Run Text=" / " />
+                                    <Run Text="{Binding FilteredBedCount}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- DataGrid：按当前筛选条件展示 BedRecordRow 列表，列以中文 header + 中文展示字段名绑定。 -->
+                    <Border Background="{DynamicResource BrushSurfaceMuted}"
+                            BorderBrush="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Border}"
+                            BorderThickness="1" CornerRadius="6" Padding="0">
+                        <DataGrid x:Name="FilteredBedsDataGrid"
+                                  ItemsSource="{Binding FilteredBedRows}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column"
+                                  MaxHeight="200"
+                                  FontSize="11"
+                                  Background="Transparent"
+                                  RowBackground="Transparent"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="床号" Binding="{Binding BedNo}" Width="100" />
+                                <DataGridTextColumn Header="病区" Binding="{Binding Ward}" Width="80" />
+                                <DataGridTextColumn Header="类型" Binding="{Binding TypeDisplay}" Width="80" />
+                                <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="80" />
+                                <DataGridTextColumn Header="患者" Binding="{Binding PatientName}" Width="*" />
+                                <DataGridTextColumn Header="主治医师" Binding="{Binding PrimaryDoctor}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                </StackPanel>
 
                 <!-- 最近入院 Section：仅当兄弟入院登记卡提交后流入新患者时显示 -->
                 <Border Background="{Binding SourceKey, Converter={x:Static cards:CardSourceBrushConverter.Instance}, ConverterParameter=Soft}"
