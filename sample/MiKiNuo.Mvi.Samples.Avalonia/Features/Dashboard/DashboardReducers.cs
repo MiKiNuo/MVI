@@ -5,6 +5,10 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 
 /// <summary>
 /// 表示 Dashboard 壳规约器。
+/// <para>
+/// <see cref="DashboardIntent.ShowPage"/> 不再携带 VM 对象，规约器仅把 PageKey/标题/说明
+/// 写入 State；具体页面 VM 由 View 层通过 <see cref="IDashboardPageFactory"/> 解析。
+/// </para>
 /// </summary>
 public sealed partial class DashboardReducer
     : MviReducerBase<DashboardState, DashboardIntent, DashboardEffect>
@@ -25,9 +29,9 @@ public sealed partial class DashboardReducer
 
         return MviReduceResult.State<DashboardState, DashboardEffect>(state with
         {
+            CurrentPageKey = intent.PageKey,
             CurrentPageTitle = intent.PageTitle,
             CurrentPageDescription = intent.PageDescription,
-            CurrentPageViewModel = intent.PageViewModel
         });
     }
 }

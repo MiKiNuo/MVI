@@ -140,7 +140,7 @@ public sealed class GeneratedContainerTests
         await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("住院床位"));
 
-        await Assert.That(dashboard.CurrentPageViewModel).IsTypeOf<BusinessCompositePageViewModel>();
+        await Assert.That(dashboard.CreateCurrentPageViewModel()).IsTypeOf<BusinessCompositePageViewModel>();
     }
 
     /// <summary>
@@ -168,7 +168,7 @@ public sealed class GeneratedContainerTests
             await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
                 new NavigateDashboardPageRequest(menuKey));
 
-            BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CurrentPageViewModel;
+            BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel();
             await Assert.That(page.PageLayout).IsEqualTo(expectedLayout);
         }
     }
@@ -187,7 +187,7 @@ public sealed class GeneratedContainerTests
         await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("门诊工作站"));
 
-        await Assert.That(dashboard.CurrentPageViewModel).IsNotTypeOf<BusinessCompositePageViewModel>();
+        await Assert.That(dashboard.CreateCurrentPageViewModel()).IsNotTypeOf<BusinessCompositePageViewModel>();
     }
 
     /// <summary>
@@ -209,7 +209,7 @@ public sealed class GeneratedContainerTests
         await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("架构验证中心"));
 
-        await Assert.That(dashboard.CurrentPageViewModel)
+        await Assert.That(dashboard.CreateCurrentPageViewModel())
             .IsTypeOf<global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation.ArchitectureValidationViewModel>();
     }
 
@@ -297,7 +297,7 @@ public sealed class GeneratedContainerTests
 
         await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("住院床位"));
-        BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CurrentPageViewModel;
+        BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel();
 
         string initialLog = page.InteractionLog;
 
@@ -328,7 +328,7 @@ public sealed class GeneratedContainerTests
         await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("门诊工作站"));
 
-        OutpatientWorkstationViewModel outpatientPage = (OutpatientWorkstationViewModel)dashboard.CurrentPageViewModel;
+        OutpatientWorkstationViewModel outpatientPage = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
         ClinicalEditorViewModel clinicalEditor = (ClinicalEditorViewModel)outpatientPage.ClinicalEditorViewModel;
 
         string patientBefore = clinicalEditor.PatientName;

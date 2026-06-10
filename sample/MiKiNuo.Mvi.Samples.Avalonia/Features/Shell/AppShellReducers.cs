@@ -25,8 +25,8 @@ public sealed partial class AppShellReducer
 
         AppShellState nextState = state with
         {
+            CurrentPageKey = intent.PageKey,
             Title = intent.Title,
-            CurrentViewModel = intent.ViewModel
         };
 
         return MviReduceResult.State<AppShellState, AppShellEffect>(nextState);

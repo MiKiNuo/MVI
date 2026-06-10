@@ -22,7 +22,8 @@ public sealed class EventBindingWorkbenchSampleTests
         string mainWindowXaml = await File.ReadAllTextAsync(Path.Combine(avaloniaSampleRoot, "MainWindow.axaml"));
         string mainWindowCode = await File.ReadAllTextAsync(Path.Combine(avaloniaSampleRoot, "MainWindow.axaml.cs"));
         string compositionRoot = await File.ReadAllTextAsync(Path.Combine(avaloniaSampleRoot, "Composition", "SampleCompositionRoot.cs"));
-        SampleGeneratedViewRegistry generatedViewRegistry = new();
+        SampleGeneratedContainer container = new();
+        SampleGeneratedViewRegistry generatedViewRegistry = new(container);
 
         await Assert.That(mainWindowXaml).Contains("EventBindingWorkbenchButton");
         await Assert.That(mainWindowCode).Contains("ShowEventBindingWorkbenchAsync");

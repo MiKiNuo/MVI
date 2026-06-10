@@ -6,6 +6,13 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
 /// <summary>
 /// 表示游戏大厅 MVI 状态。
+/// <para>
+/// 不再持有任何 <c>*ViewModel</c> 引用：
+/// </para>
+/// <list type="bullet">
+/// <item>3 个常驻子 VM（玩家头部 / 大厅菜单 / 活动日志）：由 <see cref="LobbyViewModel"/> 构造函数注入并暴露为只读属性。</item>
+/// <item>5 个互斥面板 VM（任务大厅 / 英雄队伍 / 背包仓库 / 锻造工坊 / 战斗准备）：通过 <see cref="ILobbyPanelFactory"/> 按 <see cref="CurrentPanel"/> 解析。</item>
+/// </list>
 /// </summary>
 public sealed record LobbyState : IMviState
 {
@@ -31,15 +38,7 @@ public sealed record LobbyState : IMviState
         int forgeScore,
         string battleReadyText,
         string activityLog,
-        bool canExecuteCommands,
-        PlayerHeaderViewModel? playerHeaderViewModel,
-        LobbyMenuViewModel? lobbyMenuViewModel,
-        MissionBoardViewModel? missionBoardViewModel,
-        HeroRosterViewModel? heroRosterViewModel,
-        InventoryViewModel? inventoryViewModel,
-        ForgeLabViewModel? forgeLabViewModel,
-        BattlePrepViewModel? battlePrepViewModel,
-        ActivityLogViewModel? activityLogViewModel)
+        bool canExecuteCommands)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(playerName);
         ArgumentException.ThrowIfNullOrWhiteSpace(currentPanel);
@@ -67,14 +66,6 @@ public sealed record LobbyState : IMviState
         BattleReadyText = battleReadyText;
         ActivityLog = activityLog;
         CanExecuteCommands = canExecuteCommands;
-        PlayerHeaderViewModel = playerHeaderViewModel;
-        LobbyMenuViewModel = lobbyMenuViewModel;
-        MissionBoardViewModel = missionBoardViewModel;
-        HeroRosterViewModel = heroRosterViewModel;
-        InventoryViewModel = inventoryViewModel;
-        ForgeLabViewModel = forgeLabViewModel;
-        BattlePrepViewModel = battlePrepViewModel;
-        ActivityLogViewModel = activityLogViewModel;
     }
 
     /// <summary>获取玩家名称。</summary>
@@ -134,30 +125,6 @@ public sealed record LobbyState : IMviState
     /// <summary>获取大厅命令是否允许执行。</summary>
     public bool CanExecuteCommands { get; init; }
 
-    /// <summary>获取玩家头部 ViewModel。</summary>
-    public PlayerHeaderViewModel? PlayerHeaderViewModel { get; init; }
-
-    /// <summary>获取大厅菜单 ViewModel。</summary>
-    public LobbyMenuViewModel? LobbyMenuViewModel { get; init; }
-
-    /// <summary>获取任务大厅 ViewModel。</summary>
-    public MissionBoardViewModel? MissionBoardViewModel { get; init; }
-
-    /// <summary>获取英雄队伍 ViewModel。</summary>
-    public HeroRosterViewModel? HeroRosterViewModel { get; init; }
-
-    /// <summary>获取背包仓库 ViewModel。</summary>
-    public InventoryViewModel? InventoryViewModel { get; init; }
-
-    /// <summary>获取锻造工坊 ViewModel。</summary>
-    public ForgeLabViewModel? ForgeLabViewModel { get; init; }
-
-    /// <summary>获取战斗准备 ViewModel。</summary>
-    public BattlePrepViewModel? BattlePrepViewModel { get; init; }
-
-    /// <summary>获取活动日志 ViewModel。</summary>
-    public ActivityLogViewModel? ActivityLogViewModel { get; init; }
-
     /// <summary>获取初始状态。</summary>
     public static LobbyState Initial { get; } = new(
         playerName: "未登录指挥官",
@@ -178,13 +145,5 @@ public sealed record LobbyState : IMviState
         forgeScore: 0,
         battleReadyText: "等待大厅初始化。",
         activityLog: string.Empty,
-        canExecuteCommands: true,
-        playerHeaderViewModel: null,
-        lobbyMenuViewModel: null,
-        missionBoardViewModel: null,
-        heroRosterViewModel: null,
-        inventoryViewModel: null,
-        forgeLabViewModel: null,
-        battlePrepViewModel: null,
-        activityLogViewModel: null);
+        canExecuteCommands: true);
 }

@@ -15,7 +15,6 @@ public sealed partial class MainWindow : Window
     private readonly IMviViewRegistry _viewRegistry;
     private readonly EventBindingWorkbenchComposition _eventBindingWorkbenchComposition;
     private readonly string _originalSampleTitle;
-    private readonly object? _originalSampleViewModel;
     private ContentControl _rootContent = null!;
     private Button _originalSampleButton = null!;
     private Button _eventBindingWorkbenchButton = null!;
@@ -41,13 +40,12 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         _originalSampleTitle = viewModel.Title;
-        _originalSampleViewModel = viewModel.CurrentViewModel;
         _originalSampleButton.Click += async (_, _) => await ShowOriginalSampleAsync();
         _eventBindingWorkbenchButton.Click += async (_, _) => await ShowEventBindingWorkbenchAsync();
         Closed += (_, _) => _eventBindingWorkbenchComposition.Dispose();
         viewModel.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(AppShellViewModel.CurrentViewModel))
+            if (args.PropertyName == nameof(AppShellViewModel.CurrentPageKey))
             {
                 RenderCurrentView();
             }
@@ -68,29 +66,23 @@ public sealed partial class MainWindow : Window
 
     private void RenderCurrentView()
     {
-        if (_viewModel.CurrentViewModel is null)
+        object? currentPageViewModel = _viewModel.CreateCurrentPageViewModel();
+        if (currentPageViewModel is null)
         {
             _rootContent.Content = null;
             return;
         }
 
-        _rootContent.Content = _viewRegistry.CreateView(_viewModel.CurrentViewModel);
+        _rootContent.Content = _viewRegistry.CreateView(currentPageViewModel);
     }
 
     private ValueTask ShowOriginalSampleAsync()
     {
-        if (_originalSampleViewModel is null)
-        {
-            return ValueTask.CompletedTask;
-        }
-
-        return _viewModel.ShowPageAsync(_originalSampleTitle, _originalSampleViewModel);
+        return _viewModel.ShowPageAsync(ShellPageKeys.Login, _originalSampleTitle);
     }
 
     private ValueTask ShowEventBindingWorkbenchAsync()
     {
-        return _viewModel.ShowPageAsync(
-            "事件绑定 Workbench",
-            _eventBindingWorkbenchComposition.WorkbenchViewModel);
+        return _viewModel.ShowPageAsync(ShellPageKeys.EventBindingWorkbench, "事件绑定 Workbench");
     }
 }

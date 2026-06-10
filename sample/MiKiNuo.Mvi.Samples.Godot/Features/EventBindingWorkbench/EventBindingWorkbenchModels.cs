@@ -75,15 +75,9 @@ public sealed class EventBindingRecordingMediator : IMviMediator
 }
 
 /// <summary>表示 Godot 事件绑定组合根状态。</summary>
-/// <param name="SearchViewModel">搜索面板 ViewModel。</param>
-/// <param name="SelectionViewModel">选择面板 ViewModel。</param>
-/// <param name="DetailViewModel">详情面板 ViewModel。</param>
 /// <param name="LastInteractionText">最后一次交互文本。</param>
 /// <param name="InteractionCount">交互次数。</param>
 public sealed record EventBindingWorkbenchState(
-    EventBindingSearchViewModel SearchViewModel,
-    EventBindingSelectionViewModel SelectionViewModel,
-    EventBindingDetailViewModel DetailViewModel,
     string LastInteractionText,
     int InteractionCount) : IMviState;
 
@@ -132,26 +126,42 @@ public sealed class EventBindingWorkbenchEffectDispatcher : IMviEffectDispatcher
 }
 
 /// <summary>表示 Godot 事件绑定组合根 ViewModel。</summary>
+/// <para>
+/// 3 个子组件 ViewModel（Search / Selection / Detail）由构造函数注入并暴露为只读属性，
+/// 父 <see cref="EventBindingWorkbenchState"/> 不再持有任何 <c>*ViewModel</c> 引用。
+/// </para>
 public sealed partial class EventBindingWorkbenchViewModel
     : MviViewModelBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
 {
     /// <summary>初始化 Godot 事件绑定组合根 ViewModel。</summary>
-    public EventBindingWorkbenchViewModel(IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store)
+    /// <param name="store">组合根状态存储。</param>
+    /// <param name="searchViewModel">搜索面板子组件 ViewModel。</param>
+    /// <param name="selectionViewModel">选择面板子组件 ViewModel。</param>
+    /// <param name="detailViewModel">详情面板子组件 ViewModel。</param>
+    public EventBindingWorkbenchViewModel(
+        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store,
+        EventBindingSearchViewModel searchViewModel,
+        EventBindingSelectionViewModel selectionViewModel,
+        EventBindingDetailViewModel detailViewModel)
         : base(store)
     {
+        ArgumentNullException.ThrowIfNull(searchViewModel);
+        ArgumentNullException.ThrowIfNull(selectionViewModel);
+        ArgumentNullException.ThrowIfNull(detailViewModel);
+
+        SearchViewModel = searchViewModel;
+        SelectionViewModel = selectionViewModel;
+        DetailViewModel = detailViewModel;
     }
 
-    /// <summary>获取搜索面板 ViewModel。</summary>
-    [MviBind(nameof(EventBindingWorkbenchState.SearchViewModel))]
-    public partial EventBindingSearchViewModel SearchViewModel { get; private set; }
+    /// <summary>获取搜索面板 ViewModel（构造函数注入）。</summary>
+    public EventBindingSearchViewModel SearchViewModel { get; }
 
-    /// <summary>获取选择面板 ViewModel。</summary>
-    [MviBind(nameof(EventBindingWorkbenchState.SelectionViewModel))]
-    public partial EventBindingSelectionViewModel SelectionViewModel { get; private set; }
+    /// <summary>获取选择面板 ViewModel（构造函数注入）。</summary>
+    public EventBindingSelectionViewModel SelectionViewModel { get; }
 
-    /// <summary>获取详情面板 ViewModel。</summary>
-    [MviBind(nameof(EventBindingWorkbenchState.DetailViewModel))]
-    public partial EventBindingDetailViewModel DetailViewModel { get; private set; }
+    /// <summary>获取详情面板 ViewModel（构造函数注入）。</summary>
+    public EventBindingDetailViewModel DetailViewModel { get; }
 
     /// <summary>获取最后一次交互文本。</summary>
     [MviBind(nameof(EventBindingWorkbenchState.LastInteractionText))]
@@ -520,15 +530,16 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
         EventBindingDetailViewModel detailViewModel = new(detailStore);
         MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore = new(
             new EventBindingWorkbenchState(
-                searchViewModel,
-                selectionViewModel,
-                detailViewModel,
                 "等待 Godot 子组件事件。",
                 0),
             new EventBindingWorkbenchReducer(),
             new EventBindingWorkbenchEffectDispatcher());
         mediator.SetWorkbenchStore(workbenchStore);
-        EventBindingWorkbenchViewModel workbenchViewModel = new(workbenchStore);
+        EventBindingWorkbenchViewModel workbenchViewModel = new(
+            workbenchStore,
+            searchViewModel,
+            selectionViewModel,
+            detailViewModel);
 
         return new EventBindingWorkbenchComposition(
             mediator,

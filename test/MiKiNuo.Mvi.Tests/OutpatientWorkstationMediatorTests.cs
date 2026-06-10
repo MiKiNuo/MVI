@@ -27,7 +27,7 @@ public sealed class OutpatientWorkstationMediatorTests
         await container.NavigateToDashboardAsync("测试医生");
 
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
-        OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CurrentPageViewModel;
+        OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
         PatientQueueViewModel queue = (PatientQueueViewModel)workstation.QueueViewModel;
         ClinicalEditorViewModel editor = (ClinicalEditorViewModel)workstation.ClinicalEditorViewModel;
 
@@ -53,7 +53,7 @@ public sealed class OutpatientWorkstationMediatorTests
         await container.NavigateToDashboardAsync("测试医生");
 
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
-        OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CurrentPageViewModel;
+        OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
         PatientQueueViewModel queue = (PatientQueueViewModel)workstation.QueueViewModel;
         ClinicalReminderViewModel reminder = (ClinicalReminderViewModel)workstation.ClinicalReminderViewModel;
 
@@ -79,7 +79,7 @@ public sealed class OutpatientWorkstationMediatorTests
         await container.NavigateToDashboardAsync("测试医生");
 
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
-        OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CurrentPageViewModel;
+        OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
         ClinicalEditorViewModel editor = (ClinicalEditorViewModel)workstation.ClinicalEditorViewModel;
         ClinicalReminderViewModel reminder = (ClinicalReminderViewModel)workstation.ClinicalReminderViewModel;
 

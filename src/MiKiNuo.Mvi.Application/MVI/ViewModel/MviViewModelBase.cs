@@ -59,9 +59,9 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
     /// <param name="intent">意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步派发过程的任务。</returns>
-    protected ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default)
+    protected async ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default)
     {
-        return Store.DispatchAsync(intent, cancellationToken);
+        await Store.DispatchAsync(intent, cancellationToken);
     }
 
     /// <summary>

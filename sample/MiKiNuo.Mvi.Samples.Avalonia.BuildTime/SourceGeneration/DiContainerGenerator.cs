@@ -37,16 +37,17 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         string containerName = prefix + "Generated" + "Container";
         string registryName = prefix + "Generated" + "ViewRegistry";
 
-        if (model.Views.Count > 0)
-        {
-            string registrySource = GenerateViewRegistrySource(model, registryName);
-            context.AddSource(registryName + ".g.cs", SourceText.From(registrySource, Encoding.UTF8));
-        }
-
         if (model.LoginFeature is not null && model.ShellFeature is not null)
         {
-            string containerSource = GenerateContainerSource(model, containerName, registryName);
+            string containerSource = GenerateContainerSource(model, containerName);
             context.AddSource(containerName + ".g.cs", SourceText.From(containerSource, Encoding.UTF8));
+
+            // 容器已同时实现 IMviViewRegistry（参见 GenerateContainerSource），
+            // 不再单独生成 *GeneratedViewRegistry 类——避免出现两份互不感知的 View 路由表。
+            // 为保持源码兼容（部分旧测试可能仍 Resolve<IMviViewRegistry>() 拿到独立对象），
+            // 这里继续写一份类型别名壳，方法体全部 forward 到容器。
+            string viewRegistrySource = GenerateViewRegistryForwarder(model, containerName, registryName);
+            context.AddSource(registryName + ".g.cs", SourceText.From(viewRegistrySource, Encoding.UTF8));
         }
     }
 
@@ -62,6 +63,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         List<ViewInfo> views = DiscoverViews(classes);
         ServiceInfo? authService = DiscoverService(classes, "IAuthService", "FakeAuthService");
         INamedTypeSymbol? loginNavigationService = DiscoverInterface(compilation, cancellationToken, "ILoginNavigationService");
+        INamedTypeSymbol? dashboardPageFactory = DiscoverInterface(compilation, cancellationToken, "IDashboardPageFactory");
+        INamedTypeSymbol? shellPageFactory = DiscoverInterface(compilation, cancellationToken, "IShellPageFactory");
         CardStoreFactoryInfo? cardStoreFactory = DiscoverCardStoreFactory(classes, cancellationToken);
 
         return new GenerationModel(
@@ -70,6 +73,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             views,
             authService,
             loginNavigationService,
+            dashboardPageFactory,
+            shellPageFactory,
             cardStoreFactory);
     }
 
@@ -161,8 +166,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             }
 
             INamedTypeSymbol viewModelType = (INamedTypeSymbol)viewBase.TypeArguments[0];
-            bool requiresRegistry = HasSingleViewRegistryConstructor(classSymbol);
-            views.Add(new ViewInfo(classSymbol, viewModelType, requiresRegistry));
+            ViewConstructorKind constructorKind = DetectViewConstructorKind(classSymbol);
+            views.Add(new ViewInfo(classSymbol, viewModelType, constructorKind));
         }
 
         return views
@@ -276,23 +281,30 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static bool HasSingleViewRegistryConstructor(INamedTypeSymbol viewType)
+    private static ViewConstructorKind DetectViewConstructorKind(INamedTypeSymbol viewType)
     {
         foreach (IMethodSymbol constructor in viewType.Constructors)
         {
-            if (constructor.DeclaredAccessibility != Accessibility.Public || constructor.Parameters.Length != 1)
+            if (constructor.DeclaredAccessibility != Accessibility.Public || constructor.Parameters.Length == 0)
             {
                 continue;
             }
 
-            ITypeSymbol parameterType = constructor.Parameters[0].Type;
-            if (parameterType.Name == "IMviViewRegistry")
+            bool hasRegistry = constructor.Parameters.Any(static p => p.Type.Name == "IMviViewRegistry");
+            bool hasCardStoreFactory = constructor.Parameters.Any(static p => p.Type.Name == "CardStoreFactory");
+
+            if (hasRegistry && hasCardStoreFactory)
             {
-                return true;
+                return ViewConstructorKind.RegistryAndCardStoreFactory;
+            }
+
+            if (hasRegistry)
+            {
+                return ViewConstructorKind.Registry;
             }
         }
 
-        return false;
+        return ViewConstructorKind.Parameterless;
     }
 
     private static DispatcherConstructorKind GetDispatcherConstructorKind(INamedTypeSymbol dispatcherType)
@@ -341,8 +353,15 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 && SymbolEqualityComparer.Default.Equals(member.ReturnType, stateType));
     }
 
-    private static string GenerateViewRegistrySource(GenerationModel model, string registryName)
+    private static string GenerateViewRegistryForwarder(
+        GenerationModel model,
+        string containerName,
+        string registryName)
     {
+        // 容器已直接实现 IMviViewRegistry（参见 AppendViewRegistryImplementation）。
+        // 此处仍生成一个 *GeneratedViewRegistry 兼容类，
+        // 让 `Resolve<IMviViewRegistry>()` 之外仍然存在一个可独立 new 出来的壳，
+        // 用于旧测试与第三方集成。所有方法 forward 到容器同一实例，避免双份路由表。
         StringBuilder builder = new StringBuilder();
 
         builder.AppendLine("// <auto-generated />");
@@ -350,14 +369,49 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine("using System;");
         builder.AppendLine("using MiKiNuo.Mvi.Presentation.ViewRegistry;");
+        builder.Append("using ").Append(model.CompositionNamespace).Append(';').AppendLine();
         builder.AppendLine();
         builder.Append("namespace ").Append(model.CompositionNamespace).AppendLine(";");
         builder.AppendLine();
         builder.AppendLine("/// <summary>");
-        builder.AppendLine("/// 表示由源生成器生成的 Avalonia 视图注册表。");
+        builder.AppendLine("/// 表示由源生成器生成的 Avalonia 视图注册表兼容壳。");
+        builder.Append("/// 路由表实际由 <see cref=\"").Append(containerName).AppendLine("\"/> 持有；");
+        builder.AppendLine("/// 本类仅 forward <c>CreateView</c>，避免父 VM 长期持有子 VM 引用同时维护双份路由表。");
         builder.AppendLine("/// </summary>");
         builder.Append("public sealed class ").Append(registryName).AppendLine(" : IMviViewRegistry");
         builder.AppendLine("{");
+        builder.Append("    private readonly ").Append(containerName).AppendLine(" _container;");
+        builder.AppendLine();
+        builder.Append("    public ").Append(registryName).Append('(').Append(containerName).AppendLine(" container)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ArgumentNullException.ThrowIfNull(container);");
+        builder.AppendLine("        _container = container;");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    public object CreateView(object viewModel)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ArgumentNullException.ThrowIfNull(viewModel);");
+        builder.AppendLine("        return _container.CreateView(viewModel);");
+        builder.AppendLine("    }");
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// 在容器类内部追加 <c>IMviViewRegistry.CreateView(object)</c> 的实现：
+    /// 走 switch-case 把 ViewModel 解析为对应 View 实例，调用 <c>view.Bind(viewModel)</c> 后返回。
+    /// <para>
+    /// View 构造可能依赖 <c>IMviViewRegistry</c> 自身（用于递归嵌入场景，例如 <c>BusinessCompositePageView</c> 内部子槽位），
+    /// 此类 View 已在 <see cref="ViewInfo.ConstructorKind"/> 标记，构造时把 <c>this</c> 传入。
+    /// </para>
+    /// </summary>
+    private static void AppendViewRegistryImplementation(
+        StringBuilder builder,
+        GenerationModel model,
+        string containerName)
+    {
         builder.AppendLine("    /// <inheritdoc />");
         builder.AppendLine("    public object CreateView(object viewModel)");
         builder.AppendLine("    {");
@@ -382,7 +436,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         for (int index = 0; index < model.Views.Count; index++)
         {
             ViewInfo view = model.Views[index];
-            bool instanceMethod = view.RequiresRegistry;
+            bool instanceMethod = view.ConstructorKind != ViewConstructorKind.Parameterless;
             builder.Append("    private ");
             if (!instanceMethod)
             {
@@ -393,9 +447,22 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 .Append('(').Append(view.ViewModelTypeName).AppendLine(" viewModel)");
             builder.AppendLine("    {");
             builder.Append("        ").Append(view.ViewTypeName).Append(" view = new(");
-            if (view.RequiresRegistry)
+            bool needsComma = false;
+            if (view.ConstructorKind == ViewConstructorKind.Registry
+                || view.ConstructorKind == ViewConstructorKind.RegistryAndCardStoreFactory)
             {
                 builder.Append("this");
+                needsComma = true;
+            }
+
+            if (view.ConstructorKind == ViewConstructorKind.RegistryAndCardStoreFactory)
+            {
+                if (needsComma)
+                {
+                    builder.Append(", ");
+                }
+
+                builder.Append("ResolveCardStoreFactory()");
             }
 
             builder.AppendLine(");");
@@ -404,15 +471,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("    }");
             builder.AppendLine();
         }
-
-        builder.AppendLine("}");
-        return builder.ToString();
     }
 
     private static string GenerateContainerSource(
         GenerationModel model,
-        string containerName,
-        string registryName)
+        string containerName)
     {
         FeatureInfo login = model.LoginFeature!;
         FeatureInfo shell = model.ShellFeature!;
@@ -436,14 +499,28 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("using MiKiNuo.Mvi.Application.MVI.Threading;");
         builder.AppendLine("using MiKiNuo.Mvi.Domain.DI;");
         builder.AppendLine("using MiKiNuo.Mvi.Presentation.ViewRegistry;");
+        builder.Append("using ").Append(model.CompositionNamespace).Append(';').AppendLine();
         builder.AppendLine();
         builder.Append("namespace ").Append(model.CompositionNamespace).AppendLine(";");
         builder.AppendLine();
         builder.AppendLine("/// <summary>");
         builder.AppendLine("/// 表示由源生成器生成的示例组合容器。");
+        builder.AppendLine("/// 容器自身同时实现 <c>IMviViewRegistry</c> 与 <c>IDashboardPageFactory</c>：");
+        builder.AppendLine("/// 避免为视图解析与页面分发单独生成无业务逻辑的「壳」类，");
+        builder.AppendLine("/// 让组合根成为 ViewModel/View/Page 之间的唯一桥接点。");
         builder.AppendLine("/// </summary>");
         builder.Append("public sealed class ").Append(containerName)
-            .Append(" : IMviResolver, IMviServiceGraph, IMviMediator, IMviDiagnosticSink");
+            .Append(" : IMviResolver, IMviServiceGraph, IMviMediator, IMviDiagnosticSink, IMviViewRegistry");
+        if (model.DashboardPageFactoryTypeName is not null)
+        {
+            builder.Append(", ").Append(model.DashboardPageFactoryTypeName);
+        }
+
+        if (model.ShellPageFactoryTypeName is not null)
+        {
+            builder.Append(", ").Append(model.ShellPageFactoryTypeName);
+        }
+
         if (model.LoginNavigationService is not null)
         {
             builder.Append(", ").Append(Format(model.LoginNavigationService));
@@ -453,7 +530,6 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("{");
         builder.AppendLine("    private readonly Dictionary<Type, object> _singletons = new();");
         builder.AppendLine("    private readonly IReadOnlyList<MviServiceDescriptor> _serviceDescriptors;");
-        builder.AppendLine("    private IMviViewRegistry? _viewRegistry;");
         // Avalonia 平台专用 UI 调度器单例；所有 ViewModel 与 CardStoreFactory 共用同一实例，
         // 确保 PropertyChanged/CanExecuteChanged 都能 marshal 到 Avalonia UI 线程。
         builder.AppendLine("    private IMviUiDispatcher? _uiDispatcher;");
@@ -501,9 +577,14 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             AppendDescriptor(builder, Format(model.LoginNavigationService), containerName, "Singleton");
         }
 
+        if (model.ShellPageFactoryTypeName is not null)
+        {
+            AppendDescriptor(builder, model.ShellPageFactoryTypeName, containerName, "Singleton");
+        }
+
         AppendDescriptor(builder, "global::MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator", containerName, "Singleton");
         AppendDescriptor(builder, "global::MiKiNuo.Mvi.Application.MVI.Diagnostics.IMviDiagnosticSink", containerName, "Singleton");
-        AppendDescriptor(builder, "global::MiKiNuo.Mvi.Presentation.ViewRegistry.IMviViewRegistry", registryName, "Singleton");
+        AppendDescriptor(builder, "global::MiKiNuo.Mvi.Presentation.ViewRegistry.IMviViewRegistry", containerName, "Singleton");
         AppendDescriptor(builder, shell.ViewModelTypeName, shell.ViewModelTypeName, "Singleton");
         AppendDescriptor(builder, login.ViewModelTypeName, login.ViewModelTypeName, "Scoped");
         AppendDescriptor(builder, StoreType(login), "global::MiKiNuo.Mvi.Application.MVI.Store.MviStore<" + login.StateTypeName + ", " + login.IntentTypeName + ", " + login.EffectTypeName + ">", "Scoped");
@@ -511,6 +592,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         if (dashboard is not null)
         {
             AppendDescriptor(builder, dashboard.ViewModelTypeName, dashboard.ViewModelTypeName, "Singleton");
+            if (model.DashboardPageFactoryTypeName is not null)
+            {
+                AppendDescriptor(builder, model.DashboardPageFactoryTypeName, containerName, "Singleton");
+            }
         }
 
         builder.AppendLine("        };");
@@ -555,10 +640,13 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         FeatureInfo? mediatorClinicalReminder = model.GetFeature("ClinicalReminder");
         FeatureInfo? mediatorBusinessCompositePage = model.GetFeature("BusinessCompositePage");
         AppendMediator(builder, dashboard, mediatorClinicalEditor, mediatorClinicalReminder, mediatorBusinessCompositePage);
-        AppendResolveCore(builder, model, containerName, registryName, login, shell, dashboard);
+        AppendResolveCore(builder, model, containerName, login, shell, dashboard);
         AppendStoreHelpers(builder, login, shell);
         AppendDashboardHelpers(builder, model, dashboard);
         AppendCardStoreFactoryResolver(builder, model);
+        AppendViewRegistryImplementation(builder, model, containerName);
+        AppendDashboardPageFactory(builder, model, dashboard);
+        AppendShellPageFactory(builder, model, login);
         AppendScope(builder, containerName, login);
 
         builder.AppendLine("}");
@@ -576,13 +664,13 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 .AppendLine(" dashboardViewModel = CreateDashboardViewModel(displayName);");
             builder.Append("        ").Append(shell.ViewModelTypeName)
                 .AppendLine(" shellViewModel = ResolveShellViewModel();");
-            builder.AppendLine("        await shellViewModel.ShowPageAsync(\"HIS/EMR 组合式 Dashboard\", dashboardViewModel).ConfigureAwait(false);");
+            builder.AppendLine("        await shellViewModel.ShowPageAsync(\"Dashboard\", \"HIS/EMR 组合式 Dashboard\").ConfigureAwait(false);");
         }
         else
         {
             builder.Append("        ").Append(shell.ViewModelTypeName)
                 .AppendLine(" shellViewModel = ResolveShellViewModel();");
-            builder.AppendLine("        await shellViewModel.ShowPageAsync(\"Dashboard\", displayName).ConfigureAwait(false);");
+            builder.AppendLine("        await shellViewModel.ShowPageAsync(displayName, displayName).ConfigureAwait(false);");
         }
 
         builder.AppendLine("    }");
@@ -677,10 +765,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("            CreateDashboardViewModel(string.Empty);");
             builder.AppendLine("        }");
             builder.AppendLine();
-            builder.AppendLine("        (string title, string description, object pageViewModel) = CreateDashboardPage(pageKey);");
+            builder.AppendLine("        (string resolvedPageKey, string title, string description) = ResolveDashboardPageMetadata(pageKey);");
             builder.Append("        await _dashboardStore!.DispatchAsync(new ")
                 .Append(dashboard.IntentTypeName)
-                .AppendLine(".ShowPage(title, description, pageViewModel), cancellationToken).ConfigureAwait(false);");
+                .AppendLine(".ShowPage(resolvedPageKey, title, description), cancellationToken).ConfigureAwait(false);");
             builder.AppendLine("        return await CreateResponse<TResponse>(title, true).ConfigureAwait(false);");
             builder.AppendLine("    }");
             builder.AppendLine();
@@ -691,7 +779,6 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         StringBuilder builder,
         GenerationModel model,
         string containerName,
-        string registryName,
         FeatureInfo login,
         FeatureInfo shell,
         FeatureInfo? dashboard)
@@ -730,7 +817,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine("        if (serviceType == typeof(IMviViewRegistry))");
         builder.AppendLine("        {");
-        builder.Append("            return _viewRegistry ??= new ").Append(registryName).AppendLine("();");
+        builder.AppendLine("            return this;");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        if (serviceType == typeof(IMviUiDispatcher))");
@@ -767,6 +854,23 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             builder.Append("        if (serviceType == typeof(").Append(dashboard.ViewModelTypeName).AppendLine("))");
             builder.AppendLine("        {");
             builder.AppendLine("            return CreateDashboardViewModel(string.Empty);");
+            builder.AppendLine("        }");
+            if (model.DashboardPageFactoryTypeName is not null)
+            {
+                builder.AppendLine();
+                builder.Append("        if (serviceType == typeof(").Append(model.DashboardPageFactoryTypeName).AppendLine("))");
+                builder.AppendLine("        {");
+                builder.AppendLine("            return this;");
+                builder.AppendLine("        }");
+            }
+        }
+
+        if (model.ShellPageFactoryTypeName is not null)
+        {
+            builder.AppendLine();
+            builder.Append("        if (serviceType == typeof(").Append(model.ShellPageFactoryTypeName).AppendLine("))");
+            builder.AppendLine("        {");
+            builder.AppendLine("            return this;");
             builder.AppendLine("        }");
         }
 
@@ -805,7 +909,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             .Append("            ").Append(shell.StateTypeName).AppendLine(".Initial,")
             .Append("            new ").Append(shell.ReducerTypeName).AppendLine("(),")
             .Append("            new ").Append(shell.DispatcherTypeName).AppendLine("());");
-        builder.Append("        return new ").Append(shell.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
+        builder.Append("        return new ").Append(shell.ViewModelTypeName).AppendLine("(store, this, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.Append("    private ").Append(StoreType(login)).AppendLine(" ResolveLoginStore()");
@@ -879,21 +983,19 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("            return _dashboardViewModel;");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        object menuViewModel = CreateDashboardMenuViewModel();");
-        builder.AppendLine("        object headerViewModel = CreateHeaderViewModel(displayName);");
-        builder.AppendLine("        object currentPageViewModel = CreateInitialDashboardPageViewModel();");
+        builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu.DashboardMenuViewModel menuViewModel = CreateDashboardMenuViewModel();");
+        builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header.HeaderViewModel headerViewModel = CreateHeaderViewModel(displayName);");
         builder.Append("        _dashboardStore = new MviStore<").Append(dashboard.StateTypeName).Append(", ")
             .Append(dashboard.IntentTypeName).Append(", ").Append(dashboard.EffectTypeName).AppendLine(">(");
         builder.Append("            new ").Append(dashboard.StateTypeName).AppendLine("(");
         builder.AppendLine("                displayName,");
-        builder.AppendLine("                menuViewModel,");
-        builder.AppendLine("                headerViewModel,");
         builder.AppendLine("                \"门诊工作站\",");
-        builder.AppendLine("                \"通过源生成组合根创建的 Dashboard 初始页面。\",");
-        builder.AppendLine("                currentPageViewModel),");
+        builder.AppendLine("                \"门诊工作站\",");
+        builder.AppendLine("                \"通过源生成组合根创建的 Dashboard 初始页面。\"),");
         builder.Append("            new ").Append(dashboard.ReducerTypeName).AppendLine("(),");
         builder.Append("            new ").Append(dashboard.DispatcherTypeName).AppendLine("());");
-        builder.Append("        _dashboardViewModel = new ").Append(dashboard.ViewModelTypeName).AppendLine("(_dashboardStore, ResolveUiDispatcher());");
+        builder.Append("        _dashboardViewModel = new ").Append(dashboard.ViewModelTypeName)
+            .AppendLine("(store: _dashboardStore, menuViewModel: menuViewModel, headerViewModel: headerViewModel, pageFactory: this, uiDispatcher: ResolveUiDispatcher());");
         builder.AppendLine("        return _dashboardViewModel;");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -915,54 +1017,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine();
         }
 
-        builder.AppendLine("    private object CreateInitialDashboardPageViewModel()");
-        builder.AppendLine("    {");
-        if (outpatient is not null)
-        {
-            builder.AppendLine("        return CreateOutpatientWorkstationViewModel();");
-        }
-        else if (dashboardMenu is not null)
-        {
-            builder.AppendLine("        return CreateDashboardMenuViewModel();");
-        }
-        else
-        {
-            builder.AppendLine("        return new object();");
-        }
-
-        builder.AppendLine("    }");
-        builder.AppendLine();
-
-        AppendDashboardPageFactory(
-            builder,
-            outpatient,
-            businessPage,
-            architectureValidation,
-            bedOverview,
-            admissionCoordinator,
-            nursingTaskBoard,
-            wardRiskPanel,
-            labOrderComposer,
-            specimenTracker,
-            criticalValueMonitor,
-            labTurnaroundBoard,
-            prescriptionReviewBoard,
-            drugStockMonitor,
-            replenishmentPlanner,
-            medicationSafetyPanel,
-            qualityKpiBoard,
-            medicalRecordAuditBoard,
-            riskEventBoard,
-            rectificationTracker,
-            patientSearch,
-            auditTimeline,
-            metricCard);
-
         if (outpatient is not null)
         {
             builder.Append("    private ").Append(outpatient.ViewModelTypeName).AppendLine(" CreateOutpatientWorkstationViewModel()");
             builder.AppendLine("    {");
-            builder.AppendLine("        object queueViewModel = CreatePatientQueueViewModel();");
+            builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.PatientQueue.PatientQueueViewModel queueViewModel = CreatePatientQueueViewModel();").AppendLine();
             if (clinicalEditor is not null)
             {
                 builder.Append("        ").Append(StoreType(clinicalEditor)).AppendLine(" editorStore = new MviStore<")
@@ -972,11 +1031,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 builder.Append("            new ").Append(clinicalEditor.ReducerTypeName).AppendLine("(),");
                 builder.Append("            ").Append(CreateDispatcherExpression(clinicalEditor)).AppendLine(");");
                 builder.AppendLine("        _clinicalEditorStore = editorStore;");
-                builder.Append("        object editorViewModel = new ").Append(clinicalEditor.ViewModelTypeName).AppendLine("(editorStore, ResolveUiDispatcher());");
+                builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor.ClinicalEditorViewModel editorViewModel = new ")
+                    .Append(clinicalEditor.ViewModelTypeName).AppendLine("(editorStore, ResolveUiDispatcher());");
             }
             else
             {
-                builder.AppendLine("        object editorViewModel = CreateClinicalEditorViewModel();");
+                builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor.ClinicalEditorViewModel editorViewModel = CreateClinicalEditorViewModel();");
             }
             if (clinicalReminder is not null)
             {
@@ -987,20 +1047,22 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 builder.Append("            new ").Append(clinicalReminder.ReducerTypeName).AppendLine("(),");
                 builder.Append("            ").Append(CreateDispatcherExpression(clinicalReminder)).AppendLine(");");
                 builder.AppendLine("        _clinicalReminderStore = reminderStore;");
-                builder.Append("        object reminderViewModel = new ").Append(clinicalReminder.ViewModelTypeName).AppendLine("(reminderStore, ResolveUiDispatcher());");
+                builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder.ClinicalReminderViewModel reminderViewModel = new ")
+                    .Append(clinicalReminder.ViewModelTypeName).AppendLine("(reminderStore, ResolveUiDispatcher());");
             }
             else
             {
-                builder.AppendLine("        object reminderViewModel = CreateClinicalReminderViewModel();");
+                builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder.ClinicalReminderViewModel reminderViewModel = CreateClinicalReminderViewModel();");
             }
             builder.Append("        ").Append(StoreType(outpatient)).Append(" store = new MviStore<")
                 .Append(outpatient.StateTypeName).Append(", ").Append(outpatient.IntentTypeName).Append(", ")
                 .Append(outpatient.EffectTypeName).AppendLine(">(");
             builder.Append("            new ").Append(outpatient.StateTypeName)
-                .AppendLine("(queueViewModel, editorViewModel, reminderViewModel),");
+                .AppendLine("(\"等待子组件交互。\"),");
             builder.Append("            new ").Append(outpatient.ReducerTypeName).AppendLine("(),");
             builder.Append("            new ").Append(outpatient.DispatcherTypeName).AppendLine("());");
-            builder.Append("        return new ").Append(outpatient.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
+            builder.Append("        return new ").Append(outpatient.ViewModelTypeName)
+                .AppendLine("(store, queueViewModel, editorViewModel, reminderViewModel, ResolveUiDispatcher());");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -1038,105 +1100,103 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
     private static void AppendDashboardPageFactory(
         StringBuilder builder,
-        FeatureInfo? outpatient,
-        FeatureInfo? businessPage,
-        FeatureInfo? architectureValidation,
-        FeatureInfo? bedOverview,
-        FeatureInfo? admissionCoordinator,
-        FeatureInfo? nursingTaskBoard,
-        FeatureInfo? wardRiskPanel,
-        FeatureInfo? labOrderComposer,
-        FeatureInfo? specimenTracker,
-        FeatureInfo? criticalValueMonitor,
-        FeatureInfo? labTurnaroundBoard,
-        FeatureInfo? prescriptionReviewBoard,
-        FeatureInfo? drugStockMonitor,
-        FeatureInfo? replenishmentPlanner,
-        FeatureInfo? medicationSafetyPanel,
-        FeatureInfo? qualityKpiBoard,
-        FeatureInfo? medicalRecordAuditBoard,
-        FeatureInfo? riskEventBoard,
-        FeatureInfo? rectificationTracker,
-        FeatureInfo? patientSearch,
-        FeatureInfo? auditTimeline,
-        FeatureInfo? metricCard)
+        GenerationModel model,
+        FeatureInfo? dashboard)
     {
-        builder.AppendLine("    private (string Title, string Description, object PageViewModel) CreateDashboardPage(string pageKey)");
+        if (dashboard is null)
+        {
+            return;
+        }
+
+        FeatureInfo? outpatient = model.GetFeature("OutpatientWorkstation");
+        FeatureInfo? businessPage = model.GetFeature("BusinessCompositePage");
+        FeatureInfo? architectureValidation = model.GetFeature("ArchitectureValidation");
+
+        // IDashboardPageFactory.CreatePage：把 menuKey 解析为具体的顶层页面 ViewModel。
+        // 容器直接实现该接口，避免父 VM 长期持有子 VM 引用造成的"VM-in-VM"反模式。
+        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    public object? CreatePage(string pageKey)");
         builder.AppendLine("    {");
+        builder.AppendLine("        ArgumentNullException.ThrowIfNull(pageKey);");
         builder.AppendLine("        switch (pageKey)");
         builder.AppendLine("        {");
         if (outpatient is not null)
         {
             builder.AppendLine("            case \"门诊工作站\":");
-            builder.AppendLine("                return (\"门诊工作站\", \"门诊医生工作站组合页面。\", CreateOutpatientWorkstationViewModel());");
+            builder.AppendLine("                return CreateOutpatientWorkstationViewModel();");
         }
 
-        AppendBusinessPageCase(
-            builder,
-            businessPage,
-            "住院床位",
-            "住院床位 · 数据流",
-            "床位总览 → 入院协调 → 护理任务 → 病区风险，4 节点 Z 形数据流。",
-            "Inpatient",
-            "住院病区 ① 床位状态",
-            "数据流 ① → ② → ③ → ④ 协同中。",
-            bedOverview,
-            admissionCoordinator,
-            nursingTaskBoard,
-            wardRiskPanel);
-        AppendBusinessPageCase(
-            builder,
-            businessPage,
-            "检验医嘱",
-            "检验医嘱 · 数据流",
-            "医嘱开立 → 标本流转 → 危急值 → TAT 监控，4 节点 Z 形数据流。",
-            "Lab",
-            "检验流程 ① 申请入口",
-            "数据流 ① → ② → ③ → ④ 协同中。",
-            labOrderComposer,
-            specimenTracker,
-            criticalValueMonitor,
-            labTurnaroundBoard);
-        AppendBusinessPageCase(
-            builder,
-            businessPage,
-            "药房库存",
-            "药房库存 · 数据流",
-            "处方审核 → 库存水位 → 补货计划 → 用药拦截，4 节点 Z 形数据流。",
-            "Pharmacy",
-            "药品业务 ① 处方审核",
-            "数据流 ① → ② → ③ → ④ 协同中。",
-            prescriptionReviewBoard,
-            drugStockMonitor,
-            replenishmentPlanner,
-            medicationSafetyPanel);
-        AppendBusinessPageCase(
-            builder,
-            businessPage,
-            "运营质控",
-            "运营质控 · 数据流",
-            "院级 KPI → 病历抽查 → 风险分级 → 整改闭环，4 节点 Z 形数据流。",
-            "Quality",
-            "质量管理 ① 指标总览",
-            "数据流 ① → ② → ③ → ④ 协同中。",
-            qualityKpiBoard,
-            medicalRecordAuditBoard,
-            riskEventBoard,
-            rectificationTracker);
-        if (architectureValidation is not null && patientSearch is not null && auditTimeline is not null && metricCard is not null)
+        AppendBusinessPageCreateCase(builder, "住院床位", "床位总览 → 入院协调 → 护理任务 → 病区风险，4 节点 Z 形数据流。", "Inpatient");
+        AppendBusinessPageCreateCase(builder, "检验医嘱", "医嘱开立 → 标本流转 → 危急值 → TAT 监控，4 节点 Z 形数据流。", "Lab");
+        AppendBusinessPageCreateCase(builder, "药房库存", "处方审核 → 库存水位 → 补货计划 → 用药拦截，4 节点 Z 形数据流。", "Pharmacy");
+        AppendBusinessPageCreateCase(builder, "运营质控", "院级 KPI → 病历抽查 → 风险分级 → 整改闭环，4 节点 Z 形数据流。", "Quality");
+        if (architectureValidation is not null)
         {
             builder.AppendLine("            case \"架构验证中心\":");
-            builder.AppendLine("                return (\"架构验证中心\", \"验证组合模式、复用特性、中介者和事件绑定的复杂页面。\", CreateArchitectureValidationViewModel());");
+            builder.AppendLine("                return CreateArchitectureValidationViewModel();");
         }
 
         builder.AppendLine("            default:");
         if (outpatient is not null)
         {
-            builder.AppendLine("                return (\"门诊工作站\", \"门诊医生工作站组合页面。\", CreateOutpatientWorkstationViewModel());");
+            builder.AppendLine("                return CreateOutpatientWorkstationViewModel();");
         }
         else
         {
-            builder.AppendLine("                return (pageKey, \"未注册 Dashboard 页面。\", new object());");
+            builder.AppendLine("                return null;");
+        }
+
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        // ResolveDashboardPageMetadata：把 menuKey 解析为 (pageKey, title, description) 元组，
+        // 仅供 Mediator 在派发 ShowPage Intent 时更新 Dashboard 状态使用。
+        builder.AppendLine("    private (string ResolvedPageKey, string Title, string Description) ResolveDashboardPageMetadata(string pageKey)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ArgumentNullException.ThrowIfNull(pageKey);");
+        builder.AppendLine("        switch (pageKey)");
+        builder.AppendLine("        {");
+        if (outpatient is not null)
+        {
+            builder.AppendLine("            case \"门诊工作站\":");
+            builder.AppendLine("                return (\"门诊工作站\", \"门诊工作站\", \"门诊医生工作站组合页面。\");");
+        }
+
+        AppendBusinessPageCase(
+            builder,
+            "住院床位",
+            "住院床位 · 数据流",
+            "床位总览 → 入院协调 → 护理任务 → 病区风险，4 节点 Z 形数据流。");
+        AppendBusinessPageCase(
+            builder,
+            "检验医嘱",
+            "检验医嘱 · 数据流",
+            "医嘱开立 → 标本流转 → 危急值 → TAT 监控，4 节点 Z 形数据流。");
+        AppendBusinessPageCase(
+            builder,
+            "药房库存",
+            "药房库存 · 数据流",
+            "处方审核 → 库存水位 → 补货计划 → 用药拦截，4 节点 Z 形数据流。");
+        AppendBusinessPageCase(
+            builder,
+            "运营质控",
+            "运营质控 · 数据流",
+            "院级 KPI → 病历抽查 → 风险分级 → 整改闭环，4 节点 Z 形数据流。");
+        if (architectureValidation is not null)
+        {
+            builder.AppendLine("            case \"架构验证中心\":");
+            builder.AppendLine("                return (\"架构验证中心\", \"架构验证中心\", \"验证组合模式、复用特性、中介者和事件绑定的复杂页面。\");");
+        }
+
+        builder.AppendLine("            default:");
+        if (outpatient is not null)
+        {
+            builder.AppendLine("                return (\"门诊工作站\", \"门诊工作站\", \"门诊医生工作站组合页面。\");");
+        }
+        else
+        {
+            builder.AppendLine("                return (pageKey, pageKey, \"未注册 Dashboard 页面。\");");
         }
 
         builder.AppendLine("        }");
@@ -1144,34 +1204,72 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine();
     }
 
-    private static void AppendBusinessPageCase(
-        StringBuilder builder,
-        FeatureInfo? businessPage,
-        string menuKey,
-        string title,
-        string summary,
-        string layout,
-        string activeContext,
-        string flowStatus,
-        FeatureInfo? primary,
-        FeatureInfo? secondary,
-        FeatureInfo? tertiary,
-        FeatureInfo? quaternary)
+    private static void AppendBusinessPageCreateCase(StringBuilder builder, string menuKey, string summary, string layout)
     {
-        _ = primary;
-        _ = secondary;
-        _ = tertiary;
-        _ = quaternary;
-        if (businessPage is null)
+        builder.Append("            case \"").Append(menuKey).AppendLine("\":");
+        builder.Append("                return CreateBusinessCompositePageViewModel(\"")
+            .Append(menuKey)
+            .Append(" · 数据流\", \"")
+            .Append(summary)
+            .Append("\", \"").Append(layout)
+            .AppendLine("\");");
+    }
+
+    /// <summary>
+    /// 在容器中追加 <c>IShellPageFactory.CreatePage(string)</c> 实现。
+    /// <para>
+    /// 该工厂把 <c>ShellPageKeys</c> 判别器解析为具体顶层页面 ViewModel，
+    /// 容器直接实现接口避免在 <c>AppShellState</c> 中嵌入页面 VM 引用。
+    /// Login 走容器自管的 <c>Resolve&lt;LoginViewModel&gt;</c>；
+    /// EventBindingWorkbench 由组合根在构造期间通过 <c>SetEventBindingWorkbenchViewModel</c> 注入，
+    /// 因为它的子组件 Store/Mediator 装配在源生成器枚举范围之外。
+    /// </para>
+    /// </summary>
+    private static void AppendShellPageFactory(StringBuilder builder, GenerationModel model, FeatureInfo login)
+    {
+        if (model.ShellPageFactoryTypeName is null)
         {
             return;
         }
 
+        builder.AppendLine("    private object? _eventBindingWorkbenchViewModel;");
+        builder.AppendLine();
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 由组合根注入事件绑定 Workbench 顶层页面 ViewModel。");
+        builder.AppendLine("    /// 容器自身不构造该 VM，因其 3 个子组件 Store/Mediator 的装配逻辑在源生成器枚举范围之外。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    public void SetEventBindingWorkbenchViewModel(object viewModel)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ArgumentNullException.ThrowIfNull(viewModel);");
+        builder.AppendLine("        _eventBindingWorkbenchViewModel = viewModel;");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.Append("    /// <inheritdoc cref=\"").Append(model.ShellPageFactoryTypeName).AppendLine("\" />");
+        builder.Append("    object? ").Append(model.ShellPageFactoryTypeName).AppendLine(".CreatePage(string pageKey)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ArgumentNullException.ThrowIfNull(pageKey);");
+        builder.AppendLine("        switch (pageKey)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            case \"Login\":");
+        builder.Append("                return (").Append(login.ViewModelTypeName).AppendLine(")Resolve(typeof(").Append(login.ViewModelTypeName).AppendLine("));");
+        builder.AppendLine("            case \"EventBindingWorkbench\":");
+        builder.AppendLine("                return _eventBindingWorkbenchViewModel;");
+        builder.AppendLine("            default:");
+        builder.AppendLine("                return null;");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+    }
+
+    private static void AppendBusinessPageCase(
+        StringBuilder builder,
+        string menuKey,
+        string title,
+        string summary)
+    {
         builder.Append("            case \"").Append(menuKey).AppendLine("\":");
-        builder.Append("                return (\"").Append(title).Append("\", \"").Append(summary).Append("\", ");
-        builder.Append("CreateBusinessCompositePageViewModel(\"").Append(title).Append("\", \"")
-            .Append(summary).Append("\", \"").Append(layout).Append("\", \"")
-            .Append(activeContext).Append("\", \"").Append(flowStatus).AppendLine("\"));");
+        builder.Append("                return (\"").Append(menuKey).Append("\", \"").Append(title).Append("\", \"")
+            .Append(summary).AppendLine("\");");
     }
 
     private static void AppendBusinessPageFactory(StringBuilder builder, FeatureInfo? feature)
@@ -1184,9 +1282,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("    private ").Append(feature.ViewModelTypeName).AppendLine(" CreateBusinessCompositePageViewModel(");
         builder.AppendLine("        string title,");
         builder.AppendLine("        string summary,");
-        builder.AppendLine("        string layout,");
-        builder.AppendLine("        string activeContext,");
-        builder.AppendLine("        string flowStatus)");
+        builder.AppendLine("        string layout)");
         builder.AppendLine("    {");
         builder.Append("        ").Append(StoreType(feature)).Append(" store = new MviStore<")
             .Append(feature.StateTypeName).Append(", ").Append(feature.IntentTypeName).Append(", ")
@@ -1194,18 +1290,14 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            new ").Append(feature.StateTypeName).AppendLine("(");
         builder.AppendLine("                title,");
         builder.AppendLine("                summary,");
-        builder.AppendLine("                new object(),");
-        builder.AppendLine("                new object(),");
-        builder.AppendLine("                new object(),");
-        builder.AppendLine("                new object(),");
         builder.AppendLine("                layout,");
-        builder.AppendLine("                activeContext,");
-        builder.AppendLine("                flowStatus,");
+        builder.AppendLine("                \"等待子组件交互。\",");
+        builder.AppendLine("                \"等待子组件交互。\",");
         builder.AppendLine("                \"等待子组件交互。\"),");
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.AppendLine("        _businessCompositePageStore = store;");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveCardStoreFactory(), ResolveUiDispatcher());");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1295,18 +1387,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            new ").Append(feature.StateTypeName).AppendLine("(");
         builder.AppendLine("                \"架构验证中心\",");
         builder.AppendLine("                \"MVI 4 大架构特性（中间件 / 复用组件 / 中介者 / 副作用）的静态展示，端到端验证请到 4 个生产页面。\",");
-        builder.AppendLine("                patientSearchViewModel,");
-        builder.AppendLine("                auditTimelineViewModel,");
-        builder.AppendLine("                middlewareMetricViewModel,");
-        builder.AppendLine("                reuseMetricViewModel,");
-        builder.AppendLine("                mediatorMetricViewModel,");
-        builder.AppendLine("                effectMetricViewModel,");
-        builder.AppendLine("                \"架构验证中心\",");
-        builder.AppendLine("                \"组合根已由源生成器装配。\",");
         builder.AppendLine("                \"等待子组件交互。\"),");
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, patientSearchViewModel, auditTimelineViewModel, middlewareMetricViewModel, reuseMetricViewModel, mediatorMetricViewModel, effectMetricViewModel, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1479,6 +1563,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             IReadOnlyList<ViewInfo> views,
             ServiceInfo? authService,
             INamedTypeSymbol? loginNavigationService,
+            INamedTypeSymbol? dashboardPageFactory,
+            INamedTypeSymbol? shellPageFactory,
             CardStoreFactoryInfo? cardStoreFactory)
         {
             CompositionNamespace = assemblyName + ".Composition";
@@ -1486,6 +1572,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             Views = views;
             AuthService = authService;
             LoginNavigationService = loginNavigationService;
+            DashboardPageFactory = dashboardPageFactory;
+            ShellPageFactory = shellPageFactory;
             CardStoreFactory = cardStoreFactory;
             _featuresByName = features.ToDictionary(static feature => feature.BaseName, StringComparer.Ordinal);
         }
@@ -1500,11 +1588,27 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         public INamedTypeSymbol? LoginNavigationService { get; }
 
+        /// <summary>
+        /// 表示由源生成器自动发现的 <c>IDashboardPageFactory</c> 接口。
+        /// 容器在实现 <c>IMviViewRegistry</c> 的同时也会实现该接口，
+        /// 把 <c>menuKey</c> 解析为具体的顶层页面 ViewModel（不依赖子 VM 在父 VM 的 State 中持有）。
+        /// </summary>
+        public INamedTypeSymbol? DashboardPageFactory { get; }
+
+        /// <summary>
+        /// 表示由源生成器自动发现的 <c>IShellPageFactory</c> 接口。
+        /// 容器直接实现该接口，把 <c>ShellPageKeys</c> 判别器解析为具体顶层页面 ViewModel，
+        /// 避免 <c>AppShellState</c> 在自身字段中持有页面 VM 引用。
+        /// </summary>
+        public INamedTypeSymbol? ShellPageFactory { get; }
+
         public CardStoreFactoryInfo? CardStoreFactory { get; }
 
         public FeatureInfo? LoginFeature => GetFeature("Login");
 
         public FeatureInfo? ShellFeature => GetFeature("AppShell");
+
+        public FeatureInfo? EventBindingWorkbenchFeature => GetFeature("EventBindingWorkbench");
 
         public FeatureInfo? GetFeature(string baseName)
         {
@@ -1512,6 +1616,14 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 ? feature
                 : null;
         }
+
+        /// <summary>返回 <c>IDashboardPageFactory</c> 的源生成器全限定名（用于类声明与 Resolve 分支）。</summary>
+        public string? DashboardPageFactoryTypeName =>
+            DashboardPageFactory is null ? null : Format(DashboardPageFactory);
+
+        /// <summary>返回 <c>IShellPageFactory</c> 的源生成器全限定名（用于类声明与 Resolve 分支）。</summary>
+        public string? ShellPageFactoryTypeName =>
+            ShellPageFactory is null ? null : Format(ShellPageFactory);
     }
 
     /// <summary>
@@ -1585,11 +1697,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
     private sealed class ViewInfo
     {
-        public ViewInfo(INamedTypeSymbol viewType, INamedTypeSymbol viewModelType, bool requiresRegistry)
+        public ViewInfo(INamedTypeSymbol viewType, INamedTypeSymbol viewModelType, ViewConstructorKind constructorKind)
         {
             ViewTypeName = Format(viewType);
             ViewModelTypeName = Format(viewModelType);
-            RequiresRegistry = requiresRegistry;
+            ConstructorKind = constructorKind;
             ViewModelType = viewModelType;
         }
 
@@ -1597,7 +1709,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         public string ViewModelTypeName { get; }
 
-        public bool RequiresRegistry { get; }
+        public ViewConstructorKind ConstructorKind { get; }
 
         public INamedTypeSymbol ViewModelType { get; }
     }
@@ -1621,5 +1733,20 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         Parameterless,
         Mediator,
         Login
+    }
+
+    /// <summary>
+    /// 表示 Avalonia View 构造函数的形态（影响源生成器如何调用 new View(...)）。
+    /// </summary>
+    private enum ViewConstructorKind
+    {
+        /// <summary>无参构造函数（View 自取依赖）。</summary>
+        Parameterless,
+
+        /// <summary>仅需 <c>IMviViewRegistry</c>（递归嵌入场景）。</summary>
+        Registry,
+
+        /// <summary>需要 <c>IMviViewRegistry</c> 与 <c>CardStoreFactory</c>（数据流节点页等）。</summary>
+        RegistryAndCardStoreFactory,
     }
 }

@@ -86,15 +86,9 @@ public sealed class EventBindingRecordingMediator : IMviMediator
 /// <summary>
 /// 表示事件绑定组合根状态。
 /// </summary>
-/// <param name="SearchViewModel">搜索面板 ViewModel。</param>
-/// <param name="SelectionViewModel">选择面板 ViewModel。</param>
-/// <param name="DetailViewModel">详情面板 ViewModel。</param>
 /// <param name="LastInteractionText">最后一次交互文本。</param>
 /// <param name="InteractionCount">交互次数。</param>
 public sealed record EventBindingWorkbenchState(
-    EventBindingSearchViewModel SearchViewModel,
-    EventBindingSelectionViewModel SelectionViewModel,
-    EventBindingDetailViewModel DetailViewModel,
     string LastInteractionText,
     int InteractionCount) : IMviState;
 
@@ -160,6 +154,10 @@ public sealed class EventBindingWorkbenchEffectDispatcher : IMviEffectDispatcher
 
 /// <summary>
 /// 表示事件绑定组合根 ViewModel。
+/// <para>
+/// 3 个子组件 ViewModel（Search / Selection / Detail）由构造函数注入并暴露为只读属性，
+/// 父 <see cref="EventBindingWorkbenchState"/> 不再持有任何 <c>*ViewModel</c> 引用。
+/// </para>
 /// </summary>
 public sealed partial class EventBindingWorkbenchViewModel
     : MviViewModelBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
@@ -167,30 +165,42 @@ public sealed partial class EventBindingWorkbenchViewModel
     /// <summary>
     /// 初始化事件绑定组合根 ViewModel。
     /// </summary>
-    /// <param name="store">组合根 Store。</param>
+    /// <param name="store">组合根状态存储。</param>
+    /// <param name="searchViewModel">搜索面板子组件 ViewModel。</param>
+    /// <param name="selectionViewModel">选择面板子组件 ViewModel。</param>
+    /// <param name="detailViewModel">详情面板子组件 ViewModel。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
-    public EventBindingWorkbenchViewModel(IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store, IMviUiDispatcher? uiDispatcher = null)
+    public EventBindingWorkbenchViewModel(
+        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store,
+        EventBindingSearchViewModel searchViewModel,
+        EventBindingSelectionViewModel selectionViewModel,
+        EventBindingDetailViewModel detailViewModel,
+        IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
+        ArgumentNullException.ThrowIfNull(searchViewModel);
+        ArgumentNullException.ThrowIfNull(selectionViewModel);
+        ArgumentNullException.ThrowIfNull(detailViewModel);
+
+        SearchViewModel = searchViewModel;
+        SelectionViewModel = selectionViewModel;
+        DetailViewModel = detailViewModel;
     }
 
     /// <summary>
-    /// 获取搜索面板 ViewModel。
+    /// 获取搜索面板 ViewModel（构造函数注入，不在 State 中）。
     /// </summary>
-    [MviBind(nameof(EventBindingWorkbenchState.SearchViewModel))]
-    public partial EventBindingSearchViewModel SearchViewModel { get; private set; }
+    public EventBindingSearchViewModel SearchViewModel { get; }
 
     /// <summary>
-    /// 获取选择面板 ViewModel。
+    /// 获取选择面板 ViewModel（构造函数注入，不在 State 中）。
     /// </summary>
-    [MviBind(nameof(EventBindingWorkbenchState.SelectionViewModel))]
-    public partial EventBindingSelectionViewModel SelectionViewModel { get; private set; }
+    public EventBindingSelectionViewModel SelectionViewModel { get; }
 
     /// <summary>
-    /// 获取详情面板 ViewModel。
+    /// 获取详情面板 ViewModel（构造函数注入，不在 State 中）。
     /// </summary>
-    [MviBind(nameof(EventBindingWorkbenchState.DetailViewModel))]
-    public partial EventBindingDetailViewModel DetailViewModel { get; private set; }
+    public EventBindingDetailViewModel DetailViewModel { get; }
 
     /// <summary>
     /// 获取最后一次交互文本。
@@ -775,15 +785,16 @@ public sealed class EventBindingWorkbenchComposition : IAsyncDisposable, IDispos
 
         MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore = new(
             new EventBindingWorkbenchState(
-                searchViewModel,
-                selectionViewModel,
-                detailViewModel,
                 "等待子组件事件。",
                 0),
             new EventBindingWorkbenchReducer(),
             new EventBindingWorkbenchEffectDispatcher());
         mediator.SetWorkbenchStore(workbenchStore);
-        EventBindingWorkbenchViewModel workbenchViewModel = new(workbenchStore);
+        EventBindingWorkbenchViewModel workbenchViewModel = new(
+            workbenchStore,
+            searchViewModel,
+            selectionViewModel,
+            detailViewModel);
 
         return new EventBindingWorkbenchComposition(
             mediator,

@@ -10,67 +10,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 public abstract partial record LobbyIntent : IMviIntent
 {
     /// <summary>
-    /// 表示挂载大厅子 ViewModel 的意图。
-    /// </summary>
-    public sealed partial record AttachChildren : LobbyIntent
-    {
-        /// <summary>
-        /// 初始化挂载大厅子 ViewModel 的意图。
-        /// </summary>
-        public AttachChildren(
-            PlayerHeaderViewModel playerHeaderViewModel,
-            LobbyMenuViewModel lobbyMenuViewModel,
-            MissionBoardViewModel missionBoardViewModel,
-            HeroRosterViewModel heroRosterViewModel,
-            InventoryViewModel inventoryViewModel,
-            ForgeLabViewModel forgeLabViewModel,
-            BattlePrepViewModel battlePrepViewModel,
-            ActivityLogViewModel activityLogViewModel)
-        {
-            ArgumentNullException.ThrowIfNull(playerHeaderViewModel);
-            ArgumentNullException.ThrowIfNull(lobbyMenuViewModel);
-            ArgumentNullException.ThrowIfNull(missionBoardViewModel);
-            ArgumentNullException.ThrowIfNull(heroRosterViewModel);
-            ArgumentNullException.ThrowIfNull(inventoryViewModel);
-            ArgumentNullException.ThrowIfNull(forgeLabViewModel);
-            ArgumentNullException.ThrowIfNull(battlePrepViewModel);
-            ArgumentNullException.ThrowIfNull(activityLogViewModel);
-            PlayerHeaderViewModel = playerHeaderViewModel;
-            LobbyMenuViewModel = lobbyMenuViewModel;
-            MissionBoardViewModel = missionBoardViewModel;
-            HeroRosterViewModel = heroRosterViewModel;
-            InventoryViewModel = inventoryViewModel;
-            ForgeLabViewModel = forgeLabViewModel;
-            BattlePrepViewModel = battlePrepViewModel;
-            ActivityLogViewModel = activityLogViewModel;
-        }
-
-        /// <summary>获取玩家头部 ViewModel。</summary>
-        public PlayerHeaderViewModel PlayerHeaderViewModel { get; init; }
-
-        /// <summary>获取大厅菜单 ViewModel。</summary>
-        public LobbyMenuViewModel LobbyMenuViewModel { get; init; }
-
-        /// <summary>获取任务大厅 ViewModel。</summary>
-        public MissionBoardViewModel MissionBoardViewModel { get; init; }
-
-        /// <summary>获取英雄队伍 ViewModel。</summary>
-        public HeroRosterViewModel HeroRosterViewModel { get; init; }
-
-        /// <summary>获取背包仓库 ViewModel。</summary>
-        public InventoryViewModel InventoryViewModel { get; init; }
-
-        /// <summary>获取锻造工坊 ViewModel。</summary>
-        public ForgeLabViewModel ForgeLabViewModel { get; init; }
-
-        /// <summary>获取战斗准备 ViewModel。</summary>
-        public BattlePrepViewModel BattlePrepViewModel { get; init; }
-
-        /// <summary>获取活动日志 ViewModel。</summary>
-        public ActivityLogViewModel ActivityLogViewModel { get; init; }
-    }
-
-    /// <summary>
     /// 表示设置玩家资料的意图。
     /// </summary>
     public sealed partial record SetPlayer : LobbyIntent

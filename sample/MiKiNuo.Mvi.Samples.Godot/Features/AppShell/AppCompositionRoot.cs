@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -12,6 +11,13 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 
 /// <summary>
 /// 表示 Godot 游戏示例应用组合根。
+/// <para>
+/// 父 VM 不再持有子 VM 引用：
+/// </para>
+/// <list type="bullet">
+/// <item><see cref="LobbyViewModel"/> 通过 <see cref="ILobbyPanelFactory"/> 解析 5 个互斥面板 VM，3 个常驻 VM 由构造函数注入。</item>
+/// <item><see cref="AppShellViewModel"/> 通过 <see cref="IGameScreenFactory"/> 解析 Login / Lobby VM。</item>
+/// </list>
 /// </summary>
 public sealed class AppCompositionRoot : IDisposable
 {
@@ -20,14 +26,6 @@ public sealed class AppCompositionRoot : IDisposable
     private readonly MviStore<LobbyState, LobbyIntent, LobbyEffect> _lobbyStore;
     private readonly LoginViewModel _loginViewModel;
     private readonly LobbyViewModel _lobbyViewModel;
-    private readonly PlayerHeaderViewModel _playerHeaderViewModel;
-    private readonly LobbyMenuViewModel _lobbyMenuViewModel;
-    private readonly MissionBoardViewModel _missionBoardViewModel;
-    private readonly HeroRosterViewModel _heroRosterViewModel;
-    private readonly InventoryViewModel _inventoryViewModel;
-    private readonly ForgeLabViewModel _forgeLabViewModel;
-    private readonly BattlePrepViewModel _battlePrepViewModel;
-    private readonly ActivityLogViewModel _activityLogViewModel;
     private bool _disposed;
 
     /// <summary>
@@ -67,29 +65,33 @@ public sealed class AppCompositionRoot : IDisposable
             loginMiddlewares);
 
         _loginViewModel = new LoginViewModel(_loginStore, uiDispatcher);
-        _lobbyViewModel = new LobbyViewModel(_lobbyStore, uiDispatcher);
-        _playerHeaderViewModel = new PlayerHeaderViewModel(_lobbyStore, uiDispatcher);
-        _lobbyMenuViewModel = new LobbyMenuViewModel(_lobbyStore, uiDispatcher);
-        _missionBoardViewModel = new MissionBoardViewModel(_lobbyStore, uiDispatcher);
-        _heroRosterViewModel = new HeroRosterViewModel(_lobbyStore, uiDispatcher);
-        _inventoryViewModel = new InventoryViewModel(_lobbyStore, uiDispatcher);
-        _forgeLabViewModel = new ForgeLabViewModel(_lobbyStore, uiDispatcher);
-        _battlePrepViewModel = new BattlePrepViewModel(_lobbyStore, uiDispatcher);
-        _activityLogViewModel = new ActivityLogViewModel(_lobbyStore, uiDispatcher);
 
-        Wait(_lobbyStore.DispatchAsync(new LobbyIntent.AttachChildren(
-            _playerHeaderViewModel,
-            _lobbyMenuViewModel,
-            _missionBoardViewModel,
-            _heroRosterViewModel,
-            _inventoryViewModel,
-            _forgeLabViewModel,
-            _battlePrepViewModel,
-            _activityLogViewModel)));
+        // Lobby 7 个子 VM：3 个常驻（PlayerHeader / LobbyMenu / ActivityLog）+ 5 个互斥面板
+        // 全部共用同一份 _lobbyStore，由组合根一次性构造并交给工厂缓存。
+        PlayerHeaderViewModel playerHeaderViewModel = new(_lobbyStore, uiDispatcher);
+        LobbyMenuViewModel lobbyMenuViewModel = new(_lobbyStore, uiDispatcher);
+        ActivityLogViewModel activityLogViewModel = new(_lobbyStore, uiDispatcher);
+        MissionBoardViewModel missionBoardViewModel = new(_lobbyStore, uiDispatcher);
+        HeroRosterViewModel heroRosterViewModel = new(_lobbyStore, uiDispatcher);
+        InventoryViewModel inventoryViewModel = new(_lobbyStore, uiDispatcher);
+        ForgeLabViewModel forgeLabViewModel = new(_lobbyStore, uiDispatcher);
+        BattlePrepViewModel battlePrepViewModel = new(_lobbyStore, uiDispatcher);
+        ILobbyPanelFactory panelFactory = new LobbyPanelFactory(
+            missionBoardViewModel,
+            heroRosterViewModel,
+            inventoryViewModel,
+            forgeLabViewModel,
+            battlePrepViewModel);
+        _lobbyViewModel = new LobbyViewModel(
+            _lobbyStore,
+            playerHeaderViewModel,
+            lobbyMenuViewModel,
+            activityLogViewModel,
+            panelFactory,
+            uiDispatcher);
 
-        Wait(_appShellStore.DispatchAsync(new AppShellIntent.AttachChildren(_loginViewModel, _lobbyViewModel)));
-
-        AppShellViewModel = new AppShellViewModel(_appShellStore, uiDispatcher);
+        IGameScreenFactory screenFactory = new GameScreenFactory(_loginViewModel, _lobbyViewModel);
+        AppShellViewModel = new AppShellViewModel(_appShellStore, screenFactory, uiDispatcher);
     }
 
     /// <summary>
@@ -108,27 +110,11 @@ public sealed class AppCompositionRoot : IDisposable
         }
 
         AppShellViewModel.Dispose();
-        _activityLogViewModel.Dispose();
-        _battlePrepViewModel.Dispose();
-        _forgeLabViewModel.Dispose();
-        _inventoryViewModel.Dispose();
-        _heroRosterViewModel.Dispose();
-        _missionBoardViewModel.Dispose();
-        _lobbyMenuViewModel.Dispose();
-        _playerHeaderViewModel.Dispose();
         _lobbyViewModel.Dispose();
         _loginViewModel.Dispose();
         _loginStore.Dispose();
         _lobbyStore.Dispose();
         _appShellStore.Dispose();
         _disposed = true;
-    }
-
-    private static void Wait(ValueTask task)
-    {
-        if (!task.IsCompletedSuccessfully)
-        {
-            task.AsTask().GetAwaiter().GetResult();
-        }
     }
 }

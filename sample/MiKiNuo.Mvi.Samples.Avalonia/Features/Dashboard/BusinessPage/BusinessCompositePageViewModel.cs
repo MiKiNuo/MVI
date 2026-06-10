@@ -1,5 +1,4 @@
-﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
-using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
@@ -22,76 +21,26 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 /// 4 张卡片固定映射为 4 个数据流节点（Node1..Node4），具体业务由 <see cref="PageLayout"/> 切换：
 /// 4 个 menuKey 共享同一套 XAML 模板，仅节点标题/角色/数据流标签由本 VM 动态解析。
 /// </para>
+/// <para>
+/// 本 VM 仅暴露 <see cref="PageKey"/> 判别器（<see cref="Node1Key"/>..<see cref="Node4Key"/>），
+/// 不再持有任何 <see cref="CardViewModel"/> 引用；View 层通过 <see cref="CardStoreFactory"/>
+/// 把 PageKey 解析为具体的 CardViewModel，符合 MVI "State 不存 ViewModel" 原则。
+/// </para>
 /// </summary>
 public sealed partial class BusinessCompositePageViewModel
     : MviViewModelBase<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>
 {
-    private readonly CardStoreFactory _factory;
-
     /// <summary>
     /// 初始化生产业务组合页面 ViewModel。
-    /// 16 个 CardViewModel 由 DI 容器注入的 <see cref="CardStoreFactory"/> 单例提供。
     /// </summary>
     /// <param name="store">业务页面状态存储。</param>
-    /// <param name="factory">卡片 Store 与 ViewModel 工厂。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public BusinessCompositePageViewModel(
         IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store,
-        CardStoreFactory factory,
         IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        ArgumentNullException.ThrowIfNull(factory);
-        _factory = factory;
     }
-
-    /// <summary>获取住院床位总览卡片 VM。</summary>
-    public CardViewModel InpatientBedOverviewCard => _factory.GetViewModel(PageKey.BedOverview);
-
-    /// <summary>获取入院协调卡片 VM（Form Card）。</summary>
-    public CardViewModel InpatientAdmissionCoordinatorCard => _factory.GetViewModel(PageKey.AdmissionCoordinator);
-
-    /// <summary>获取护理任务卡片 VM。</summary>
-    public CardViewModel InpatientNursingTaskCard => _factory.GetViewModel(PageKey.NursingTaskBoard);
-
-    /// <summary>获取病区风险事件卡片 VM（Form Card）。</summary>
-    public CardViewModel InpatientRiskEventCard => _factory.GetViewModel(PageKey.WardRiskPanel);
-
-    /// <summary>获取检验医嘱开立卡片 VM（Form Card）。</summary>
-    public CardViewModel LabOrderCard => _factory.GetViewModel(PageKey.LabOrderComposer);
-
-    /// <summary>获取标本流转卡片 VM。</summary>
-    public CardViewModel LabSpecimenFlowCard => _factory.GetViewModel(PageKey.SpecimenTracker);
-
-    /// <summary>获取危急值卡片 VM。</summary>
-    public CardViewModel LabCriticalValueCard => _factory.GetViewModel(PageKey.CriticalValueMonitor);
-
-    /// <summary>获取 TAT 监控卡片 VM。</summary>
-    public CardViewModel LabTatCard => _factory.GetViewModel(PageKey.LabTurnaroundBoard);
-
-    /// <summary>获取处方审核卡片 VM（Form Card）。</summary>
-    public CardViewModel PharmacyPrescriptionCard => _factory.GetViewModel(PageKey.PrescriptionReviewBoard);
-
-    /// <summary>获取库存水位卡片 VM。</summary>
-    public CardViewModel PharmacyStockCard => _factory.GetViewModel(PageKey.DrugStockMonitor);
-
-    /// <summary>获取补货计划卡片 VM。</summary>
-    public CardViewModel PharmacyReplenishmentCard => _factory.GetViewModel(PageKey.ReplenishmentPlanner);
-
-    /// <summary>获取用药安全卡片 VM。</summary>
-    public CardViewModel PharmacySafetyCard => _factory.GetViewModel(PageKey.MedicationSafetyPanel);
-
-    /// <summary>获取院级 KPI 卡片 VM。</summary>
-    public CardViewModel QualityKpiCard => _factory.GetViewModel(PageKey.QualityKpiBoard);
-
-    /// <summary>获取病历缺陷抽查卡片 VM。</summary>
-    public CardViewModel QualityAuditCard => _factory.GetViewModel(PageKey.MedicalRecordAuditBoard);
-
-    /// <summary>获取风险事件分级卡片 VM（Form Card）。</summary>
-    public CardViewModel QualityRiskCard => _factory.GetViewModel(PageKey.RiskEventBoard);
-
-    /// <summary>获取整改闭环追踪卡片 VM。</summary>
-    public CardViewModel QualityRectificationCard => _factory.GetViewModel(PageKey.RectificationTracker);
 
     /// <summary>
     /// 获取场景标题。
@@ -142,45 +91,17 @@ public sealed partial class BusinessCompositePageViewModel
         _ => "Other",
     };
 
-    /// <summary>获取 1 号数据流节点卡片（业务入口/数据源）。</summary>
-    public CardViewModel Node1 => PageLayout switch
-    {
-        "Inpatient" => InpatientBedOverviewCard,
-        "Lab" => LabOrderCard,
-        "Pharmacy" => PharmacyPrescriptionCard,
-        "Quality" => QualityKpiCard,
-        _ => InpatientBedOverviewCard,
-    };
+    /// <summary>获取 1 号数据流节点卡片的 PageKey（业务入口/数据源），供 View 解析为具体 CardViewModel。</summary>
+    public PageKey Node1Key => ResolveNodeKey(0);
 
-    /// <summary>获取 2 号数据流节点卡片（处理/流转）。</summary>
-    public CardViewModel Node2 => PageLayout switch
-    {
-        "Inpatient" => InpatientAdmissionCoordinatorCard,
-        "Lab" => LabSpecimenFlowCard,
-        "Pharmacy" => PharmacyStockCard,
-        "Quality" => QualityAuditCard,
-        _ => InpatientAdmissionCoordinatorCard,
-    };
+    /// <summary>获取 2 号数据流节点卡片的 PageKey（处理/流转），供 View 解析为具体 CardViewModel。</summary>
+    public PageKey Node2Key => ResolveNodeKey(1);
 
-    /// <summary>获取 3 号数据流节点卡片（校验/执行）。</summary>
-    public CardViewModel Node3 => PageLayout switch
-    {
-        "Inpatient" => InpatientNursingTaskCard,
-        "Lab" => LabCriticalValueCard,
-        "Pharmacy" => PharmacyReplenishmentCard,
-        "Quality" => QualityRiskCard,
-        _ => InpatientNursingTaskCard,
-    };
+    /// <summary>获取 3 号数据流节点卡片的 PageKey（校验/执行），供 View 解析为具体 CardViewModel。</summary>
+    public PageKey Node3Key => ResolveNodeKey(2);
 
-    /// <summary>获取 4 号数据流节点卡片（监控/闭环）。</summary>
-    public CardViewModel Node4 => PageLayout switch
-    {
-        "Inpatient" => InpatientRiskEventCard,
-        "Lab" => LabTatCard,
-        "Pharmacy" => PharmacySafetyCard,
-        "Quality" => QualityRectificationCard,
-        _ => InpatientRiskEventCard,
-    };
+    /// <summary>获取 4 号数据流节点卡片的 PageKey（监控/闭环），供 View 解析为具体 CardViewModel。</summary>
+    public PageKey Node4Key => ResolveNodeKey(3);
 
     /// <summary>获取 1 号节点角色（用于节点标题下方的副标）。</summary>
     public string Node1Role => PageLayout switch
@@ -261,4 +182,54 @@ public sealed partial class BusinessCompositePageViewModel
         "Quality" => "院级 KPI → 病历抽查 → 风险分级 → 整改闭环",
         _ => "数据流 ① → ② → ③ → ④",
     };
+
+    /// <summary>
+    /// 根据 <see cref="PageLayout"/> 与节点索引（0..3）解析出对应的 <see cref="PageKey"/>。
+    /// 4 个节点固定为 4 张业务卡片，映射表集中维护以避免 <see cref="Node1Key"/>..<see cref="Node4Key"/>
+    /// 4 个独立 switch 出现 drift。
+    /// 未识别 PageLayout 时回退为 Inpatient 域的 4 个节点，保持单一确定性降级路径。
+    /// </summary>
+    /// <param name="nodeIndex">节点索引：0=Node1, 1=Node2, 2=Node3, 3=Node4。</param>
+    /// <returns>节点对应的 PageKey。</returns>
+    private PageKey ResolveNodeKey(int nodeIndex)
+    {
+        return PageLayout switch
+        {
+            "Inpatient" => nodeIndex switch
+            {
+                0 => PageKey.BedOverview,
+                1 => PageKey.AdmissionCoordinator,
+                2 => PageKey.NursingTaskBoard,
+                _ => PageKey.WardRiskPanel,
+            },
+            "Lab" => nodeIndex switch
+            {
+                0 => PageKey.LabOrderComposer,
+                1 => PageKey.SpecimenTracker,
+                2 => PageKey.CriticalValueMonitor,
+                _ => PageKey.LabTurnaroundBoard,
+            },
+            "Pharmacy" => nodeIndex switch
+            {
+                0 => PageKey.PrescriptionReviewBoard,
+                1 => PageKey.DrugStockMonitor,
+                2 => PageKey.ReplenishmentPlanner,
+                _ => PageKey.MedicationSafetyPanel,
+            },
+            "Quality" => nodeIndex switch
+            {
+                0 => PageKey.QualityKpiBoard,
+                1 => PageKey.MedicalRecordAuditBoard,
+                2 => PageKey.RiskEventBoard,
+                _ => PageKey.RectificationTracker,
+            },
+            _ => nodeIndex switch
+            {
+                0 => PageKey.BedOverview,
+                1 => PageKey.AdmissionCoordinator,
+                2 => PageKey.NursingTaskBoard,
+                _ => PageKey.WardRiskPanel,
+            },
+        };
+    }
 }

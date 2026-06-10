@@ -8,6 +8,8 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 
 /// <summary>
 /// 表示门诊工作站页面视图。
+/// 3 个子组件 ViewModel 由 <see cref="OutpatientWorkstationViewModel"/> 强类型属性暴露，
+/// View 直接读取后交由 ViewRegistry 创建具体 View，不再依赖 State 中的 object 字段。
 /// </summary>
 public sealed partial class OutpatientWorkstationView : MviAvaloniaView<OutpatientWorkstationViewModel>
 {

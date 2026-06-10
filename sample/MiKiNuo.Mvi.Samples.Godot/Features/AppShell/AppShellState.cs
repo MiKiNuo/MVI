@@ -1,13 +1,15 @@
 using System;
 using MiKiNuo.Mvi.Domain.MVI.State;
-using MiKiNuo.Mvi.Samples.Godot.Features.Login;
-using MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 using MiKiNuo.Mvi.Samples.Godot.Features.Common;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 
 /// <summary>
 /// 表示游戏应用壳 MVI 状态。
+/// <para>
+/// 不再持有 <c>LoginViewModel</c> / <c>LobbyViewModel</c> 引用；
+/// 顶层页面 VM 通过 <see cref="IGameScreenFactory"/> 按 <see cref="CurrentScreen"/> 解析。
+/// </para>
 /// </summary>
 public sealed record AppShellState : IMviState
 {
@@ -17,14 +19,10 @@ public sealed record AppShellState : IMviState
     /// <param name="currentScreen">当前顶层页面键。</param>
     /// <param name="currentTitle">当前页面标题。</param>
     /// <param name="shellMessage">应用壳提示消息。</param>
-    /// <param name="loginViewModel">登录页 ViewModel。</param>
-    /// <param name="lobbyViewModel">游戏大厅 ViewModel。</param>
     public AppShellState(
         string currentScreen,
         string currentTitle,
-        string shellMessage,
-        LoginViewModel? loginViewModel,
-        LobbyViewModel? lobbyViewModel)
+        string shellMessage)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(currentScreen);
         ArgumentException.ThrowIfNullOrWhiteSpace(currentTitle);
@@ -32,8 +30,6 @@ public sealed record AppShellState : IMviState
         CurrentScreen = currentScreen;
         CurrentTitle = currentTitle;
         ShellMessage = shellMessage;
-        LoginViewModel = loginViewModel;
-        LobbyViewModel = lobbyViewModel;
     }
 
     /// <summary>
@@ -52,22 +48,10 @@ public sealed record AppShellState : IMviState
     public string ShellMessage { get; init; }
 
     /// <summary>
-    /// 获取登录页 ViewModel。
-    /// </summary>
-    public LoginViewModel? LoginViewModel { get; init; }
-
-    /// <summary>
-    /// 获取游戏大厅 ViewModel。
-    /// </summary>
-    public LobbyViewModel? LobbyViewModel { get; init; }
-
-    /// <summary>
     /// 获取初始状态。
     /// </summary>
     public static AppShellState Initial { get; } = new(
         currentScreen: GameScreenKeys.Login,
         currentTitle: "登录游戏",
-        shellMessage: "请输入账号和密码进入游戏大厅。",
-        loginViewModel: null,
-        lobbyViewModel: null);
+        shellMessage: "请输入账号和密码进入游戏大厅。");
 }

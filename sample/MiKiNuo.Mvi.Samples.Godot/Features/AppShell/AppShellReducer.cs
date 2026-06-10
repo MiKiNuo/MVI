@@ -11,30 +11,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 public sealed partial class AppShellReducer : MviReducerBase<AppShellState, AppShellIntent, AppShellEffect>
 {
     /// <summary>
-    /// 处理挂载顶层子 ViewModel 意图。
-    /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">挂载意图。</param>
-    /// <returns>规约结果。</returns>
-    [MviReduce]
-    private MviReduceResult<AppShellState, AppShellEffect> Reduce(
-        AppShellState state,
-        AppShellIntent.AttachChildren intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-        AppShellState nextState = state with
-        {
-            LoginViewModel = intent.LoginViewModel,
-            LobbyViewModel = intent.LobbyViewModel,
-            ShellMessage = "Shell 已挂载 Login MVI 与 Lobby MVI。",
-        };
-        return MviReduceResult.StateAndEffect<AppShellState, AppShellEffect>(
-            nextState,
-            new AppShellEffect.Trace("Shell AttachChildren"));
-    }
-
-    /// <summary>
     /// 处理显示登录界面意图。
     /// </summary>
     /// <param name="state">当前状态。</param>

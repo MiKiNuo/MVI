@@ -9,6 +9,9 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 
 /// <summary>
 /// 表示 Dashboard 组合视图。
+/// 菜单 / 头部插槽在绑定时通过 ViewModel 的只读属性直接渲染（它们是 Shell 生命周期内静态注入的）。
+/// 当前页面插槽通过 <see cref="DashboardViewModel.CurrentPageKey"/> 变更触发重新渲染，
+/// View 不再从 ViewModel 拉取可变 child VM 引用。
 /// </summary>
 public sealed partial class DashboardView : MviAvaloniaView<DashboardViewModel>
 {
@@ -43,20 +46,21 @@ public sealed partial class DashboardView : MviAvaloniaView<DashboardViewModel>
         base.Bind(viewModel);
         _headerSlot.Content = _viewRegistry.CreateView(viewModel.HeaderViewModel);
         _menuSlot.Content = _viewRegistry.CreateView(viewModel.MenuViewModel);
-        RenderPage(viewModel.CurrentPageViewModel);
+        RenderPage(viewModel);
         PropertyChangedEventHandler handler = (_, args) =>
         {
-            if (args.PropertyName == nameof(DashboardViewModel.CurrentPageViewModel))
+            if (args.PropertyName == nameof(DashboardViewModel.CurrentPageKey))
             {
-                RenderPage(viewModel.CurrentPageViewModel);
+                RenderPage(viewModel);
             }
         };
         viewModel.PropertyChanged += handler;
         RegisterBinding(() => viewModel.PropertyChanged -= handler);
     }
 
-    private void RenderPage(object pageViewModel)
+    private void RenderPage(DashboardViewModel viewModel)
     {
-        _pageSlot.Content = _viewRegistry.CreateView(pageViewModel);
+        object? pageViewModel = viewModel.CreateCurrentPageViewModel();
+        _pageSlot.Content = pageViewModel is null ? null : _viewRegistry.CreateView(pageViewModel);
     }
 }

@@ -21,27 +21,6 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
         _gameLogicService = gameLogicService ?? throw new ArgumentNullException(nameof(gameLogicService));
     }
 
-    /// <summary>处理挂载大厅子 ViewModel 意图。</summary>
-    [MviReduce]
-    private MviReduceResult<LobbyState, LobbyEffect> Reduce(LobbyState state, LobbyIntent.AttachChildren intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-        LobbyState nextState = state with
-        {
-            PlayerHeaderViewModel = intent.PlayerHeaderViewModel,
-            LobbyMenuViewModel = intent.LobbyMenuViewModel,
-            MissionBoardViewModel = intent.MissionBoardViewModel,
-            HeroRosterViewModel = intent.HeroRosterViewModel,
-            InventoryViewModel = intent.InventoryViewModel,
-            ForgeLabViewModel = intent.ForgeLabViewModel,
-            BattlePrepViewModel = intent.BattlePrepViewModel,
-            ActivityLogViewModel = intent.ActivityLogViewModel,
-            ActivityLog = AppendLog(state.ActivityLog, "Lobby 父 MVI 已挂载 7 个不同子 MVI ViewModel。"),
-        };
-        return MviReduceResult.StateAndEffect<LobbyState, LobbyEffect>(nextState, new LobbyEffect.Trace("Lobby AttachChildren"));
-    }
-
     /// <summary>处理玩家资料传入意图。</summary>
     [MviReduce]
     private MviReduceResult<LobbyState, LobbyEffect> Reduce(LobbyState state, LobbyIntent.SetPlayer intent)
