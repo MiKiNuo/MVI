@@ -8,8 +8,8 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 
 /// <summary>
 /// 表示门诊工作站页面视图。
-/// 3 个子组件 ViewModel 由 <see cref="OutpatientWorkstationViewModel"/> 强类型属性暴露，
-/// View 直接读取后交由 ViewRegistry 创建具体 View，不再依赖 State 中的 object 字段。
+/// 3 个子组件 ViewModel 由 <see cref="OutpatientWorkstationViewModel"/> 工厂方法按需解析，
+/// 再由 <see cref="IMviViewRegistry"/> 创建具体 View，View 不再依赖父 VM 上的强类型子 VM 属性。
 /// </summary>
 public sealed partial class OutpatientWorkstationView : MviAvaloniaView<OutpatientWorkstationViewModel>
 {
@@ -39,8 +39,8 @@ public sealed partial class OutpatientWorkstationView : MviAvaloniaView<Outpatie
         ArgumentNullException.ThrowIfNull(viewModel);
 
         base.Bind(viewModel);
-        _queueSlot.Content = _viewRegistry.CreateView(viewModel.QueueViewModel);
-        _editorSlot.Content = _viewRegistry.CreateView(viewModel.ClinicalEditorViewModel);
-        _reminderSlot.Content = _viewRegistry.CreateView(viewModel.ClinicalReminderViewModel);
+        _queueSlot.Content = _viewRegistry.CreateView(viewModel.CreateQueueViewModel());
+        _editorSlot.Content = _viewRegistry.CreateView(viewModel.CreateEditorViewModel());
+        _reminderSlot.Content = _viewRegistry.CreateView(viewModel.CreateReminderViewModel());
     }
 }

@@ -18,7 +18,8 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby;
 /// <summary>
 /// 表示 Godot 游戏大厅组合 View。
 /// <para>
-/// 3 个常驻子 View（玩家头部 / 大厅菜单 / 活动日志）由 <see cref="LobbyViewModel"/> 构造函数注入并通过强类型属性绑定。
+/// 3 个常驻子 View（玩家头部 / 大厅菜单 / 活动日志）由 <see cref="LobbyViewModel"/>
+/// 通过 <see cref="ILobbyChromeFactory"/> 工厂方法按需解析。
 /// 5 个互斥面板 View 通过 <see cref="LobbyViewModel.CreateCurrentPanelViewModel"/> 解析，
 /// <c>CurrentPanel</c> 变化时按需重新绑定到当前面板，其他 4 个面板 VM 由 <see cref="ILobbyPanelFactory"/> 内部缓存。
 /// </para>
@@ -42,9 +43,9 @@ public partial class LobbyView : GodotMviControlView<LobbyViewModel>
         BattlePrepView battleView = GetNode<BattlePrepView>("Root/Body/Content/BattlePrepView");
         ActivityLogView logView = GetNode<ActivityLogView>("Root/ActivityLogView");
 
-        headerView.Bind(viewModel.PlayerHeaderViewModel);
-        menuView.Bind(viewModel.LobbyMenuViewModel);
-        logView.Bind(viewModel.ActivityLogViewModel);
+        headerView.Bind((PlayerHeaderViewModel)viewModel.CreateHeaderViewModel());
+        menuView.Bind((LobbyMenuViewModel)viewModel.CreateMenuViewModel());
+        logView.Bind((ActivityLogViewModel)viewModel.CreateActivityLogViewModel());
 
         BindPropertyChanged(
             viewModel,

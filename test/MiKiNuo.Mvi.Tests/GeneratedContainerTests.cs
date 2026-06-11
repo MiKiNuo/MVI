@@ -111,7 +111,7 @@ public sealed class GeneratedContainerTests
 
         await container.NavigateToDashboardAsync("测试用户");
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
-        DashboardMenuViewModel menu = (DashboardMenuViewModel)dashboard.MenuViewModel;
+        DashboardMenuViewModel menu = (DashboardMenuViewModel)dashboard.CreateMenuViewModel();
 
         string[] menuKeys = ["住院床位", "检验医嘱", "药房库存", "运营质控", "架构验证中心", "门诊工作站"];
         foreach (string menuKey in menuKeys)
@@ -329,7 +329,7 @@ public sealed class GeneratedContainerTests
             new NavigateDashboardPageRequest("门诊工作站"));
 
         OutpatientWorkstationViewModel outpatientPage = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
-        ClinicalEditorViewModel clinicalEditor = (ClinicalEditorViewModel)outpatientPage.ClinicalEditorViewModel;
+        ClinicalEditorViewModel clinicalEditor = (ClinicalEditorViewModel)outpatientPage.CreateEditorViewModel();
 
         string patientBefore = clinicalEditor.PatientName;
         bool canSaveBefore = clinicalEditor.CanSave;

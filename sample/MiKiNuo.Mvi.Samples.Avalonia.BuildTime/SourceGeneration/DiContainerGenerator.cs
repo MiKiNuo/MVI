@@ -984,7 +984,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu.DashboardMenuViewModel menuViewModel = CreateDashboardMenuViewModel();");
-        builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header.HeaderViewModel headerViewModel = CreateHeaderViewModel(displayName);");
+        builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header.HeaderViewModel menuHeaderViewModel = CreateHeaderViewModel(displayName);");
+        // 父 VM 不再直接持有 Menu/Header 子 VM 引用；改用 IDashboardChromeFactory 工厂封装 2 个 chrome 子 VM，
+        // 由父 VM 在 View 按需解析时通过工厂方法获取，避免"VM-in-VM"反模式。
+        builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.DashboardChromeFactory chromeFactory = new(menuViewModel, displayName => CreateHeaderViewModel(displayName));");
         builder.Append("        _dashboardStore = new MviStore<").Append(dashboard.StateTypeName).Append(", ")
             .Append(dashboard.IntentTypeName).Append(", ").Append(dashboard.EffectTypeName).AppendLine(">(");
         builder.Append("            new ").Append(dashboard.StateTypeName).AppendLine("(");
@@ -995,7 +998,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            new ").Append(dashboard.ReducerTypeName).AppendLine("(),");
         builder.Append("            new ").Append(dashboard.DispatcherTypeName).AppendLine("());");
         builder.Append("        _dashboardViewModel = new ").Append(dashboard.ViewModelTypeName)
-            .AppendLine("(store: _dashboardStore, menuViewModel: menuViewModel, headerViewModel: headerViewModel, pageFactory: this, uiDispatcher: ResolveUiDispatcher());");
+            .AppendLine("(store: _dashboardStore, chromeFactory: chromeFactory, pageFactory: this, uiDispatcher: ResolveUiDispatcher());");
         builder.AppendLine("        return _dashboardViewModel;");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -1061,8 +1064,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 .AppendLine("(\"等待子组件交互。\"),");
             builder.Append("            new ").Append(outpatient.ReducerTypeName).AppendLine("(),");
             builder.Append("            new ").Append(outpatient.DispatcherTypeName).AppendLine("());");
+            // 父 VM 不再直接持有子 VM 引用；改用 IOutpatientSubPanelFactory 工厂封装 3 个子 VM，
+            // 由父 VM 在 View 按需解析时通过工厂方法获取，避免"VM-in-VM"反模式。
+            builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.OutpatientSubPanelFactory subPanelFactory = new(queueViewModel, editorViewModel, reminderViewModel);");
             builder.Append("        return new ").Append(outpatient.ViewModelTypeName)
-                .AppendLine("(store, queueViewModel, editorViewModel, reminderViewModel, ResolveUiDispatcher());");
+                .AppendLine("(store, subPanelFactory, ResolveUiDispatcher());");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -1375,12 +1381,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         // 这就是"门诊工作站和架构验证中心两个菜单进去界面完全一样"的根本原因。
         builder.Append("    private ").Append(feature.ViewModelTypeName).AppendLine(" CreateArchitectureValidationViewModel()");
         builder.AppendLine("    {");
+        // 父 VM 不再直接持有 6 个子 VM 引用；
+        // 2 个复用组件（患者检索 / 审计时间线）通过 IArchitectureValidationPanelFactory 工厂解析，
+        // 4 张指标卡通过 CardStoreFactory 解析（与业务页 16 张卡片共享同一 store/VM 实例）。
         builder.Append("        ").Append(patientSearch.ViewModelTypeName).AppendLine(" patientSearchViewModel = CreatePatientSearchViewModel(\"架构验证中心\");");
         builder.Append("        ").Append(auditTimeline.ViewModelTypeName).AppendLine(" auditTimelineViewModel = CreateAuditTimelineViewModel(\"架构验证中心\");");
-        builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.CardViewModel middlewareMetricViewModel = ResolveCardStoreFactory().GetViewModel(global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.PageKey.MiddlewareMetric);");
-        builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.CardViewModel reuseMetricViewModel = ResolveCardStoreFactory().GetViewModel(global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.PageKey.ReuseMetric);");
-        builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.CardViewModel mediatorMetricViewModel = ResolveCardStoreFactory().GetViewModel(global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.PageKey.MediatorMetric);");
-        builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.CardViewModel effectMetricViewModel = ResolveCardStoreFactory().GetViewModel(global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards.PageKey.EffectMetric);");
+        builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation.ArchitectureValidationPanelFactory panelFactory = new(contextName => CreatePatientSearchViewModel(contextName), contextName => CreateAuditTimelineViewModel(contextName));");
         builder.Append("        ").Append(StoreType(feature)).Append(" store = new MviStore<")
             .Append(feature.StateTypeName).Append(", ").Append(feature.IntentTypeName).Append(", ")
             .Append(feature.EffectTypeName).AppendLine(">(");
@@ -1390,7 +1396,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("                \"等待子组件交互。\"),");
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, patientSearchViewModel, auditTimelineViewModel, middlewareMetricViewModel, reuseMetricViewModel, mediatorMetricViewModel, effectMetricViewModel, ResolveUiDispatcher());");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, panelFactory, ResolveCardStoreFactory(), ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }

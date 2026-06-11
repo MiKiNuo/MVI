@@ -2,49 +2,46 @@
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 
 /// <summary>
 /// 表示 Dashboard 壳 ViewModel。
 /// <para>
-/// 3 个子组件 ViewModel 全部脱离 State：
+/// 子组件 ViewModel 全部脱离本 VM 的强类型属性：
 /// </para>
 /// <list type="bullet">
-/// <item>菜单 / 头部：在 Shell 生命周期内静态不变，构造函数注入并暴露为只读属性。</item>
+/// <item>菜单 / 头部：在 Shell 生命周期内静态不变，通过 <see cref="IDashboardChromeFactory"/>
+///   工厂按 <see cref="CreateHeaderViewModel(string)"/> / <see cref="CreateMenuViewModel"/> 解析。</item>
 /// <item>当前页面：随菜单切换而变化，State 仅保留 <see cref="CurrentPageKey"/> 判别器；
-///   View 层通过 <see cref="IDashboardPageFactory"/> 按需创建页面 VM，避免父 VM 长期持有可变子 VM 引用。</item>
+///   View 层通过 <see cref="IDashboardPageFactory"/>（由本 VM 经由 <see cref="CreateCurrentPageViewModel"/> 暴露）
+///   按需创建页面 VM，避免父 VM 长期持有可变子 VM 引用。</item>
 /// </list>
 /// </summary>
 public sealed partial class DashboardViewModel
     : MviViewModelBase<DashboardState, DashboardIntent, DashboardEffect>
 {
+    private readonly IDashboardChromeFactory _chromeFactory;
     private readonly IDashboardPageFactory _pageFactory;
 
     /// <summary>
     /// 初始化 Dashboard 壳 ViewModel。
     /// </summary>
     /// <param name="store">Dashboard 壳状态存储。</param>
-    /// <param name="menuViewModel">左侧菜单子组件 ViewModel（Shell 生命周期内静态）。</param>
-    /// <param name="headerViewModel">顶部头部子组件 ViewModel（Shell 生命周期内静态）。</param>
+    /// <param name="chromeFactory">菜单 / 头部子组件 ViewModel 工厂（Shell 生命周期内静态）。</param>
     /// <param name="pageFactory">把 PageKey 解析为具体页面 ViewModel 的工厂。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public DashboardViewModel(
         IMviStore<DashboardState, DashboardIntent, DashboardEffect> store,
-        DashboardMenuViewModel menuViewModel,
-        HeaderViewModel headerViewModel,
+        IDashboardChromeFactory chromeFactory,
         IDashboardPageFactory pageFactory,
         IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        ArgumentNullException.ThrowIfNull(menuViewModel);
-        ArgumentNullException.ThrowIfNull(headerViewModel);
+        ArgumentNullException.ThrowIfNull(chromeFactory);
         ArgumentNullException.ThrowIfNull(pageFactory);
 
-        MenuViewModel = menuViewModel;
-        HeaderViewModel = headerViewModel;
+        _chromeFactory = chromeFactory;
         _pageFactory = pageFactory;
     }
 
@@ -55,14 +52,17 @@ public sealed partial class DashboardViewModel
     public partial string DisplayName { get; private set; }
 
     /// <summary>
-    /// 获取左侧菜单 ViewModel（构造函数注入，Shell 生命周期内静态）。
+    /// 解析顶部头部子组件 ViewModel（经由 <see cref="IDashboardChromeFactory"/> 工厂按 displayName 缓存返回）。
     /// </summary>
-    public DashboardMenuViewModel MenuViewModel { get; }
+    /// <param name="displayName">当前登录显示名称。</param>
+    /// <returns>头部 <c>HeaderViewModel</c> 实例。</returns>
+    public object CreateHeaderViewModel(string displayName) => _chromeFactory.CreateHeaderViewModel(displayName);
 
     /// <summary>
-    /// 获取顶部头部 ViewModel（构造函数注入，Shell 生命周期内静态）。
+    /// 解析左侧菜单子组件 ViewModel（经由 <see cref="IDashboardChromeFactory"/> 工厂缓存返回）。
     /// </summary>
-    public HeaderViewModel HeaderViewModel { get; }
+    /// <returns>菜单 <c>DashboardMenuViewModel</c> 实例。</returns>
+    public object CreateMenuViewModel() => _chromeFactory.CreateMenuViewModel();
 
     /// <summary>
     /// 获取当前页面键（菜单驱动；View 层通过 <see cref="IDashboardPageFactory"/> 解析为具体页面 VM）。

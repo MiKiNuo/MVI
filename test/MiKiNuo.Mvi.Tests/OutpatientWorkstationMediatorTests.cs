@@ -28,8 +28,8 @@ public sealed class OutpatientWorkstationMediatorTests
 
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
         OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
-        PatientQueueViewModel queue = (PatientQueueViewModel)workstation.QueueViewModel;
-        ClinicalEditorViewModel editor = (ClinicalEditorViewModel)workstation.ClinicalEditorViewModel;
+        PatientQueueViewModel queue = (PatientQueueViewModel)workstation.CreateQueueViewModel();
+        ClinicalEditorViewModel editor = (ClinicalEditorViewModel)workstation.CreateEditorViewModel();
 
         // 初始状态：未选择患者
         await Assert.That(editor.PatientName).IsEqualTo("未选择患者");
@@ -54,8 +54,8 @@ public sealed class OutpatientWorkstationMediatorTests
 
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
         OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
-        PatientQueueViewModel queue = (PatientQueueViewModel)workstation.QueueViewModel;
-        ClinicalReminderViewModel reminder = (ClinicalReminderViewModel)workstation.ClinicalReminderViewModel;
+        PatientQueueViewModel queue = (PatientQueueViewModel)workstation.CreateQueueViewModel();
+        ClinicalReminderViewModel reminder = (ClinicalReminderViewModel)workstation.CreateReminderViewModel();
 
         // 初始状态
         await Assert.That(reminder.PatientName).IsEqualTo("未选择患者");
@@ -80,8 +80,8 @@ public sealed class OutpatientWorkstationMediatorTests
 
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
         OutpatientWorkstationViewModel workstation = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
-        ClinicalEditorViewModel editor = (ClinicalEditorViewModel)workstation.ClinicalEditorViewModel;
-        ClinicalReminderViewModel reminder = (ClinicalReminderViewModel)workstation.ClinicalReminderViewModel;
+        ClinicalEditorViewModel editor = (ClinicalEditorViewModel)workstation.CreateEditorViewModel();
+        ClinicalReminderViewModel reminder = (ClinicalReminderViewModel)workstation.CreateReminderViewModel();
 
         // 直接通过中介者发送请求
         IMviMediator mediator = container.Resolve<IMviMediator>();

@@ -24,9 +24,9 @@ public partial class EventBindingWorkbenchView : GodotMviControlView<EventBindin
         EventBindingSelectionPanelView selectionView = GetNode<EventBindingSelectionPanelView>("Root/Body/SelectionPanel");
         EventBindingDetailPanelView detailView = GetNode<EventBindingDetailPanelView>("Root/Body/DetailPanel");
 
-        searchView.Bind(viewModel.SearchViewModel);
-        selectionView.Bind(viewModel.SelectionViewModel);
-        detailView.Bind(viewModel.DetailViewModel);
+        searchView.Bind((EventBindingSearchViewModel)viewModel.CreateSearchViewModel());
+        selectionView.Bind((EventBindingSelectionViewModel)viewModel.CreateSelectionViewModel());
+        detailView.Bind((EventBindingDetailViewModel)viewModel.CreateDetailViewModel());
 
         Label interactionLabel = GetNode<Label>("Root/Header/InteractionLabel");
         BindPropertyChanged(

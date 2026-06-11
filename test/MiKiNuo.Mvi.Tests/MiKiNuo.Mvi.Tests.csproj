@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" />
+    <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Godot\MiKiNuo.Mvi.Samples.Godot.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Controls.DataGrid" />

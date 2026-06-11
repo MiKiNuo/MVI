@@ -15,7 +15,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 /// 父 VM 不再持有子 VM 引用：
 /// </para>
 /// <list type="bullet">
-/// <item><see cref="LobbyViewModel"/> 通过 <see cref="ILobbyPanelFactory"/> 解析 5 个互斥面板 VM，3 个常驻 VM 由构造函数注入。</item>
+/// <item><see cref="LobbyViewModel"/> 通过 <see cref="ILobbyChromeFactory"/> 解析 3 个常驻 chrome 子 VM（玩家头部 / 大厅菜单 / 活动日志），通过 <see cref="ILobbyPanelFactory"/> 解析 5 个互斥面板 VM。</item>
 /// <item><see cref="AppShellViewModel"/> 通过 <see cref="IGameScreenFactory"/> 解析 Login / Lobby VM。</item>
 /// </list>
 /// </summary>
@@ -66,8 +66,10 @@ public sealed class AppCompositionRoot : IDisposable
 
         _loginViewModel = new LoginViewModel(_loginStore, uiDispatcher);
 
-        // Lobby 7 个子 VM：3 个常驻（PlayerHeader / LobbyMenu / ActivityLog）+ 5 个互斥面板
-        // 全部共用同一份 _lobbyStore，由组合根一次性构造并交给工厂缓存。
+        // Lobby 8 个子 VM：3 个常驻 chrome（PlayerHeader / LobbyMenu / ActivityLog）+ 5 个互斥面板
+        // 全部共用同一份 _lobbyStore，由组合根一次性构造：
+        //   - 3 个常驻 chrome VM 交给 LobbyChromeFactory 工厂缓存
+        //   - 5 个互斥面板 VM 交给 LobbyPanelFactory 工厂缓存
         PlayerHeaderViewModel playerHeaderViewModel = new(_lobbyStore, uiDispatcher);
         LobbyMenuViewModel lobbyMenuViewModel = new(_lobbyStore, uiDispatcher);
         ActivityLogViewModel activityLogViewModel = new(_lobbyStore, uiDispatcher);
@@ -76,6 +78,10 @@ public sealed class AppCompositionRoot : IDisposable
         InventoryViewModel inventoryViewModel = new(_lobbyStore, uiDispatcher);
         ForgeLabViewModel forgeLabViewModel = new(_lobbyStore, uiDispatcher);
         BattlePrepViewModel battlePrepViewModel = new(_lobbyStore, uiDispatcher);
+        ILobbyChromeFactory chromeFactory = new LobbyChromeFactory(
+            playerHeaderViewModel,
+            lobbyMenuViewModel,
+            activityLogViewModel);
         ILobbyPanelFactory panelFactory = new LobbyPanelFactory(
             missionBoardViewModel,
             heroRosterViewModel,
@@ -84,9 +90,7 @@ public sealed class AppCompositionRoot : IDisposable
             battlePrepViewModel);
         _lobbyViewModel = new LobbyViewModel(
             _lobbyStore,
-            playerHeaderViewModel,
-            lobbyMenuViewModel,
-            activityLogViewModel,
+            chromeFactory,
             panelFactory,
             uiDispatcher);
 

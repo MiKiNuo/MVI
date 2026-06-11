@@ -8,10 +8,18 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation
 
 /// <summary>
 /// 表示架构验证中心视图。
+/// 6 个子组件 ViewModel 由 <see cref="ArchitectureValidationViewModel"/> 工厂方法按需解析，
+/// 再由 <see cref="IMviViewRegistry"/> 创建具体 View，View 不再依赖父 VM 上的强类型子 VM 属性。
 /// </summary>
 public sealed partial class ArchitectureValidationView : MviAvaloniaView<ArchitectureValidationViewModel>
 {
     private readonly IMviViewRegistry _viewRegistry;
+    private readonly MviSlotHost _patientSearchSlot;
+    private readonly MviSlotHost _middlewareMetricSlot;
+    private readonly MviSlotHost _reuseMetricSlot;
+    private readonly MviSlotHost _mediatorMetricSlot;
+    private readonly MviSlotHost _effectMetricSlot;
+    private readonly MviSlotHost _auditTimelineSlot;
 
     /// <summary>
     /// 初始化架构验证中心视图。
@@ -23,6 +31,12 @@ public sealed partial class ArchitectureValidationView : MviAvaloniaView<Archite
 
         _viewRegistry = viewRegistry;
         AvaloniaXamlLoader.Load(this);
+        _patientSearchSlot = FindRequiredSlot("PatientSearchSlot");
+        _middlewareMetricSlot = FindRequiredSlot("MiddlewareMetricSlot");
+        _reuseMetricSlot = FindRequiredSlot("ReuseMetricSlot");
+        _mediatorMetricSlot = FindRequiredSlot("MediatorMetricSlot");
+        _effectMetricSlot = FindRequiredSlot("EffectMetricSlot");
+        _auditTimelineSlot = FindRequiredSlot("AuditTimelineSlot");
     }
 
     /// <inheritdoc />
@@ -31,24 +45,17 @@ public sealed partial class ArchitectureValidationView : MviAvaloniaView<Archite
         ArgumentNullException.ThrowIfNull(viewModel);
 
         base.Bind(viewModel);
-        SetSlotContent("PatientSearchSlot", viewModel.PatientSearchViewModel);
-        SetSlotContent("AuditTimelineSlot", viewModel.AuditTimelineViewModel);
-        SetSlotContent("MiddlewareMetricSlot", viewModel.MiddlewareMetricViewModel);
-        SetSlotContent("ReuseMetricSlot", viewModel.ReuseMetricViewModel);
-        SetSlotContent("MediatorMetricSlot", viewModel.MediatorMetricViewModel);
-        SetSlotContent("EffectMetricSlot", viewModel.EffectMetricViewModel);
+        _patientSearchSlot.Content = _viewRegistry.CreateView(viewModel.CreatePatientSearchViewModel(viewModel.ActiveContext));
+        _middlewareMetricSlot.Content = _viewRegistry.CreateView(viewModel.CreateMiddlewareMetricViewModel());
+        _reuseMetricSlot.Content = _viewRegistry.CreateView(viewModel.CreateReuseMetricViewModel());
+        _mediatorMetricSlot.Content = _viewRegistry.CreateView(viewModel.CreateMediatorMetricViewModel());
+        _effectMetricSlot.Content = _viewRegistry.CreateView(viewModel.CreateEffectMetricViewModel());
+        _auditTimelineSlot.Content = _viewRegistry.CreateView(viewModel.CreateAuditTimelineViewModel(viewModel.ActiveContext));
     }
 
-    private void SetSlotContent(string slotName, object viewModel)
+    private MviSlotHost FindRequiredSlot(string name)
     {
-        MviSlotHost slot = FindRequired<MviSlotHost>(slotName);
-        slot.Content = _viewRegistry.CreateView(viewModel);
-    }
-
-    private TControl FindRequired<TControl>(string name)
-        where TControl : Control
-    {
-        return this.FindControl<TControl>(name)
+        return this.FindControl<MviSlotHost>(name)
             ?? throw new InvalidOperationException($"无法找到名为 {name} 的控件。");
     }
 }

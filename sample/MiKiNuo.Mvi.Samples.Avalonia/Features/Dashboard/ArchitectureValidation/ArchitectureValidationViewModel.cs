@@ -1,89 +1,93 @@
-﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.AuditTimeline;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
 
 /// <summary>
 /// 表示架构验证中心 ViewModel。
 /// <para>
-/// 6 个子组件 ViewModel（2 个复用组件 + 4 个指标卡）由 DI 容器在构造本 VM 时静态注入，
-/// 不会随 State 变化而重建（State 仅保留上下文/状态/日志 3 个字段）。
+/// 6 个子组件 ViewModel（2 个复用组件 + 4 个指标卡）通过工厂按需解析：
+/// </para>
+/// <list type="bullet">
+/// <item>复用组件（患者检索 / 审计时间线）由 <see cref="IArchitectureValidationPanelFactory"/> 解析，
+///   View 通过 <see cref="CreatePatientSearchViewModel"/> / <see cref="CreateAuditTimelineViewModel"/> 工厂方法获取。</item>
+/// <item>4 张指标卡片由 <see cref="CardStoreFactory"/> 解析（与业务页 16 张卡片共享同一 store/VM 实例），
+///   View 通过 <see cref="CreateMiddlewareMetricViewModel"/> / <see cref="CreateReuseMetricViewModel"/> /
+///   <see cref="CreateMediatorMetricViewModel"/> / <see cref="CreateEffectMetricViewModel"/> 工厂方法获取。</item>
+/// </list>
+/// <para>
+/// 本 VM <b>不直接持有任何子 VM 引用</b>，避免"VM-in-VM"反模式。
 /// </para>
 /// </summary>
 public sealed partial class ArchitectureValidationViewModel
     : MviViewModelBase<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect>
 {
+    private readonly IArchitectureValidationPanelFactory _panelFactory;
+    private readonly CardStoreFactory _cardStoreFactory;
+
     /// <summary>
     /// 初始化架构验证中心 ViewModel。
     /// </summary>
     /// <param name="store">架构验证中心状态存储。</param>
-    /// <param name="patientSearchViewModel">复用患者检索子组件 ViewModel。</param>
-    /// <param name="auditTimelineViewModel">复用审计时间线子组件 ViewModel。</param>
-    /// <param name="middlewareMetricViewModel">中间件指标卡片 ViewModel。</param>
-    /// <param name="reuseMetricViewModel">复用指标卡片 ViewModel。</param>
-    /// <param name="mediatorMetricViewModel">中介者指标卡片 ViewModel。</param>
-    /// <param name="effectMetricViewModel">副作用指标卡片 ViewModel。</param>
+    /// <param name="panelFactory">复用组件（患者检索 / 审计时间线）ViewModel 工厂。</param>
+    /// <param name="cardStoreFactory">指标卡片 MVI Store / ViewModel 工厂（提供 4 张指标卡片）。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public ArchitectureValidationViewModel(
         IMviStore<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect> store,
-        PatientSearchViewModel patientSearchViewModel,
-        AuditTimelineViewModel auditTimelineViewModel,
-        CardViewModel middlewareMetricViewModel,
-        CardViewModel reuseMetricViewModel,
-        CardViewModel mediatorMetricViewModel,
-        CardViewModel effectMetricViewModel,
+        IArchitectureValidationPanelFactory panelFactory,
+        CardStoreFactory cardStoreFactory,
         IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        ArgumentNullException.ThrowIfNull(patientSearchViewModel);
-        ArgumentNullException.ThrowIfNull(auditTimelineViewModel);
-        ArgumentNullException.ThrowIfNull(middlewareMetricViewModel);
-        ArgumentNullException.ThrowIfNull(reuseMetricViewModel);
-        ArgumentNullException.ThrowIfNull(mediatorMetricViewModel);
-        ArgumentNullException.ThrowIfNull(effectMetricViewModel);
+        ArgumentNullException.ThrowIfNull(panelFactory);
+        ArgumentNullException.ThrowIfNull(cardStoreFactory);
 
-        PatientSearchViewModel = patientSearchViewModel;
-        AuditTimelineViewModel = auditTimelineViewModel;
-        MiddlewareMetricViewModel = middlewareMetricViewModel;
-        ReuseMetricViewModel = reuseMetricViewModel;
-        MediatorMetricViewModel = mediatorMetricViewModel;
-        EffectMetricViewModel = effectMetricViewModel;
+        _panelFactory = panelFactory;
+        _cardStoreFactory = cardStoreFactory;
     }
 
     /// <summary>
-    /// 获取复用患者检索 ViewModel（构造函数注入，不在 State 中）。
+    /// 解析复用患者检索子组件 ViewModel（经由 <see cref="IArchitectureValidationPanelFactory"/> 工厂缓存返回）。
     /// </summary>
-    public PatientSearchViewModel PatientSearchViewModel { get; }
+    /// <param name="contextName">上下文名称（用于面板标题）。</param>
+    /// <returns>患者检索 <c>PatientSearchViewModel</c> 实例。</returns>
+    public object CreatePatientSearchViewModel(string contextName) =>
+        _panelFactory.CreatePatientSearchViewModel(contextName);
 
     /// <summary>
-    /// 获取复用审计时间线 ViewModel（构造函数注入，不在 State 中）。
+    /// 解析复用审计时间线子组件 ViewModel（经由 <see cref="IArchitectureValidationPanelFactory"/> 工厂缓存返回）。
     /// </summary>
-    public AuditTimelineViewModel AuditTimelineViewModel { get; }
+    /// <param name="contextName">上下文名称（用于面板标题）。</param>
+    /// <returns>审计时间线 <c>AuditTimelineViewModel</c> 实例。</returns>
+    public object CreateAuditTimelineViewModel(string contextName) =>
+        _panelFactory.CreateAuditTimelineViewModel(contextName);
 
     /// <summary>
-    /// 获取中间件指标卡片 ViewModel（构造函数注入，不在 State 中）。
+    /// 解析中间件指标卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
     /// </summary>
-    public CardViewModel MiddlewareMetricViewModel { get; }
+    /// <returns>中间件指标 <c>CardViewModel</c> 实例。</returns>
+    public object CreateMiddlewareMetricViewModel() => _cardStoreFactory.GetViewModel(PageKey.MiddlewareMetric);
 
     /// <summary>
-    /// 获取复用指标卡片 ViewModel（构造函数注入，不在 State 中）。
+    /// 解析复用指标卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
     /// </summary>
-    public CardViewModel ReuseMetricViewModel { get; }
+    /// <returns>复用指标 <c>CardViewModel</c> 实例。</returns>
+    public object CreateReuseMetricViewModel() => _cardStoreFactory.GetViewModel(PageKey.ReuseMetric);
 
     /// <summary>
-    /// 获取中介者指标卡片 ViewModel（构造函数注入，不在 State 中）。
+    /// 解析中介者指标卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
     /// </summary>
-    public CardViewModel MediatorMetricViewModel { get; }
+    /// <returns>中介者指标 <c>CardViewModel</c> 实例。</returns>
+    public object CreateMediatorMetricViewModel() => _cardStoreFactory.GetViewModel(PageKey.MediatorMetric);
 
     /// <summary>
-    /// 获取副作用指标卡片 ViewModel（构造函数注入，不在 State 中）。
+    /// 解析副作用指标卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
     /// </summary>
-    public CardViewModel EffectMetricViewModel { get; }
+    /// <returns>副作用指标 <c>CardViewModel</c> 实例。</returns>
+    public object CreateEffectMetricViewModel() => _cardStoreFactory.GetViewModel(PageKey.EffectMetric);
 
     /// <summary>
     /// 获取当前业务上下文。

@@ -127,41 +127,40 @@ public sealed class EventBindingWorkbenchEffectDispatcher : IMviEffectDispatcher
 
 /// <summary>表示 Godot 事件绑定组合根 ViewModel。</summary>
 /// <para>
-/// 3 个子组件 ViewModel（Search / Selection / Detail）由构造函数注入并暴露为只读属性，
-/// 父 <see cref="EventBindingWorkbenchState"/> 不再持有任何 <c>*ViewModel</c> 引用。
+/// 3 个子组件 ViewModel（Search / Selection / Detail）由 <see cref="IEventBindingPanelFactory"/>
+/// 工厂在构造期间静态注入并缓存；本 VM 仅持工厂引用，<b>不直接持有任何子 VM 引用</b>
+/// （避免"VM-in-VM"反模式）。View 端通过 <see cref="CreateSearchViewModel"/>、
+/// <see cref="CreateSelectionViewModel"/>、<see cref="CreateDetailViewModel"/> 三个工厂方法
+/// 按需解析子 VM，再交由 ViewRegistry 创建对应 View。
 /// </para>
 public sealed partial class EventBindingWorkbenchViewModel
     : MviViewModelBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
 {
+    private readonly IEventBindingPanelFactory _panelFactory;
+
     /// <summary>初始化 Godot 事件绑定组合根 ViewModel。</summary>
     /// <param name="store">组合根状态存储。</param>
-    /// <param name="searchViewModel">搜索面板子组件 ViewModel。</param>
-    /// <param name="selectionViewModel">选择面板子组件 ViewModel。</param>
-    /// <param name="detailViewModel">详情面板子组件 ViewModel。</param>
+    /// <param name="panelFactory">3 个子组件 ViewModel 的工厂（搜索 / 选择 / 详情）。</param>
     public EventBindingWorkbenchViewModel(
         IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store,
-        EventBindingSearchViewModel searchViewModel,
-        EventBindingSelectionViewModel selectionViewModel,
-        EventBindingDetailViewModel detailViewModel)
+        IEventBindingPanelFactory panelFactory)
         : base(store)
     {
-        ArgumentNullException.ThrowIfNull(searchViewModel);
-        ArgumentNullException.ThrowIfNull(selectionViewModel);
-        ArgumentNullException.ThrowIfNull(detailViewModel);
-
-        SearchViewModel = searchViewModel;
-        SelectionViewModel = selectionViewModel;
-        DetailViewModel = detailViewModel;
+        ArgumentNullException.ThrowIfNull(panelFactory);
+        _panelFactory = panelFactory;
     }
 
-    /// <summary>获取搜索面板 ViewModel（构造函数注入）。</summary>
-    public EventBindingSearchViewModel SearchViewModel { get; }
+    /// <summary>解析搜索面板子组件 ViewModel（经由 <see cref="IEventBindingPanelFactory"/> 工厂缓存返回）。</summary>
+    /// <returns>搜索 <c>EventBindingSearchViewModel</c> 实例。</returns>
+    public object CreateSearchViewModel() => _panelFactory.CreateSearchViewModel();
 
-    /// <summary>获取选择面板 ViewModel（构造函数注入）。</summary>
-    public EventBindingSelectionViewModel SelectionViewModel { get; }
+    /// <summary>解析选择面板子组件 ViewModel（经由 <see cref="IEventBindingPanelFactory"/> 工厂缓存返回）。</summary>
+    /// <returns>选择 <c>EventBindingSelectionViewModel</c> 实例。</returns>
+    public object CreateSelectionViewModel() => _panelFactory.CreateSelectionViewModel();
 
-    /// <summary>获取详情面板 ViewModel（构造函数注入）。</summary>
-    public EventBindingDetailViewModel DetailViewModel { get; }
+    /// <summary>解析详情面板子组件 ViewModel（经由 <see cref="IEventBindingPanelFactory"/> 工厂缓存返回）。</summary>
+    /// <returns>详情 <c>EventBindingDetailViewModel</c> 实例。</returns>
+    public object CreateDetailViewModel() => _panelFactory.CreateDetailViewModel();
 
     /// <summary>获取最后一次交互文本。</summary>
     [MviBind(nameof(EventBindingWorkbenchState.LastInteractionText))]
@@ -535,11 +534,15 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
             new EventBindingWorkbenchReducer(),
             new EventBindingWorkbenchEffectDispatcher());
         mediator.SetWorkbenchStore(workbenchStore);
-        EventBindingWorkbenchViewModel workbenchViewModel = new(
-            workbenchStore,
+        // 父 VM 不再直接持有 3 个子 VM 引用；改用 IEventBindingPanelFactory 工厂封装 3 个子 VM，
+        // 由父 VM 在 View 按需解析时通过工厂方法获取，避免"VM-in-VM"反模式。
+        IEventBindingPanelFactory panelFactory = new EventBindingPanelFactory(
             searchViewModel,
             selectionViewModel,
             detailViewModel);
+        EventBindingWorkbenchViewModel workbenchViewModel = new(
+            workbenchStore,
+            panelFactory);
 
         return new EventBindingWorkbenchComposition(
             mediator,
