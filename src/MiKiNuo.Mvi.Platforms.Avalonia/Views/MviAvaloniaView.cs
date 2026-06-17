@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Presentation.Disposables;
 
 namespace MiKiNuo.Mvi.Platforms.Avalonia.Views;
@@ -32,7 +33,11 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
     }
 
     /// <summary>
-    /// 绑定 ViewModel。
+    /// 绑定 ViewModel；保留旧版 1 参数入口以兼容"手写 Bind"或"无槽位"场景。
+    /// <para>
+    /// 此重载 <b>不</b> 触发组合模式槽位绑定钩子（<see cref="OnBindSlots"/>）。
+    /// 需要源生成器 emit 槽位绑定逻辑的 View，必须使用带 <see cref="IMviResolver"/> 的 2 参数重载。
+    /// </para>
     /// </summary>
     /// <param name="viewModel">视图模型。</param>
     public void Bind(TViewModel viewModel)
@@ -41,6 +46,44 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
 
         ClearBindings();
         DataContext = viewModel;
+    }
+
+    /// <summary>
+    /// 绑定 ViewModel 与子组件解析容器。
+    /// <para>
+    /// 走完整绑定流程：清空旧绑定、设置 <c>DataContext</c>、调用 <see cref="OnBindSlots"/> 钩子；
+    /// 源生成器会在子类中 <c>override</c> 该钩子以驱动 [MviSlot] 字段绑定。
+    /// </para>
+    /// </summary>
+    /// <param name="viewModel">视图模型。</param>
+    /// <param name="resolver">用于解析子 ViewModel 与子 View 的 <see cref="IMviResolver"/>；不能为 <c>null</c>。</param>
+    public void Bind(TViewModel viewModel, IMviResolver resolver)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(resolver);
+
+        ClearBindings();
+        DataContext = viewModel;
+
+        // 触发组合模式槽位绑定钩子；源生成器会 emit override 实现
+        // —— 扫描子类的 [MviSlot] 字段，按需解析子 ViewModel 并写入 MviSlotHost。
+        OnBindSlots(viewModel, EnsureBindings(), resolver);
+    }
+
+    /// <summary>
+    /// 由源生成器在子类中 <c>override</c> 实现的组合模式槽位绑定钩子。
+    /// <para>
+    /// 基类提供空实现；不依赖源生成器的 View（如无 [MviSlot] 字段）会得到一个零成本的默认行为。
+    /// </para>
+    /// </summary>
+    /// <param name="viewModel">当前绑定的视图模型。</param>
+    /// <param name="bindings">随 View 生命周期释放的可释放资源集合。</param>
+    /// <param name="resolver">由 <c>Bind</c> 传入的 <see cref="IMviResolver"/>；源生成器用它解析子 ViewModel 与子 View。</param>
+    protected virtual void OnBindSlots(TViewModel viewModel, MviDisposableBag bindings, IMviResolver resolver)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(bindings);
+        ArgumentNullException.ThrowIfNull(resolver);
     }
 
     /// <summary>

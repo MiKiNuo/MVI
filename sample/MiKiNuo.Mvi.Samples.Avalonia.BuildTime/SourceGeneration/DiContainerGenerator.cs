@@ -436,14 +436,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         for (int index = 0; index < model.Views.Count; index++)
         {
             ViewInfo view = model.Views[index];
-            bool instanceMethod = view.ConstructorKind != ViewConstructorKind.Parameterless;
-            builder.Append("    private ");
-            if (!instanceMethod)
-            {
-                builder.Append("static ");
-            }
-
-            builder.Append(view.ViewTypeName).Append(" CreateView").Append(index)
+            // 所有 CreateView* 方法统一为实例方法：必须能访问 this 才能在 2-arg Bind 重载中
+            // 传入解析器（容器自身就是 IMviResolver），以触发 View 的 OnBindSlots 钩子。
+            // 即便 View 本身是无参构造、可以走 static 优化，也必须为实例方法以支持槽位绑定。
+            builder.Append("    private ")
+                .Append(view.ViewTypeName).Append(" CreateView").Append(index)
                 .Append('(').Append(view.ViewModelTypeName).AppendLine(" viewModel)");
             builder.AppendLine("    {");
             builder.Append("        ").Append(view.ViewTypeName).Append(" view = new(");
@@ -466,7 +463,13 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             }
 
             builder.AppendLine(");");
-            builder.AppendLine("        view.Bind(viewModel);");
+            // 走 2-arg Bind 重载以触发 MviAvaloniaView<T>.OnBindSlots 钩子：
+            // 否则带 [MviSlot] 字段的 View（DashboardView / OutpatientWorkstationView /
+            // BusinessCompositePageView / EventBindingWorkbenchView）的 MviSlotHost
+            // 永远不会被填入子 View，左侧菜单 / 头部 / 当前页面均为空。
+            // 容器自身实现 IMviViewRegistry 又是 IMviResolver，this 即可作为解析器；
+            // View 构造已按 ViewConstructorKind 决定是否需要把 this 传进去（递归嵌入场景）。
+            builder.AppendLine("        view.Bind(viewModel, this);");
             builder.AppendLine("        return view;");
             builder.AppendLine("    }");
             builder.AppendLine();
@@ -625,6 +628,81 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    public TService CreateWith<TService>(params object[] args)");
+        builder.AppendLine("        where TService : notnull");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (args is null)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new ArgumentNullException(nameof(args));");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return (TService)CreateWithCore(typeof(TService), args);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 按构造参数即时构造并返回服务实例的核心实现。");
+        builder.AppendLine("    /// 不走单例缓存，按运行时参数匹配公共构造函数。");
+        builder.AppendLine("    /// 当前实现按参数个数与类型可赋值性扫描公共构造函数，");
+        builder.AppendLine("    /// 与 <c>IMviResolverCreateWithTests</c> 的契约保持一致。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private object CreateWithCore(Type serviceType, object[] args)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (serviceType is null)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new ArgumentNullException(nameof(serviceType));");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        System.Reflection.ConstructorInfo[] ctors = serviceType.GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);");
+        builder.AppendLine("        foreach (System.Reflection.ConstructorInfo ctor in ctors)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            System.Reflection.ParameterInfo[] parameters = ctor.GetParameters();");
+        builder.AppendLine("            if (parameters.Length != args.Length)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                continue;");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            bool match = true;");
+        builder.AppendLine("            object?[] converted = new object?[args.Length];");
+        builder.AppendLine("            for (int index = 0; index < parameters.Length; index++)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                if (args[index] is null && !parameters[index].ParameterType.IsValueType)");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    converted[index] = null;");
+        builder.AppendLine("                    continue;");
+        builder.AppendLine("                }");
+        builder.AppendLine();
+        builder.AppendLine("                if (args[index] is null)");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    match = false;");
+        builder.AppendLine("                    break;");
+        builder.AppendLine("                }");
+        builder.AppendLine();
+        builder.AppendLine("                Type argType = args[index].GetType();");
+        builder.AppendLine("                if (!parameters[index].ParameterType.IsAssignableFrom(argType))");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    match = false;");
+        builder.AppendLine("                    break;");
+        builder.AppendLine("                }");
+        builder.AppendLine();
+        builder.AppendLine("                converted[index] = args[index];");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            if (match)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                object? created = ctor.Invoke(converted);");
+        builder.AppendLine("                if (created is null)");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    throw new InvalidOperationException($\"构造函数返回 null：{serviceType.FullName}\");");
+        builder.AppendLine("                }");
+        builder.AppendLine();
+        builder.AppendLine("                return created;");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        throw new InvalidOperationException($\"未找到匹配 {args.Length} 个参数的构造函数：{serviceType.FullName}\");");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    /// <inheritdoc />");
         builder.AppendLine("    public void Record(MviDiagnosticEntry entry)");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(entry);");
@@ -646,7 +724,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         AppendCardStoreFactoryResolver(builder, model);
         AppendViewRegistryImplementation(builder, model, containerName);
         AppendDashboardPageFactory(builder, model, dashboard);
-        AppendShellPageFactory(builder, model, login);
+        AppendShellPageFactory(builder, model, login, dashboard);
         AppendScope(builder, containerName, login);
 
         builder.AppendLine("}");
@@ -1228,10 +1306,15 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
     /// 容器直接实现接口避免在 <c>AppShellState</c> 中嵌入页面 VM 引用。
     /// Login 走容器自管的 <c>Resolve&lt;LoginViewModel&gt;</c>；
     /// EventBindingWorkbench 由组合根在构造期间通过 <c>SetEventBindingWorkbenchViewModel</c> 注入，
-    /// 因为它的子组件 Store/Mediator 装配在源生成器枚举范围之外。
+    /// 因为它的子组件 Store/Mediator 装配在源生成器枚举范围之外；
+    /// Dashboard 走容器自管的 <c>CreateDashboardViewModel(string.Empty)</c>（首次构造时由登录导航服务带 displayName 预先创建并缓存）。
     /// </para>
     /// </summary>
-    private static void AppendShellPageFactory(StringBuilder builder, GenerationModel model, FeatureInfo login)
+    private static void AppendShellPageFactory(
+        StringBuilder builder,
+        GenerationModel model,
+        FeatureInfo login,
+        FeatureInfo? dashboard)
     {
         if (model.ShellPageFactoryTypeName is null)
         {
@@ -1260,6 +1343,16 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("                return (").Append(login.ViewModelTypeName).AppendLine(")Resolve(typeof(").Append(login.ViewModelTypeName).AppendLine("));");
         builder.AppendLine("            case \"EventBindingWorkbench\":");
         builder.AppendLine("                return _eventBindingWorkbenchViewModel;");
+        if (dashboard is not null)
+        {
+            // Dashboard 在登录流程中已由 ILoginNavigationService.NavigateToDashboardAsync(displayName)
+            // 通过 CreateDashboardViewModel(displayName) 预先创建并缓存到 _dashboardViewModel 字段。
+            // 此处用空 displayName 兜底（仅在有人未走登录流程就 ShowPageAsync("Dashboard") 时触发），
+            // CreateDashboardViewModel 内部已检查缓存，会返回已构造的实例。
+            builder.AppendLine("            case \"Dashboard\":");
+            builder.Append("                return CreateDashboardViewModel(string.Empty);");
+        }
+
         builder.AppendLine("            default:");
         builder.AppendLine("                return null;");
         builder.AppendLine("        }");
@@ -1303,7 +1396,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.AppendLine("        _businessCompositePageStore = store;");
-        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
+        builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveCardStoreFactory(), ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -1457,6 +1550,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("            }");
         builder.AppendLine();
         builder.AppendLine("            return _container.Resolve(serviceType);");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        public TService CreateWith<TService>(params object[] args)");
+        builder.AppendLine("            where TService : notnull");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return _container.CreateWith<TService>(args);");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        public void Dispose()");

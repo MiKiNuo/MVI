@@ -123,27 +123,33 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
                     }
                 }
 
-                IReadOnlyList<string> constructorArguments = BuildConstructorArguments(classSymbol);
+                (IReadOnlyList<string> constructorExpressions, IReadOnlyList<string> constructorParameterTypeNames) =
+                    BuildConstructorArguments(classSymbol);
 
                 return new Models.DiServiceInfo(
                     serviceTypeName,
                     implementationTypeName,
                     lifetime,
                     @namespace,
-                    constructorArguments);
+                    constructorExpressions,
+                    constructorParameterTypeNames);
             }
 
             return null;
         }
 
         /// <summary>
-        /// 选择应使用的构造函数并生成 C# 实参表达式列表。
+        /// 选择应使用的构造函数并生成 C# 实参表达式列表与参数类型完整限定名列表。
         /// 优先使用 <c>[DiConstructor]</c> 标记的构造函数；否则挑选参数数量最多的可解析构造函数。
-        /// 每个参数生成 <c>this.Resolve&lt;T&gt;()</c>，由容器在运行时解析依赖。
+        /// 每个参数生成 <c>this.Resolve&lt;T&gt;()</c>，由容器在运行时解析依赖；
+        /// 同时记录每个参数的类型完整限定名，供 <c>CreateWith</c> 做 <c>args[i] is T</c> 模式匹配。
         /// </summary>
         /// <param name="classSymbol">实现类符号。</param>
-        /// <returns>实参表达式列表；如果无可用构造函数则返回空集合。</returns>
-        private static IReadOnlyList<string> BuildConstructorArguments(INamedTypeSymbol classSymbol)
+        /// <returns>
+        /// 元组：(实参表达式列表, 参数类型完整限定名列表)。两者按构造函数参数顺序一一对应。
+        /// 如果无可用构造函数则两个列表都为空。
+        /// </returns>
+        private static (IReadOnlyList<string> Expressions, IReadOnlyList<string> ParameterTypeNames) BuildConstructorArguments(INamedTypeSymbol classSymbol)
         {
             IMethodSymbol? selected = null;
 
@@ -151,8 +157,7 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             {
                 if (attribute.AttributeClass?.Name is "DiConstructor" or "DiConstructorAttribute")
                 {
-                    if (attribute.AttributeConstructor is not null
-                        && attribute.ApplicationSyntaxReference?.GetSyntax() is { } syntax)
+                    if (attribute.ApplicationSyntaxReference?.GetSyntax() is { } syntax)
                     {
                         foreach (IMethodSymbol constructor in classSymbol.Constructors)
                         {
@@ -174,16 +179,19 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
 
             if (selected is null || selected.Parameters.Length == 0)
             {
-                return System.Array.Empty<string>();
+                return (System.Array.Empty<string>(), System.Array.Empty<string>());
             }
 
             List<string> arguments = new(selected.Parameters.Length);
+            List<string> parameterTypeNames = new(selected.Parameters.Length);
             foreach (IParameterSymbol parameter in selected.Parameters)
             {
-                arguments.Add("this.Resolve<" + parameter.Type.ToDisplayString(TypeFormat) + ">()");
+                string typeName = parameter.Type.ToDisplayString(TypeFormat);
+                arguments.Add("this.Resolve<" + typeName + ">()");
+                parameterTypeNames.Add(typeName);
             }
 
-            return arguments;
+            return (arguments, parameterTypeNames);
         }
     }
 
@@ -209,18 +217,24 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             /// 构造实现类型时需要传入的参数表达式集合（已生成 C# 表达式字符串）。
             /// 为空集合时发射端回退为 <c>new T()</c>。
             /// </param>
+            /// <param name="constructorParameterTypeNames">
+            /// 与 <paramref name="constructorArgumentExpressions"/> 一一对应的参数类型完整限定名集合，
+            /// 供 <c>CreateWith</c> 反射式按参数实例化时做 <c>args[i] is T</c> 模式匹配。
+            /// </param>
             public DiServiceInfo(
                 string serviceTypeName,
                 string implementationTypeName,
                 GeneratedLifetime lifetime,
                 string? @namespace,
-                IReadOnlyList<string> constructorArgumentExpressions)
+                IReadOnlyList<string> constructorArgumentExpressions,
+                IReadOnlyList<string> constructorParameterTypeNames)
             {
                 ServiceTypeName = serviceTypeName;
                 ImplementationTypeName = implementationTypeName;
                 Lifetime = lifetime;
                 Namespace = @namespace;
                 ConstructorArgumentExpressions = constructorArgumentExpressions;
+                ConstructorParameterTypeNames = constructorParameterTypeNames;
             }
 
             /// <summary>服务类型（完整限定名）。</summary>
@@ -240,6 +254,11 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             /// 为空集合时发射端回退为 <c>new T()</c>。
             /// </summary>
             public IReadOnlyList<string> ConstructorArgumentExpressions { get; }
+
+            /// <summary>
+            /// 与 <see cref="ConstructorArgumentExpressions"/> 一一对应的参数类型完整限定名集合。
+            /// </summary>
+            public IReadOnlyList<string> ConstructorParameterTypeNames { get; }
 
             /// <summary>
             /// 根据服务类型末段名生成可作为实例字段的私有字段名（带下划线前缀）。
@@ -396,6 +415,67 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("    {");
             builder.AppendLine("        return new GeneratedMviScope(this);");
             builder.AppendLine("    }");
+            builder.AppendLine();
+            builder.AppendLine("    /// <inheritdoc />");
+            builder.AppendLine("    public TService CreateWith<TService>(params object[] args)");
+            builder.AppendLine("        where TService : notnull");
+            builder.AppendLine("    {");
+            builder.AppendLine("        if (args is null)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            throw new ArgumentNullException(nameof(args));");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        return (TService)CreateWithCore(typeof(TService), args);");
+            builder.AppendLine("    }");
+            builder.AppendLine();
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 按构造参数即时构造并返回服务实例的核心实现。");
+            builder.AppendLine("    /// 不走单例缓存，按运行时参数匹配公共构造函数。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    private object CreateWithCore(Type serviceType, object[] args)");
+            builder.AppendLine("    {");
+            builder.AppendLine("        if (serviceType is null)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            throw new ArgumentNullException(nameof(serviceType));");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        if (args.Length == 0)");
+            builder.AppendLine("        {");
+            foreach (Models.DiServiceInfo service in services)
+            {
+                builder.Append("            if (serviceType == typeof(").Append(service.ImplementationTypeName)
+                    .AppendLine("))");
+                builder.Append("            {").AppendLine();
+                builder.Append("                return new ").Append(service.ImplementationTypeName).Append('(');
+                builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
+                builder.AppendLine(");");
+                builder.Append("            }").AppendLine();
+            }
+            builder.AppendLine("            throw new InvalidOperationException($\"CreateWith 未注册实现类型：{serviceType.FullName}\");");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        if (args.Length == 1)");
+            builder.AppendLine("        {");
+            foreach (Models.DiServiceInfo service in services)
+            {
+                if (service.ConstructorParameterTypeNames.Count != 1)
+                {
+                    continue;
+                }
+
+                builder.Append("            if (serviceType == typeof(").Append(service.ImplementationTypeName)
+                    .Append(") && args[0] is ").Append(service.ConstructorParameterTypeNames[0])
+                    .AppendLine(" a0)");
+                builder.Append("            {").AppendLine();
+                builder.Append("                return new ").Append(service.ImplementationTypeName).Append("(a0")
+                    .AppendLine(");");
+                builder.Append("            }").AppendLine();
+            }
+            builder.AppendLine("            throw new InvalidOperationException($\"CreateWith 未找到匹配 1 个参数的构造函数：{serviceType.FullName}\");");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        throw new InvalidOperationException($\"CreateWith 暂不支持 {args.Length} 个参数的构造：{serviceType.FullName}\");");
+            builder.AppendLine("    }");
             builder.AppendLine("}");
             builder.AppendLine();
             builder.AppendLine("/// <summary>");
@@ -413,6 +493,7 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine();
             builder.AppendLine("    public TService Resolve<TService>() where TService : notnull => _container.Resolve<TService>();");
             builder.AppendLine("    public object Resolve(Type serviceType) => _container.Resolve(serviceType);");
+            builder.AppendLine("    public TService CreateWith<TService>(params object[] args) where TService : notnull => _container.CreateWith<TService>(args);");
             builder.AppendLine("    public void Dispose() { }");
             builder.AppendLine("}");
 

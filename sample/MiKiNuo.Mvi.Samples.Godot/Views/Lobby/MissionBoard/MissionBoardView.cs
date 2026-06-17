@@ -2,13 +2,20 @@ using System;
 using global::Godot;
 using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
+using MiKiNuo.Mvi.Platforms.Godot.Composition;
 using MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.MissionBoard;
 
 /// <summary>
 /// 表示任务大厅 View。
+/// <para>
+/// 标有 <see cref="MviGodotViewAttribute"/>：由 <c>GodotMviViewRegistryGenerator</c> 编译期注册到
+/// <see cref="IGodotMviViewRegistry"/>，供父 <c>LobbyView</c> 的 <c>[MviSlot]</c> 槽位通过
+/// <see cref="GodotMviViewRegistryAdapter"/> 按 <c>MissionBoardViewModel</c> 类型名解析并挂载。
+/// </para>
 /// </summary>
+[MviGodotView("MissionBoardView", "res://Views/Lobby/MissionBoard/MissionBoardView.tscn")]
 public partial class MissionBoardView : GodotMviControlView<MissionBoardViewModel>
 {
     /// <inheritdoc />

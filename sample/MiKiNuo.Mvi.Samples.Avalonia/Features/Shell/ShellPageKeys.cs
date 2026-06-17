@@ -13,4 +13,7 @@ public static class ShellPageKeys
 
     /// <summary>事件绑定 Workbench 页键。</summary>
     public const string EventBindingWorkbench = "EventBindingWorkbench";
+
+    /// <summary>Dashboard 组合页键。登录成功后的目标页。</summary>
+    public const string Dashboard = "Dashboard";
 }

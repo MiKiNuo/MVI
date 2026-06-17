@@ -1,3 +1,5 @@
+using MiKiNuo.Mvi.Application.DI;
+
 namespace MiKiNuo.Mvi.Platforms.Godot.Binding;
 
 /// <summary>
@@ -8,10 +10,15 @@ public interface IMviGodotBindable<TViewModel> : IMviGodotView<TViewModel>
     where TViewModel : class
 {
     /// <summary>
-    /// 绑定 ViewModel。
+    /// 绑定 ViewModel 与子组件解析容器。
+    /// <para>
+    /// 1-arg 重载 <b>不</b>触发 <c>OnBindSlots</c> 槽位绑定钩子（缺解析器）；
+    /// 拥有 [MviSlot] 字段的 View 必须由父 View / 组合根通过本 2-arg 重载传入解析器。
+    /// </para>
     /// </summary>
     /// <param name="viewModel">需要绑定的 ViewModel。</param>
-    public void Bind(TViewModel viewModel);
+    /// <param name="resolver">用于解析子 ViewModel 与子 View 的 <see cref="IMviResolver"/>。</param>
+    public void Bind(TViewModel viewModel, IMviResolver resolver);
 
     /// <summary>
     /// 解绑当前 ViewModel。

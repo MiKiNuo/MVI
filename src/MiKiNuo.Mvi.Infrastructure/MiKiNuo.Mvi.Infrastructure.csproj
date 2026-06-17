@@ -10,7 +10,6 @@
     <PackageId>MiKiNuo.Mvi.Infrastructure</PackageId>
     <Description>MiKiNuo MVI 框架的 Source Generator 与 Analyzer 编译期工具。</Description>
 
-    <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
   <ItemGroup>

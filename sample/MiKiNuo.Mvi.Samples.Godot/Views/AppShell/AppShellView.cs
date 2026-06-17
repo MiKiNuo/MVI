@@ -1,5 +1,6 @@
 using System;
 using global::Godot;
+using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
@@ -14,6 +15,12 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.AppShell;
 /// <para>
 /// 顶层页面 VM（Login / Lobby）通过 <see cref="AppShellViewModel.CreateCurrentScreenViewModel"/> 解析，
 /// <c>CurrentScreen</c> 变化时按需重新绑定到当前可见页面，另一个页面 VM 保留在 <see cref="IGameScreenFactory"/> 内部缓存。
+/// </para>
+/// <para>
+/// 父 <see cref="GodotMviControlView{TViewModel}"/> 通过 <c>Bind(viewModel, resolver)</c> 把
+/// <see cref="IMviResolver"/> 写入 <see cref="GodotMviControlView{TViewModel}.Resolver"/> 字段；
+/// 切换到 <see cref="LobbyView"/> 时，本 View 通过 <c>Resolver</c> 字段读取并向下传递，
+/// 让 <c>LobbyView</c> 的源生成器 emit 的 <c>OnBindSlots</c> 钩子能解析 <c>IMviViewRegistry</c>。
 /// </para>
 /// </summary>
 [MviGodotView(GodotViewKeys.AppShell, "res://Views/AppShell/AppShellView.tscn")]
@@ -66,6 +73,7 @@ public partial class AppShellView : GodotMviControlView<AppShellViewModel>
         _currentScreenView = viewModel.CurrentScreen switch
         {
             GameScreenKeys.Login => BindLoginScreen(loginView, (LoginViewModel)screenViewModel, viewModel),
+            // LobbyView 拥有 [MviSlot] 字段，必须使用 resolver-aware Bind 以激活源生成器 emit 的 OnBindSlots
             GameScreenKeys.Lobby => BindLobbyScreen(lobbyView, (LobbyViewModel)screenViewModel, viewModel),
             _ => throw new InvalidOperationException($"未识别的 Game 屏幕键：{viewModel.CurrentScreen}"),
         };
@@ -73,24 +81,33 @@ public partial class AppShellView : GodotMviControlView<AppShellViewModel>
 
     private static LoginView BindLoginScreen(LoginView view, LoginViewModel viewModel, AppShellViewModel owner)
     {
-        return BindScreen(view, viewModel, owner);
+        ArgumentNullException.ThrowIfNull(view);
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(owner);
+        return view;
     }
 
-    private static LobbyView BindLobbyScreen(LobbyView view, LobbyViewModel viewModel, AppShellViewModel owner)
+    private LobbyView BindLobbyScreen(LobbyView view, LobbyViewModel viewModel, AppShellViewModel owner)
     {
         return BindScreen(view, viewModel, owner);
     }
 
-    private static TView BindScreen<TView, TViewModel>(TView view, TViewModel viewModel, AppShellViewModel owner)
+    private TView BindScreen<TView, TViewModel>(TView view, TViewModel viewModel, AppShellViewModel owner)
         where TView : Control, IMviGodotBindable<TViewModel>
         where TViewModel : class
     {
         ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(owner);
-        view.Bind(viewModel);
+        view.Bind(viewModel, GetResolverOrThrow());
         view.Visible = true;
         return view;
+    }
+
+    private IMviResolver GetResolverOrThrow()
+    {
+        return Resolver ?? throw new InvalidOperationException(
+            "AppShellView 必须通过 Bind(viewModel, resolver) 2-arg 重载激活；当前未持有 IMviResolver。");
     }
 
     private void UnbindCurrentScreen()

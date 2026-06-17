@@ -7,7 +7,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 /// 表示 Dashboard 壳层 2 个常驻子组件 ViewModel（顶部头部 / 左侧菜单）的工厂。
 /// <para>
 /// 父 <see cref="DashboardViewModel"/> 仅持此工厂（不直接持有任何子 VM 引用），
-/// 由 <see cref="DashboardViewModel.CreateHeaderViewModel"/>、
+/// 由 <see cref="DashboardViewModel.CreateHeaderViewModel(string)"/>、
 /// <see cref="DashboardViewModel.CreateMenuViewModel"/> 等方法按需解析。
 /// </para>
 /// <para>

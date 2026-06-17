@@ -1,4 +1,4 @@
-﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
@@ -50,6 +50,15 @@ public sealed partial class DashboardViewModel
     /// </summary>
     [MviBind(nameof(DashboardState.DisplayName))]
     public partial string DisplayName { get; private set; }
+
+    /// <summary>
+    /// 解析顶部头部子组件 ViewModel（经由 <see cref="IDashboardChromeFactory"/> 工厂按 displayName 缓存返回）。
+    /// <para>
+    /// 此无参重载供 <c>[MviSlot]</c> 源生成器 emit 调用，内部使用当前 <see cref="DisplayName"/> 作为参数。
+    /// </para>
+    /// </summary>
+    /// <returns>头部 <c>HeaderViewModel</c> 实例。</returns>
+    public object CreateHeaderViewModel() => _chromeFactory.CreateHeaderViewModel(DisplayName);
 
     /// <summary>
     /// 解析顶部头部子组件 ViewModel（经由 <see cref="IDashboardChromeFactory"/> 工厂按 displayName 缓存返回）。

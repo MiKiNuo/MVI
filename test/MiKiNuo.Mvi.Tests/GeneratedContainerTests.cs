@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.DI;
+﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -168,7 +168,7 @@ public sealed class GeneratedContainerTests
             await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
                 new NavigateDashboardPageRequest(menuKey));
 
-            BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel();
+            BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel()!;
             await Assert.That(page.PageLayout).IsEqualTo(expectedLayout);
         }
     }
@@ -297,7 +297,7 @@ public sealed class GeneratedContainerTests
 
         await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("住院床位"));
-        BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel();
+        BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel()!;
 
         string initialLog = page.InteractionLog;
 
@@ -328,8 +328,8 @@ public sealed class GeneratedContainerTests
         await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("门诊工作站"));
 
-        OutpatientWorkstationViewModel outpatientPage = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel();
-        ClinicalEditorViewModel clinicalEditor = (ClinicalEditorViewModel)outpatientPage.CreateEditorViewModel();
+        OutpatientWorkstationViewModel outpatientPage = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel()!;
+        ClinicalEditorViewModel clinicalEditor = (ClinicalEditorViewModel)outpatientPage.CreateEditorViewModel()!;
 
         string patientBefore = clinicalEditor.PatientName;
         bool canSaveBefore = clinicalEditor.CanSave;
@@ -348,5 +348,55 @@ public sealed class GeneratedContainerTests
 
         bool canSaveAfter = clinicalEditor.CanSave;
         await Assert.That(canSaveAfter).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证 <c>SampleGeneratedContainer</c> 的 <c>CreateWith</c> 调度：
+    /// 走反射匹配公共构造函数，按运行时参数即时构造新实例。
+    /// 此前容器默认抛 <see cref="NotImplementedException"/>；本次补全后，
+    /// 父 ViewModel（按构造参数缓存的"按需实例化子 ViewModel"）场景可走容器入口，
+    /// 避免绕过容器手写 <c>new ChildViewModel(args)</c>。
+    /// </summary>
+    [Test]
+    public async Task SampleContainer_CreateWith_Should_ConstructInstanceWithProvidedArgumentsAsync()
+    {
+        SampleGeneratedContainer container = new();
+
+        SampleGreetingViewModel target = container.CreateWith<SampleGreetingViewModel>("测试医生");
+
+        await Assert.That(target).IsNotNull();
+        await Assert.That(target.Greeting).IsEqualTo("测试医生");
+    }
+
+    /// <summary>
+    /// 验证 <c>CreateWith</c> 在参数个数不匹配时抛 <see cref="InvalidOperationException"/>，
+    /// 方便调用方尽早发现错配而非默默得到错对象。
+    /// </summary>
+    [Test]
+    public void SampleContainer_CreateWith_Should_ThrowOnArgumentCountMismatch()
+    {
+        SampleGeneratedContainer container = new();
+
+        Assert.Throws<InvalidOperationException>(() => container.CreateWith<SampleGreetingViewModel>());
+    }
+
+    /// <summary>
+    /// 表示仅供 <c>SampleGeneratedContainer.CreateWith</c> 测试用的目标 ViewModel。
+    /// </summary>
+    private sealed class SampleGreetingViewModel
+    {
+        /// <summary>
+        /// 使用 <paramref name="greeting"/> 初始化 <see cref="Greeting"/>。
+        /// </summary>
+        /// <param name="greeting">问候语。</param>
+        public SampleGreetingViewModel(string greeting)
+        {
+            Greeting = greeting;
+        }
+
+        /// <summary>
+        /// 获取构造时传入的问候语。
+        /// </summary>
+        public string Greeting { get; }
     }
 }

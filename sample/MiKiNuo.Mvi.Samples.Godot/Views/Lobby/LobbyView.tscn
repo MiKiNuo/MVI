@@ -1,56 +1,43 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=2 format=3]
+
 [ext_resource type="Script" path="res://Views/Lobby/LobbyView.cs" id="1_script"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/PlayerHeader/PlayerHeaderView.tscn" id="2_header"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/Menu/LobbyMenuView.tscn" id="3_menu"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/MissionBoard/MissionBoardView.tscn" id="4_mission"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/HeroRoster/HeroRosterView.tscn" id="5_hero"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/Inventory/InventoryView.tscn" id="6_inventory"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/ForgeLab/ForgeLabView.tscn" id="7_forge"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/BattlePrep/BattlePrepView.tscn" id="8_battle"]
-[ext_resource type="PackedScene" path="res://Views/Lobby/ActivityLog/ActivityLogView.tscn" id="9_log"]
+
 [node name="LobbyView" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_script")
+
 [node name="Root" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_constants/separation = 8
-[node name="PlayerHeaderView" parent="Root" instance=ExtResource("2_header")]
+
+[node name="PlayerHeaderSlot" type="Control" parent="Root"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 64)
+
 [node name="Body" type="HBoxContainer" parent="Root"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
-[node name="LobbyMenuView" parent="Root/Body" instance=ExtResource("3_menu")]
+
+[node name="LobbyMenuSlot" type="Control" parent="Root/Body"]
 layout_mode = 2
+custom_minimum_size = Vector2(220, 0)
+
 [node name="Content" type="VBoxContainer" parent="Root/Body"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-[node name="MissionBoardView" parent="Root/Body/Content" instance=ExtResource("4_mission")]
+
+[node name="CurrentPanelSlot" type="Control" parent="Root/Body/Content"]
 layout_mode = 2
 size_flags_vertical = 3
-[node name="HeroRosterView" parent="Root/Body/Content" instance=ExtResource("5_hero")]
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-[node name="InventoryView" parent="Root/Body/Content" instance=ExtResource("6_inventory")]
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-[node name="ForgeLabView" parent="Root/Body/Content" instance=ExtResource("7_forge")]
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-[node name="BattlePrepView" parent="Root/Body/Content" instance=ExtResource("8_battle")]
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-[node name="ActivityLogView" parent="Root" instance=ExtResource("9_log")]
+
+[node name="ActivityLogSlot" type="Control" parent="Root"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 160)

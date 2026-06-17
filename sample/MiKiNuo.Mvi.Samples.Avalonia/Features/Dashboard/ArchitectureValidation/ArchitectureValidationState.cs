@@ -1,4 +1,4 @@
-﻿﻿﻿using MiKiNuo.Mvi.Domain.MVI.State;
+﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Domain.MVI.State;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
 

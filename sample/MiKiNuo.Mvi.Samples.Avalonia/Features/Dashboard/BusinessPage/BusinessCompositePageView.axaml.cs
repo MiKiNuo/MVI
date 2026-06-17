@@ -1,8 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using MiKiNuo.Mvi.Platforms.Avalonia.Slot;
-using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Platforms.Avalonia.Views;
+using MiKiNuo.Mvi.Presentation.Slot;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
@@ -14,49 +14,47 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 /// 视图本身不再按 PageLayout 切换 4 套子布局，仅需把 4 个数据流节点卡片渲染到 Node1..Node4 槽位。
 /// </para>
 /// <para>
-/// 4 个节点卡片的具体 ViewModel 由 <see cref="CardStoreFactory"/> 按
-/// <see cref="BusinessCompositePageViewModel.Node1Key"/>..<see cref="BusinessCompositePageViewModel.Node4Key"/>
-/// 解析，本 View 不再从 ViewModel 拉取子 VM 引用——ViewModel 内部不持有任何 CardViewModel 引用。
+/// 4 个节点卡片的具体 ViewModel 由 <see cref="BusinessCompositePageViewModel"/> 上的
+/// <c>CreateNode1ViewModel</c>..<c>CreateNode4ViewModel</c> 工厂方法按需解析，
+/// 再由 <c>[MviSlot]</c> 源生成器自动 emit <c>OnBindSlots</c> override 完成槽位绑定。
 /// </para>
 /// </summary>
 public sealed partial class BusinessCompositePageView : MviAvaloniaView<BusinessCompositePageViewModel>
 {
-    private readonly IMviViewRegistry _viewRegistry;
-    private readonly CardStoreFactory _cardStoreFactory;
-    private readonly MviSlotHost _node1Slot;
-    private readonly MviSlotHost _node2Slot;
-    private readonly MviSlotHost _node3Slot;
-    private readonly MviSlotHost _node4Slot;
+    /// <summary>
+    /// 1 号数据流节点槽位（由源生成器自动绑定）。
+    /// </summary>
+    [MviSlot(typeof(CardView), factory: nameof(BusinessCompositePageViewModel.CreateNode1ViewModel))]
+    private MviSlotHost? _node1Slot;
+
+    /// <summary>
+    /// 2 号数据流节点槽位（由源生成器自动绑定）。
+    /// </summary>
+    [MviSlot(typeof(CardView), factory: nameof(BusinessCompositePageViewModel.CreateNode2ViewModel))]
+    private MviSlotHost? _node2Slot;
+
+    /// <summary>
+    /// 3 号数据流节点槽位（由源生成器自动绑定）。
+    /// </summary>
+    [MviSlot(typeof(CardView), factory: nameof(BusinessCompositePageViewModel.CreateNode3ViewModel))]
+    private MviSlotHost? _node3Slot;
+
+    /// <summary>
+    /// 4 号数据流节点槽位（由源生成器自动绑定）。
+    /// </summary>
+    [MviSlot(typeof(CardView), factory: nameof(BusinessCompositePageViewModel.CreateNode4ViewModel))]
+    private MviSlotHost? _node4Slot;
 
     /// <summary>
     /// 初始化生产业务组合页面视图。
     /// </summary>
-    /// <param name="viewRegistry">视图注册表。</param>
-    /// <param name="cardStoreFactory">仪表板卡片工厂（用于按 PageKey 解析具体 CardViewModel）。</param>
-    public BusinessCompositePageView(IMviViewRegistry viewRegistry, CardStoreFactory cardStoreFactory)
+    public BusinessCompositePageView()
     {
-        ArgumentNullException.ThrowIfNull(viewRegistry);
-        ArgumentNullException.ThrowIfNull(cardStoreFactory);
-
-        _viewRegistry = viewRegistry;
-        _cardStoreFactory = cardStoreFactory;
         AvaloniaXamlLoader.Load(this);
         _node1Slot = FindRequired<MviSlotHost>("Node1Slot");
         _node2Slot = FindRequired<MviSlotHost>("Node2Slot");
         _node3Slot = FindRequired<MviSlotHost>("Node3Slot");
         _node4Slot = FindRequired<MviSlotHost>("Node4Slot");
-    }
-
-    /// <inheritdoc />
-    public new void Bind(BusinessCompositePageViewModel viewModel)
-    {
-        ArgumentNullException.ThrowIfNull(viewModel);
-
-        base.Bind(viewModel);
-        _node1Slot.Content = _viewRegistry.CreateView(_cardStoreFactory.GetViewModel(viewModel.Node1Key));
-        _node2Slot.Content = _viewRegistry.CreateView(_cardStoreFactory.GetViewModel(viewModel.Node2Key));
-        _node3Slot.Content = _viewRegistry.CreateView(_cardStoreFactory.GetViewModel(viewModel.Node3Key));
-        _node4Slot.Content = _viewRegistry.CreateView(_cardStoreFactory.GetViewModel(viewModel.Node4Key));
     }
 
     private TControl FindRequired<TControl>(string name)

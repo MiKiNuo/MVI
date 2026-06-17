@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using global::Godot;
+using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Presentation.Events;
@@ -14,21 +15,35 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     where TViewModel : class
 {
     private MviDisposableBag? _bindingBag;
+    private IMviResolver? _resolver;
 
     /// <inheritdoc />
     public TViewModel? ViewModel { get; private set; }
 
+    /// <summary>
+    /// 获取最近一次 <c>Bind(viewModel, resolver)</c> 传入的 <see cref="IMviResolver"/>；未通过 2-arg 重载绑定时为 <c>null</c>。
+    /// <para>
+    /// 父 View 的 <c>OnBind</c> 在构造子 View 的槽位绑定时需读取本字段并向下传递；
+    /// 子 View 的 <c>OnBindSlots</c> 则由源生成器在编译期 emit 时直接拿到 <c>resolver</c> 形参，
+    /// 不必读取本字段。
+    /// </para>
+    /// </summary>
+    protected IMviResolver? Resolver => _resolver;
+
     /// <inheritdoc />
-    public void Bind(TViewModel viewModel)
+    public void Bind(TViewModel viewModel, IMviResolver resolver)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(resolver);
 
         Unbind();
         ViewModel = viewModel;
+        _resolver = resolver;
         MviDisposableBag? bindingBag = new();
         try
         {
             OnBind(viewModel, bindingBag);
+            OnBindSlots(viewModel, bindingBag, resolver);
             _bindingBag = bindingBag;
             bindingBag = null;
         }
@@ -43,6 +58,7 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     {
         _bindingBag?.Dispose();
         _bindingBag = null;
+        _resolver = null;
         ViewModel = null;
         OnUnbind();
     }
@@ -62,6 +78,23 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     /// <param name="viewModel">当前 ViewModel。</param>
     /// <param name="bindings">绑定生命周期集合。</param>
     protected abstract void OnBind(TViewModel viewModel, MviDisposableBag bindings);
+
+    /// <summary>
+    /// 组合模式槽位绑定钩子；由源生成器在子类 <c>override</c> 实现，
+    /// 子类可在 <see cref="OnBind"/> 末尾手动调用本方法以激活源生成器 emit 的槽位绑定逻辑。
+    /// <para>
+    /// 基类提供空实现；不依赖源生成器的 View（如无 [MviSlot] 字段）会得到一个零成本的默认行为。
+    /// </para>
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
+    /// <param name="resolver">由 <c>Bind</c> 传入的 <see cref="IMviResolver"/>；源生成器用它解析子 ViewModel 与子 View。</param>
+    protected virtual void OnBindSlots(TViewModel viewModel, MviDisposableBag bindings, IMviResolver resolver)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(bindings);
+        ArgumentNullException.ThrowIfNull(resolver);
+    }
 
     /// <summary>
     /// ViewModel 解绑后执行的扩展点。

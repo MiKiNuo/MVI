@@ -24,9 +24,11 @@ public partial class EventBindingWorkbenchView : GodotMviControlView<EventBindin
         EventBindingSelectionPanelView selectionView = GetNode<EventBindingSelectionPanelView>("Root/Body/SelectionPanel");
         EventBindingDetailPanelView detailView = GetNode<EventBindingDetailPanelView>("Root/Body/DetailPanel");
 
-        searchView.Bind((EventBindingSearchViewModel)viewModel.CreateSearchViewModel());
-        selectionView.Bind((EventBindingSelectionViewModel)viewModel.CreateSelectionViewModel());
-        detailView.Bind((EventBindingDetailViewModel)viewModel.CreateDetailViewModel());
+        // 3 个子 View 必须用 2-arg Bind 向下传递组合根解析器（虽然它们未使用 [MviSlot]，
+        // 但 IMviGodotBindable 接口已统一为 2-arg 入口；空 OnBindSlots 钩子零成本）。
+        searchView.Bind((EventBindingSearchViewModel)viewModel.CreateSearchViewModel(), ResolverOrThrow());
+        selectionView.Bind((EventBindingSelectionViewModel)viewModel.CreateSelectionViewModel(), ResolverOrThrow());
+        detailView.Bind((EventBindingDetailViewModel)viewModel.CreateDetailViewModel(), ResolverOrThrow());
 
         Label interactionLabel = GetNode<Label>("Root/Header/InteractionLabel");
         BindPropertyChanged(
@@ -34,5 +36,11 @@ public partial class EventBindingWorkbenchView : GodotMviControlView<EventBindin
             nameof(EventBindingWorkbenchViewModel.LastInteractionText),
             () => interactionLabel.Text = viewModel.LastInteractionText,
             bindings);
+    }
+
+    private MiKiNuo.Mvi.Application.DI.IMviResolver ResolverOrThrow()
+    {
+        return Resolver ?? throw new InvalidOperationException(
+            "EventBindingWorkbenchView 必须由父组合根通过 Bind(viewModel, resolver) 2-arg 重载激活。");
     }
 }

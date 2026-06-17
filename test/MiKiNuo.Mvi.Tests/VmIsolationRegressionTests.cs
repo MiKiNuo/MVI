@@ -146,7 +146,9 @@ public sealed class VmIsolationRegressionTests
     {
         Type viewModelType = typeof(AvaloniaDashboard);
 
-        await Assert.That(viewModelType.GetMethod("CreateHeaderViewModel")).IsNotNull();
+        // CreateHeaderViewModel 有无参重载（供 [MviSlot] 生成器）和带参重载（供外部直接调用），
+        // 这里验证无参重载存在（源生成器 emit 的调用走无参重载）。
+        await Assert.That(viewModelType.GetMethod("CreateHeaderViewModel", Type.EmptyTypes)).IsNotNull();
         await Assert.That(viewModelType.GetMethod("CreateMenuViewModel")).IsNotNull();
         await Assert.That(viewModelType.GetMethod("CreateCurrentPageViewModel")).IsNotNull();
     }

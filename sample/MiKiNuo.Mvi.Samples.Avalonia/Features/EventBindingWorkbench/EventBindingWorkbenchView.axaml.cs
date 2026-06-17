@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using MiKiNuo.Mvi.Platforms.Avalonia.Slot;
 using MiKiNuo.Mvi.Platforms.Avalonia.Views;
+using MiKiNuo.Mvi.Presentation.Slot;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 
@@ -10,12 +12,30 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 /// 3 个子组件 ViewModel 由 <see cref="EventBindingWorkbenchViewModel"/> 工厂方法按需解析，
 /// View 不再依赖父 VM 上的强类型子 VM 属性，避免"VM-in-VM"反模式。
 /// </para>
+/// <para>
+/// 3 个槽位（SearchSlot / SelectionSlot / DetailSlot）通过 <c>[MviSlot]</c> 特性声明，
+/// 由 <c>MviCompositeSlotBindingGenerator</c> 源生成器自动 emit <c>OnBindSlots</c> override。
+/// </para>
 /// </summary>
 public sealed partial class EventBindingWorkbenchView : MviAvaloniaView<EventBindingWorkbenchViewModel>
 {
-    private readonly ContentControl _searchSlot;
-    private readonly ContentControl _selectionSlot;
-    private readonly ContentControl _detailSlot;
+    /// <summary>
+    /// 搜索面板槽位（由源生成器自动绑定）。
+    /// </summary>
+    [MviSlot(typeof(EventBindingSearchPanelView), factory: nameof(EventBindingWorkbenchViewModel.CreateSearchViewModel))]
+    private MviSlotHost? _searchSlot;
+
+    /// <summary>
+    /// 选择面板槽位（由源生成器自动绑定）。
+    /// </summary>
+    [MviSlot(typeof(EventBindingSelectionPanelView), factory: nameof(EventBindingWorkbenchViewModel.CreateSelectionViewModel))]
+    private MviSlotHost? _selectionSlot;
+
+    /// <summary>
+    /// 详情面板槽位（由源生成器自动绑定）。
+    /// </summary>
+    [MviSlot(typeof(EventBindingDetailPanelView), factory: nameof(EventBindingWorkbenchViewModel.CreateDetailViewModel))]
+    private MviSlotHost? _detailSlot;
 
     /// <summary>
     /// 初始化事件绑定复杂组合根视图。
@@ -23,31 +43,11 @@ public sealed partial class EventBindingWorkbenchView : MviAvaloniaView<EventBin
     public EventBindingWorkbenchView()
     {
         AvaloniaXamlLoader.Load(this);
-        _searchSlot = this.FindControl<ContentControl>("SearchSlot")
+        _searchSlot = this.FindControl<MviSlotHost>("SearchSlot")
             ?? throw new InvalidOperationException("无法找到 SearchSlot。");
-        _selectionSlot = this.FindControl<ContentControl>("SelectionSlot")
+        _selectionSlot = this.FindControl<MviSlotHost>("SelectionSlot")
             ?? throw new InvalidOperationException("无法找到 SelectionSlot。");
-        _detailSlot = this.FindControl<ContentControl>("DetailSlot")
+        _detailSlot = this.FindControl<MviSlotHost>("DetailSlot")
             ?? throw new InvalidOperationException("无法找到 DetailSlot。");
-    }
-
-    /// <summary>
-    /// 绑定组合根 ViewModel。
-    /// </summary>
-    /// <param name="viewModel">组合根 ViewModel。</param>
-    public new void Bind(EventBindingWorkbenchViewModel viewModel)
-    {
-        ArgumentNullException.ThrowIfNull(viewModel);
-
-        base.Bind(viewModel);
-        EventBindingSearchPanelView searchView = new();
-        EventBindingSelectionPanelView selectionView = new();
-        EventBindingDetailPanelView detailView = new();
-        searchView.Bind((EventBindingSearchViewModel)viewModel.CreateSearchViewModel());
-        selectionView.Bind((EventBindingSelectionViewModel)viewModel.CreateSelectionViewModel());
-        detailView.Bind((EventBindingDetailViewModel)viewModel.CreateDetailViewModel());
-        _searchSlot.Content = searchView;
-        _selectionSlot.Content = selectionView;
-        _detailSlot.Content = detailView;
     }
 }

@@ -1,4 +1,4 @@
-﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
@@ -30,16 +30,22 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 public sealed partial class BusinessCompositePageViewModel
     : MviViewModelBase<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>
 {
+    private readonly CardStoreFactory _cardStoreFactory;
+
     /// <summary>
     /// 初始化生产业务组合页面 ViewModel。
     /// </summary>
     /// <param name="store">业务页面状态存储。</param>
+    /// <param name="cardStoreFactory">仪表板卡片工厂（用于按 PageKey 解析具体 CardViewModel）。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public BusinessCompositePageViewModel(
         IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store,
+        CardStoreFactory cardStoreFactory,
         IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
+        ArgumentNullException.ThrowIfNull(cardStoreFactory);
+        _cardStoreFactory = cardStoreFactory;
     }
 
     /// <summary>
@@ -102,6 +108,34 @@ public sealed partial class BusinessCompositePageViewModel
 
     /// <summary>获取 4 号数据流节点卡片的 PageKey（监控/闭环），供 View 解析为具体 CardViewModel。</summary>
     public PageKey Node4Key => ResolveNodeKey(3);
+
+    /// <summary>
+    /// 解析 1 号数据流节点卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
+    /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
+    /// </summary>
+    /// <returns>1 号节点 <c>CardViewModel</c> 实例。</returns>
+    public object CreateNode1ViewModel() => _cardStoreFactory.GetViewModel(Node1Key);
+
+    /// <summary>
+    /// 解析 2 号数据流节点卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
+    /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
+    /// </summary>
+    /// <returns>2 号节点 <c>CardViewModel</c> 实例。</returns>
+    public object CreateNode2ViewModel() => _cardStoreFactory.GetViewModel(Node2Key);
+
+    /// <summary>
+    /// 解析 3 号数据流节点卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
+    /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
+    /// </summary>
+    /// <returns>3 号节点 <c>CardViewModel</c> 实例。</returns>
+    public object CreateNode3ViewModel() => _cardStoreFactory.GetViewModel(Node3Key);
+
+    /// <summary>
+    /// 解析 4 号数据流节点卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
+    /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
+    /// </summary>
+    /// <returns>4 号节点 <c>CardViewModel</c> 实例。</returns>
+    public object CreateNode4ViewModel() => _cardStoreFactory.GetViewModel(Node4Key);
 
     /// <summary>获取 1 号节点角色（用于节点标题下方的副标）。</summary>
     public string Node1Role => PageLayout switch

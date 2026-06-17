@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using global::Godot;
+using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Platforms.Godot.Binding;
 using MiKiNuo.Mvi.Platforms.Godot.Composition;
 using MiKiNuo.Mvi.Platforms.Godot.Threading;
@@ -53,14 +54,16 @@ public sealed class GameLobbySampleRuntime : IDisposable
 
             GodotMviUiDispatcher uiDispatcher = GodotMviBootstrapper.Install(root);
             compositionRoot = new AppCompositionRoot(uiDispatcher);
-            appShell = CreateAppShellView();
+            appShell = CreateAppShellView(compositionRoot);
             Control mounted = GodotMviSceneHost.Mount(appShellSlot, appShell);
             appShell = null;
 
             if (mounted is IMviGodotBindable<AppShellViewModel> bindable)
             {
                 appShellBindable = bindable;
-                bindable.Bind(compositionRoot.AppShellViewModel);
+                // AppShellView 内部会通过 [MviSlot] 派生 LobbyView 槽位；必须用 2-arg Bind
+                // 传入组合根作为 IMviResolver，让源生成器在 OnBindSlots 中 resolve IMviViewRegistry。
+                bindable.Bind(compositionRoot.AppShellViewModel, compositionRoot);
             }
             else
             {
@@ -106,13 +109,14 @@ public sealed class GameLobbySampleRuntime : IDisposable
         _disposed = true;
     }
 
-    private static Control CreateAppShellView()
+    private static Control CreateAppShellView(AppCompositionRoot compositionRoot)
     {
+        ArgumentNullException.ThrowIfNull(compositionRoot);
+
         Control? registryView = null;
         try
         {
-            GodotSampleGeneratedViewRegistry registry = new();
-            if (registry.TryCreate(GodotViewKeys.AppShell, out registryView) && registryView is not null)
+            if (compositionRoot.GodotViewRegistry.TryCreate(GodotViewKeys.AppShell, out registryView) && registryView is not null)
             {
                 Control result = registryView;
                 registryView = null;

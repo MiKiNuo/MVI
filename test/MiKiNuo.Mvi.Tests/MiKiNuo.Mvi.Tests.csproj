@@ -4,11 +4,13 @@
     <IsPackable>false</IsPackable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors></WarningsAsErrors>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;CS8785</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Godot\MiKiNuo.Mvi.Samples.Godot.csproj" />

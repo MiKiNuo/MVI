@@ -1,4 +1,4 @@
-﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
@@ -13,7 +13,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation
 /// </para>
 /// <list type="bullet">
 /// <item>复用组件（患者检索 / 审计时间线）由 <see cref="IArchitectureValidationPanelFactory"/> 解析，
-///   View 通过 <see cref="CreatePatientSearchViewModel"/> / <see cref="CreateAuditTimelineViewModel"/> 工厂方法获取。</item>
+///   View 通过 <see cref="CreatePatientSearchViewModel(string)"/> / <see cref="CreateAuditTimelineViewModel(string)"/> 工厂方法获取。</item>
 /// <item>4 张指标卡片由 <see cref="CardStoreFactory"/> 解析（与业务页 16 张卡片共享同一 store/VM 实例），
 ///   View 通过 <see cref="CreateMiddlewareMetricViewModel"/> / <see cref="CreateReuseMetricViewModel"/> /
 ///   <see cref="CreateMediatorMetricViewModel"/> / <see cref="CreateEffectMetricViewModel"/> 工厂方法获取。</item>
@@ -58,12 +58,26 @@ public sealed partial class ArchitectureValidationViewModel
         _panelFactory.CreatePatientSearchViewModel(contextName);
 
     /// <summary>
+    /// 解析复用患者检索子组件 ViewModel（使用当前 <see cref="ActiveContext"/> 作为上下文名称）。
+    /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
+    /// </summary>
+    /// <returns>患者检索 <c>PatientSearchViewModel</c> 实例。</returns>
+    public object CreatePatientSearchViewModel() => CreatePatientSearchViewModel(ActiveContext);
+
+    /// <summary>
     /// 解析复用审计时间线子组件 ViewModel（经由 <see cref="IArchitectureValidationPanelFactory"/> 工厂缓存返回）。
     /// </summary>
     /// <param name="contextName">上下文名称（用于面板标题）。</param>
     /// <returns>审计时间线 <c>AuditTimelineViewModel</c> 实例。</returns>
     public object CreateAuditTimelineViewModel(string contextName) =>
         _panelFactory.CreateAuditTimelineViewModel(contextName);
+
+    /// <summary>
+    /// 解析复用审计时间线子组件 ViewModel（使用当前 <see cref="ActiveContext"/> 作为上下文名称）。
+    /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
+    /// </summary>
+    /// <returns>审计时间线 <c>AuditTimelineViewModel</c> 实例。</returns>
+    public object CreateAuditTimelineViewModel() => CreateAuditTimelineViewModel(ActiveContext);
 
     /// <summary>
     /// 解析中间件指标卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
