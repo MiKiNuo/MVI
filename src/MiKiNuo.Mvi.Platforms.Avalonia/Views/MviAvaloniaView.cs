@@ -46,13 +46,14 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
 
         ClearBindings();
         DataContext = viewModel;
+        OnBind(viewModel);
     }
 
     /// <summary>
     /// 绑定 ViewModel 与子组件解析容器。
     /// <para>
-    /// 走完整绑定流程：清空旧绑定、设置 <c>DataContext</c>、调用 <see cref="OnBindSlots"/> 钩子；
-    /// 源生成器会在子类中 <c>override</c> 该钩子以驱动 [MviSlot] 字段绑定。
+    /// 走完整绑定流程：清空旧绑定、设置 <c>DataContext</c>、调用 <see cref="OnBind"/> 与 <see cref="OnBindSlots"/> 钩子；
+    /// 源生成器会在子类中 <c>override</c> <see cref="OnBindSlots"/> 以驱动 [MviSlot] 字段绑定。
     /// </para>
     /// </summary>
     /// <param name="viewModel">视图模型。</param>
@@ -64,10 +65,26 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
 
         ClearBindings();
         DataContext = viewModel;
+        OnBind(viewModel);
 
         // 触发组合模式槽位绑定钩子；源生成器会 emit override 实现
         // —— 扫描子类的 [MviSlot] 字段，按需解析子 ViewModel 并写入 MviSlotHost。
         OnBindSlots(viewModel, EnsureBindings(), resolver);
+    }
+
+    /// <summary>
+    /// View 绑定 ViewModel 时的事件绑定扩展点。
+    /// <para>
+    /// 子类 <c>override</c> 本方法，通过 <see cref="Application.MVI.EventBinding.IEventSource{TEvent}"/> 适配器 +
+    /// <see cref="Application.MVI.EventBinding.EventBinding{TEvent}"/> 创建事件绑定，
+    /// 并调用 <c>viewModel.AddEventBinding(binding)</c> 注册到 ViewModel 生命周期。
+    /// 基类提供空实现；不依赖事件绑定的 View 得到零成本默认行为。
+    /// </para>
+    /// </summary>
+    /// <param name="viewModel">当前绑定的视图模型。</param>
+    protected virtual void OnBind(TViewModel viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
     }
 
     /// <summary>

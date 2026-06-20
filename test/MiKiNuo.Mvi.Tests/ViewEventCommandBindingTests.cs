@@ -1,7 +1,6 @@
-using Avalonia.Controls;
-using Avalonia.Interactivity;
 using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Effect;
+using MiKiNuo.Mvi.Application.MVI.EventBinding;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
@@ -12,14 +11,13 @@ using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
 using MiKiNuo.Mvi.Presentation.Command;
-using MiKiNuo.Mvi.Presentation.Events;
 using TUnit.Assertions;
 using TUnit.Core;
 
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示 ViewEvent 到 Command 绑定测试。
+/// 表示事件绑定适配器模式测试，验证 <see cref="IEventSource{TEvent}"/> / <see cref="EventBinding{TEvent}"/> / <see cref="MviComponent"/> 的核心行为。
 /// </summary>
 public sealed class ViewEventCommandBindingTests
 {
@@ -47,77 +45,134 @@ public sealed class ViewEventCommandBindingTests
     }
 
     /// <summary>
-    /// 验证 Debounce 只执行最后一次事件载荷。
+    /// 验证 <see cref="DelegateEventSource{TEvent}"/> 订阅后触发事件会调用处理器，取消订阅后不再调用。
     /// </summary>
     [Test]
-    public async Task Debounce_Should_ExecuteLastPayloadOnlyAsync()
+    public async Task DelegateEventSource_Should_InvokeHandlerAndUnsubscribeOnDisposeAsync()
     {
-        RecordingCommand command = new(static _ => true);
-        using MviViewEventCommandBinding binding = new(
-            command,
-            new MviViewEventBindingOptions(Debounce: TimeSpan.FromMilliseconds(40)));
+        TestEventSource rawSource = new();
+        List<string> received = [];
 
-        binding.Handle(new MviActionEventPayload("SearchBox", "TextChanged", "first"));
-        await Task.Delay(10);
-        binding.Handle(new MviActionEventPayload("SearchBox", "TextChanged", "second"));
-        await Task.Delay(80);
-
-        await Assert.That(command.ExecutedPayloads.Count).IsEqualTo(1);
-        await Assert.That(((MviActionEventPayload)command.ExecutedPayloads[0]!).RawEventArgs).IsEqualTo("second");
-    }
-
-    /// <summary>
-    /// 验证绑定释放后会丢弃尚未触发的 Debounce 事件。
-    /// </summary>
-    [Test]
-    public async Task Dispose_Should_DiscardPendingDebounceAsync()
-    {
-        RecordingCommand command = new(static _ => true);
-        using MviViewEventCommandBinding binding = new(
-            command,
-            new MviViewEventBindingOptions(Debounce: TimeSpan.FromMilliseconds(40)));
-
-        binding.Handle(new MviActionEventPayload("SearchBox", "TextChanged", "pending"));
-        binding.Dispose();
-        await Task.Delay(80);
-
-        await Assert.That(command.ExecutedPayloads).IsEmpty();
-    }
-
-    /// <summary>
-    /// 验证 CanExecute 为 false 时事件绑定不会执行命令。
-    /// </summary>
-    [Test]
-    public async Task Handle_Should_NotExecuteCommand_WhenCanExecuteIsFalseAsync()
-    {
-        RecordingCommand command = new(static _ => false);
-        using MviViewEventCommandBinding binding = new(command, MviViewEventBindingOptions.None);
-
-        binding.Handle(new MviActionEventPayload("SubmitButton", "Pressed", null));
-
-        await Assert.That(command.ExecutedPayloads).IsEmpty();
-    }
-
-    /// <summary>
-    /// 验证 Avalonia Action attached behavior 会执行命令并传入动作载荷。
-    /// </summary>
-    [Test]
-    public async Task AvaloniaActionCommand_Should_ExecuteCommandWithActionPayloadAsync()
-    {
-        Button button = new()
+        IEventSource<string> source = new DelegateEventSource<string>(handler =>
         {
-            Name = "SubmitButton"
-        };
-        RecordingCommand command = new(static _ => true);
+            rawSource.Event += handler;
+            return new ActionDisposable(() => rawSource.Event -= handler);
+        });
 
-        ViewEvents.SetActionName(button, "Click");
-        ViewEvents.SetActionCommand(button, command);
-        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        IDisposable subscription = source.Subscribe(e => received.Add(e));
+        rawSource.Raise("first");
+        rawSource.Raise("second");
 
-        await Assert.That(command.ExecutedPayloads.Count).IsEqualTo(1);
-        MviActionEventPayload payload = (MviActionEventPayload)command.ExecutedPayloads[0]!;
-        await Assert.That(payload.SourceName).IsEqualTo("SubmitButton");
-        await Assert.That(payload.ActionName).IsEqualTo("Click");
+        await Assert.That(received.Count).IsEqualTo(2);
+        await Assert.That(received[0]).IsEqualTo("first");
+        await Assert.That(received[1]).IsEqualTo("second");
+
+        subscription.Dispose();
+        rawSource.Raise("ignored");
+        await Assert.That(received.Count).IsEqualTo(2);
+    }
+
+    /// <summary>
+    /// 验证 <see cref="EventBinding{TEvent}"/> 在事件触发时派发映射后的 Intent，取消附加后不再派发。
+    /// </summary>
+    [Test]
+    public async Task EventBinding_Should_DispatchMappedIntentOnEventAsync()
+    {
+        TestEventSource rawSource = new();
+        List<IMviIntent> dispatched = [];
+
+        IEventSource<string> eventSource = new DelegateEventSource<string>(handler =>
+        {
+            rawSource.Event += handler;
+            return new ActionDisposable(() => rawSource.Event -= handler);
+        });
+
+        EventBinding<string> binding = new(eventSource, text => new TestIntent(text));
+        IDisposable attachment = binding.Attach(intent => dispatched.Add(intent));
+
+        rawSource.Raise("hello");
+
+        await Assert.That(dispatched.Count).IsEqualTo(1);
+        await Assert.That(((TestIntent)dispatched[0]!).Value).IsEqualTo("hello");
+
+        attachment.Dispose();
+        rawSource.Raise("ignored");
+        await Assert.That(dispatched.Count).IsEqualTo(1);
+    }
+
+    /// <summary>
+    /// 验证 <see cref="ActionDisposable"/> 只执行一次清理动作。
+    /// </summary>
+    [Test]
+    public async Task ActionDisposable_Should_ExecuteActionOnlyOnceAsync()
+    {
+        int callCount = 0;
+        ActionDisposable disposable = new(() => callCount++);
+
+        disposable.Dispose();
+        disposable.Dispose();
+
+        await Assert.That(callCount).IsEqualTo(1);
+    }
+
+    /// <summary>
+    /// 验证 <see cref="MviComponent"/> 在 Dispose 时释放所有事件绑定，事件不再派发。
+    /// </summary>
+    [Test]
+    public async Task MviComponent_Should_DisposeAllEventBindingsOnDisposeAsync()
+    {
+        TestEventSource rawSource1 = new();
+        TestEventSource rawSource2 = new();
+        TestComponent component = new();
+
+        IEventSource<string> source1 = new DelegateEventSource<string>(handler =>
+        {
+            rawSource1.Event += handler;
+            return new ActionDisposable(() => rawSource1.Event -= handler);
+        });
+        IEventSource<string> source2 = new DelegateEventSource<string>(handler =>
+        {
+            rawSource2.Event += handler;
+            return new ActionDisposable(() => rawSource2.Event -= handler);
+        });
+
+        component.AddEventBinding(new EventBinding<string>(source1, text => new TestIntent(text)));
+        component.AddEventBinding(new EventBinding<string>(source2, text => new TestIntent(text)));
+
+        rawSource1.Raise("a");
+        rawSource2.Raise("b");
+        await Assert.That(component.Dispatched.Count).IsEqualTo(2);
+
+        component.Dispose();
+        rawSource1.Raise("ignored1");
+        rawSource2.Raise("ignored2");
+        await Assert.That(component.Dispatched.Count).IsEqualTo(2);
+    }
+
+    /// <summary>
+    /// 验证 <see cref="MviComponent"/> 多次调用 Dispose 不会抛异常且保持幂等。
+    /// </summary>
+    [Test]
+    public async Task MviComponent_Should_BeIdempotentOnMultipleDisposeAsync()
+    {
+        TestEventSource rawSource = new();
+        TestComponent component = new();
+
+        IEventSource<string> source = new DelegateEventSource<string>(handler =>
+        {
+            rawSource.Event += handler;
+            return new ActionDisposable(() => rawSource.Event -= handler);
+        });
+        component.AddEventBinding(new EventBinding<string>(source, text => new TestIntent(text)));
+
+        rawSource.Raise("before");
+        await Assert.That(component.Dispatched.Count).IsEqualTo(1);
+
+        component.Dispose();
+        component.Dispose();
+
+        rawSource.Raise("after");
+        await Assert.That(component.Dispatched.Count).IsEqualTo(1);
     }
 
     /// <summary>
@@ -180,32 +235,6 @@ public sealed class ViewEventCommandBindingTests
     }
 
     /// <summary>
-    /// 验证平台事件适配器共享跨平台 ViewEvent 命令绑定运行时。
-    /// </summary>
-    [Test]
-    public async Task PlatformEventAdapters_Should_UseSharedViewEventCommandBindingRuntimeAsync()
-    {
-        string root = FindRepositoryRoot();
-        string avaloniaEvents = await File.ReadAllTextAsync(Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Platforms.Avalonia",
-            "Events",
-            "ViewEvents.cs"));
-        string godotView = await File.ReadAllTextAsync(Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Platforms.Godot",
-            "Binding",
-            "GodotMviControlView.cs"));
-
-        await Assert.That(avaloniaEvents).Contains("MviViewEventCommandBinding");
-        await Assert.That(avaloniaEvents).Contains("DetachedFromVisualTree");
-        await Assert.That(godotView).Contains("MviViewEventCommandBinding");
-        await Assert.That(godotView).Contains("MviViewEventBindingOptions");
-    }
-
-    /// <summary>
     /// 验证 Avalonia MVI View 基类提供绑定生命周期注册入口。
     /// </summary>
     [Test]
@@ -224,17 +253,23 @@ public sealed class ViewEventCommandBindingTests
     }
 
     /// <summary>
-    /// 验证 <c>IMviCommand</c> 抽象作为 ViewEvent 命令绑定的契约（不依赖 <c>System.Windows.Input</c>）。
+    /// 验证 Godot MVI View 基类的 BindEvent/BindButton 不再依赖已删除的 MviViewEventCommandBinding 运行时。
     /// </summary>
     [Test]
-    public async Task MviViewEventCommandBinding_Should_BeConstructibleFromIMviCommandAsync()
+    public async Task GodotMviView_Should_NotDependOnViewEventCommandBindingRuntimeAsync()
     {
-        RecordingMviCommand command = new(static _ => true, static _ => { });
+        string root = FindRepositoryRoot();
+        string godotView = await File.ReadAllTextAsync(Path.Combine(
+            root,
+            "src",
+            "MiKiNuo.Mvi.Platforms.Godot",
+            "Binding",
+            "GodotMviControlView.cs"));
 
-        using MviViewEventCommandBinding binding = new(command, MviViewEventBindingOptions.None);
-        binding.Handle(new MviActionEventPayload("SubmitButton", "Pressed", null));
-
-        await Assert.That(command.ExecutedPayloads.Count).IsEqualTo(1);
+        await Assert.That(godotView).Contains("BindEvent");
+        await Assert.That(godotView).Contains("BindButton");
+        await Assert.That(godotView).DoesNotContain("MviViewEventCommandBinding");
+        await Assert.That(godotView).DoesNotContain("MviViewEventBindingOptions");
     }
 
     private static string FindRepositoryRoot()
@@ -252,6 +287,43 @@ public sealed class ViewEventCommandBindingTests
         }
 
         return directory.FullName;
+    }
+
+    /// <summary>
+    /// 表示测试用事件源，模拟原生事件的订阅与触发。
+    /// </summary>
+    private sealed class TestEventSource
+    {
+        /// <summary>
+        /// 原生事件。
+        /// </summary>
+        public event Action<string>? Event;
+
+        /// <summary>
+        /// 触发事件。
+        /// </summary>
+        /// <param name="e">事件数据。</param>
+        public void Raise(string e) => Event?.Invoke(e);
+    }
+
+    /// <summary>
+    /// 表示测试用意图。
+    /// </summary>
+    /// <param name="Value">意图值。</param>
+    private sealed record TestIntent(string Value) : IMviIntent;
+
+    /// <summary>
+    /// 表示测试用 MVI 组件，记录派发的 Intent。
+    /// </summary>
+    private sealed class TestComponent : MviComponent
+    {
+        /// <summary>
+        /// 获取已派发的意图集合。
+        /// </summary>
+        public List<IMviIntent> Dispatched { get; } = [];
+
+        /// <inheritdoc />
+        protected override void Dispatch(IMviIntent intent) => Dispatched.Add(intent);
     }
 
     private sealed class EmptyEventCommandEffectDispatcher
@@ -300,42 +372,6 @@ public sealed class ViewEventCommandBindingTests
 
         /// <inheritdoc />
         public event EventHandler? CanExecuteChanged;
-
-        /// <summary>
-        /// 触发可执行状态变化。
-        /// </summary>
-        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    /// <summary>
-    /// 平台无关的 IMviCommand 测试替身，保留旧的 CanExecute/Execute 委托风格便于 ViewEventCommandBindingTests 复用。
-    /// </summary>
-    private sealed class RecordingCommand : IMviCommand
-    {
-        private readonly Predicate<object?> _canExecute;
-
-        /// <summary>
-        /// 初始化记录命令。
-        /// </summary>
-        /// <param name="canExecute">可执行判断。</param>
-        public RecordingCommand(Predicate<object?> canExecute)
-        {
-            _canExecute = canExecute;
-        }
-
-        /// <inheritdoc />
-        public event EventHandler? CanExecuteChanged;
-
-        /// <summary>
-        /// 获取已执行的载荷集合。
-        /// </summary>
-        public List<object?> ExecutedPayloads { get; } = [];
-
-        /// <inheritdoc />
-        public bool CanExecute(object? parameter) => _canExecute(parameter);
-
-        /// <inheritdoc />
-        public void Execute(object? parameter) => ExecutedPayloads.Add(parameter);
 
         /// <summary>
         /// 触发可执行状态变化。

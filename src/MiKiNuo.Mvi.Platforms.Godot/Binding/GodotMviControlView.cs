@@ -3,7 +3,6 @@ using global::Godot;
 using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Presentation.Disposables;
-using MiKiNuo.Mvi.Presentation.Events;
 
 namespace MiKiNuo.Mvi.Platforms.Godot.Binding;
 
@@ -193,38 +192,30 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     /// <param name="bindings">绑定生命周期集合。</param>
     /// <param name="payloadFactory">命令载荷工厂。</param>
     /// <param name="sourceName">事件来源名称。</param>
-    /// <param name="options">事件绑定选项。</param>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Reliability",
-        "CA2000:Dispose objects before losing scope",
-        Justification = "事件命令绑定注册到 MviDisposableBag，由视图生命周期统一释放。")]
     protected static void BindEvent(
         Action<Action> subscribe,
         Action<Action> unsubscribe,
         IMviCommand command,
         MviDisposableBag bindings,
         Func<object?>? payloadFactory = null,
-        string? sourceName = null,
-        MviViewEventBindingOptions? options = null)
+        string? sourceName = null)
     {
         ArgumentNullException.ThrowIfNull(subscribe);
         ArgumentNullException.ThrowIfNull(unsubscribe);
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(bindings);
 
-        MviViewEventCommandBinding binding = new(command, options ?? MviViewEventBindingOptions.None);
-
         void Handler()
         {
-            binding.Handle(payloadFactory?.Invoke());
+            object? payload = payloadFactory?.Invoke();
+            if (command.CanExecute(payload))
+            {
+                command.Execute(payload);
+            }
         }
 
         subscribe(Handler);
-        bindings.Add(() =>
-        {
-            unsubscribe(Handler);
-            binding.Dispose();
-        });
+        bindings.Add(() => unsubscribe(Handler));
     }
 
     /// <summary>
@@ -237,19 +228,13 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     /// <param name="bindings">绑定生命周期集合。</param>
     /// <param name="payloadFactory">命令载荷工厂。</param>
     /// <param name="sourceName">事件来源名称。</param>
-    /// <param name="options">事件绑定选项。</param>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Reliability",
-        "CA2000:Dispose objects before losing scope",
-        Justification = "事件命令绑定注册到 MviDisposableBag，由视图生命周期统一释放。")]
     protected static void BindEvent<TEventArgs>(
         Action<Action<TEventArgs>> subscribe,
         Action<Action<TEventArgs>> unsubscribe,
         IMviCommand command,
         MviDisposableBag bindings,
         Func<TEventArgs, object?> payloadFactory,
-        string? sourceName = null,
-        MviViewEventBindingOptions? options = null)
+        string? sourceName = null)
     {
         ArgumentNullException.ThrowIfNull(subscribe);
         ArgumentNullException.ThrowIfNull(unsubscribe);
@@ -257,19 +242,17 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
         ArgumentNullException.ThrowIfNull(bindings);
         ArgumentNullException.ThrowIfNull(payloadFactory);
 
-        MviViewEventCommandBinding binding = new(command, options ?? MviViewEventBindingOptions.None);
-
         void Handler(TEventArgs args)
         {
-            binding.Handle(payloadFactory(args));
+            object? payload = payloadFactory(args);
+            if (command.CanExecute(payload))
+            {
+                command.Execute(payload);
+            }
         }
 
         subscribe(Handler);
-        bindings.Add(() =>
-        {
-            unsubscribe(Handler);
-            binding.Dispose();
-        });
+        bindings.Add(() => unsubscribe(Handler));
     }
 
     /// <summary>
@@ -284,11 +267,6 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     /// <param name="bindings">绑定生命周期集合。</param>
     /// <param name="payloadFactory">命令载荷工厂。</param>
     /// <param name="sourceName">事件来源名称。</param>
-    /// <param name="options">事件绑定选项。</param>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Reliability",
-        "CA2000:Dispose objects before losing scope",
-        Justification = "事件命令绑定注册到 MviDisposableBag，由视图生命周期统一释放。")]
     protected static void BindEvent<TEventArgs, TDelegate>(
         Action<TDelegate> subscribe,
         Action<TDelegate> unsubscribe,
@@ -296,8 +274,7 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
         IMviCommand command,
         MviDisposableBag bindings,
         Func<TEventArgs, object?> payloadFactory,
-        string? sourceName = null,
-        MviViewEventBindingOptions? options = null)
+        string? sourceName = null)
         where TDelegate : Delegate
     {
         ArgumentNullException.ThrowIfNull(subscribe);
@@ -307,19 +284,17 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
         ArgumentNullException.ThrowIfNull(bindings);
         ArgumentNullException.ThrowIfNull(payloadFactory);
 
-        MviViewEventCommandBinding binding = new(command, options ?? MviViewEventBindingOptions.None);
-
         void Handler(TEventArgs args)
         {
-            binding.Handle(payloadFactory(args));
+            object? payload = payloadFactory(args);
+            if (command.CanExecute(payload))
+            {
+                command.Execute(payload);
+            }
         }
 
         TDelegate eventHandler = createHandler(Handler);
         subscribe(eventHandler);
-        bindings.Add(() =>
-        {
-            unsubscribe(eventHandler);
-            binding.Dispose();
-        });
+        bindings.Add(() => unsubscribe(eventHandler));
     }
 }

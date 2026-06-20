@@ -13,7 +13,6 @@ using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
-using MiKiNuo.Mvi.Presentation.Events;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
 
@@ -246,6 +245,11 @@ public sealed class EventBindingSearchEffectDispatcher : IMviEffectDispatcher<Ev
 }
 
 /// <summary>表示 Godot 搜索面板 ViewModel。</summary>
+/// <remarks>
+/// 事件绑定通过 <see cref="Application.MVI.EventBinding.IEventSource{TEvent}"/> 适配器 +
+/// <see cref="Application.MVI.EventBinding.EventBinding{TEvent}"/> 在 View 层完成，
+/// 事件直接映射为 <see cref="EventBindingSearchIntent.ChangeQuery"/> 意图派发到 Store，不经过命令层。
+/// </remarks>
 public sealed partial class EventBindingSearchViewModel
     : MviViewModelBase<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect>
 {
@@ -253,16 +257,11 @@ public sealed partial class EventBindingSearchViewModel
     public EventBindingSearchViewModel(IMviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> store)
         : base(store)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>获取查询文本。</summary>
     [MviBind(nameof(EventBindingSearchState.QueryText))]
     public partial string QueryText { get; private set; }
-
-    /// <summary>获取查询文本变化命令。</summary>
-    [MviCommand(typeof(EventBindingSearchIntent.ChangeQuery))]
-    public partial IMviCommand QueryTextChangedCommand { get; private set; }
 }
 
 /// <summary>表示 Godot 选择面板状态。</summary>
@@ -344,6 +343,11 @@ public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher
 }
 
 /// <summary>表示 Godot 选择面板 ViewModel。</summary>
+/// <remarks>
+/// 事件绑定通过 <see cref="Application.MVI.EventBinding.IEventSource{TEvent}"/> 适配器 +
+/// <see cref="Application.MVI.EventBinding.EventBinding{TEvent}"/> 在 View 层完成，
+/// 事件直接映射为 <see cref="EventBindingSelectionIntent.ChangeSelection"/> 意图派发到 Store，不经过命令层。
+/// </remarks>
 public sealed partial class EventBindingSelectionViewModel
     : MviViewModelBase<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect>
 {
@@ -351,16 +355,11 @@ public sealed partial class EventBindingSelectionViewModel
     public EventBindingSelectionViewModel(IMviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> store)
         : base(store)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>获取选中任务编号。</summary>
     [MviBind(nameof(EventBindingSelectionState.SelectedMissionId))]
     public partial string SelectedMissionId { get; private set; }
-
-    /// <summary>获取选择变化命令。</summary>
-    [MviCommand(typeof(EventBindingSelectionIntent.ChangeSelection))]
-    public partial IMviCommand SelectionChangedCommand { get; private set; }
 }
 
 /// <summary>表示 Godot 详情面板状态。</summary>
@@ -434,6 +433,11 @@ public sealed class EventBindingDetailEffectDispatcher : IMviEffectDispatcher<Ev
 }
 
 /// <summary>表示 Godot 详情面板 ViewModel。</summary>
+/// <remarks>
+/// 事件绑定通过 <see cref="Application.MVI.EventBinding.IEventSource{TEvent}"/> 适配器 +
+/// <see cref="Application.MVI.EventBinding.EventBinding{TEvent}"/> 在 View 层完成，
+/// 事件直接映射为 <see cref="EventBindingDetailIntent.Prepare"/> 意图派发到 Store，不经过命令层。
+/// </remarks>
 public sealed partial class EventBindingDetailViewModel
     : MviViewModelBase<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect>
 {
@@ -441,16 +445,11 @@ public sealed partial class EventBindingDetailViewModel
     public EventBindingDetailViewModel(IMviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> store)
         : base(store)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>获取准备次数。</summary>
     [MviBind(nameof(EventBindingDetailState.PrepareCount))]
     public partial int PrepareCount { get; private set; }
-
-    /// <summary>获取准备命令。</summary>
-    [MviCommand(typeof(EventBindingDetailIntent.Prepare))]
-    public partial IMviCommand PrepareCommand { get; private set; }
 }
 
 /// <summary>表示 Godot 事件绑定组合示例装配结果。</summary>

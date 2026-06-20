@@ -1,20 +1,19 @@
 <UserControl
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench.EventBindingDetailPanelView"
     xmlns="https://github.com/avaloniaui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mviEvents="clr-namespace:MiKiNuo.Mvi.Platforms.Avalonia.Events;assembly=MiKiNuo.Mvi.Platforms.Avalonia">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12">
         <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
             <TextBlock Text="DetailPanel" FontWeight="SemiBold" />
             <Border
+                x:Name="PointerSurface"
                 Grid.Row="1"
                 MinHeight="120"
                 Background="#E2E8F0"
                 BorderBrush="#94A3B8"
                 BorderThickness="1"
                 CornerRadius="6"
-                Padding="12"
-                mviEvents:ViewEvents.PointerPressedCommand="{Binding DetailPressedCommand}">
+                Padding="12">
                 <StackPanel>
                     <TextBlock Text="Pointer surface" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding LastPointerText}" TextWrapping="Wrap" />
@@ -22,10 +21,8 @@
             </Border>
             <StackPanel Grid.Row="2" Spacing="8">
                 <Button
-                    Name="DetailRefreshButton"
-                    Content="Refresh detail"
-                    mviEvents:ViewEvents.ActionName="Refresh"
-                    mviEvents:ViewEvents.ActionCommand="{Binding RefreshCommand}" />
+                    x:Name="DetailRefreshButton"
+                    Content="Refresh detail" />
                 <TextBlock Text="{Binding RefreshCount, StringFormat='Refresh count: {0}'}" />
             </StackPanel>
         </Grid>

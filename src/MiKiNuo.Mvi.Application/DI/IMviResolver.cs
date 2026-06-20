@@ -1,4 +1,4 @@
-﻿﻿﻿﻿namespace MiKiNuo.Mvi.Application.DI;
+﻿﻿﻿﻿﻿﻿namespace MiKiNuo.Mvi.Application.DI;
 
 /// <summary>
 /// 表示 MVI 服务解析器。

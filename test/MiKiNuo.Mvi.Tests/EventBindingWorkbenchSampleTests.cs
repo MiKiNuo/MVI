@@ -1,5 +1,5 @@
 using AvaloniaWorkbench = MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
-using MiKiNuo.Mvi.Presentation.Events;
+using MiKiNuo.Mvi.Platforms.Avalonia.Events;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -32,24 +32,32 @@ public sealed class EventBindingWorkbenchSampleTests
     }
 
     /// <summary>
-    /// 验证 Avalonia 复杂组合示例中每个子 ViewModel 独立接收 ViewEvent，并通过 Mediator 通知父组合。
+    /// 验证 Avalonia 复杂组合示例中每个子 Store 独立接收 Intent，并通过 Mediator 通知父组合。
+    /// <para>
+    /// 新事件绑定模式下事件直接映射为 Intent 派发到 Store（不经过命令层），
+    /// 本测试直接向各子 Store 派发 Intent 验证状态流转与中介者通知。
+    /// </para>
     /// </summary>
     [Test]
-    public async Task AvaloniaWorkbench_Should_RouteChildViewEventsThroughIndependentStoresAndMediatorAsync()
+    public async Task AvaloniaWorkbench_Should_RouteChildIntentsThroughIndependentStoresAndMediatorAsync()
     {
         await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
 
-        composition.SearchViewModel.QueryTextChangedCommand.Execute(new MviTextChangedEventPayload("张三", string.Empty, true, null));
-        composition.SelectionViewModel.SelectionChangedCommand.Execute(new MviSelectionChangedEventPayload("P10001", 0, null, null));
-        composition.DetailViewModel.DetailPressedCommand.Execute(new MviPointerEventPayload(
-            24,
-            48,
-            MviPointerButton.Left,
-            1,
-            true,
-            MviInputModifiers.Control,
-            null));
-        composition.DetailViewModel.RefreshCommand.Execute(new MviActionEventPayload("DetailRefreshButton", "Refresh", null));
+        await composition.SearchStore.DispatchAsync(new AvaloniaWorkbench.EventBindingSearchIntent.ChangeQuery(
+            new MviTextChangedEventPayload("张三", string.Empty, true, null)));
+        await composition.SelectionStore.DispatchAsync(new AvaloniaWorkbench.EventBindingSelectionIntent.ChangeSelection(
+            new MviSelectionChangedEventPayload("P10001", 0, null, null)));
+        await composition.DetailStore.DispatchAsync(new AvaloniaWorkbench.EventBindingDetailIntent.PressDetail(
+            new MviPointerEventPayload(
+                24,
+                48,
+                MviPointerButton.Left,
+                1,
+                true,
+                MviInputModifiers.Control,
+                null)));
+        await composition.DetailStore.DispatchAsync(new AvaloniaWorkbench.EventBindingDetailIntent.Refresh(
+            new MviActionEventPayload("DetailRefreshButton", "Refresh", null)));
         await Task.Delay(100);
 
         await Assert.That(composition.SearchStore.CurrentState.QueryText).IsEqualTo("张三");
@@ -61,10 +69,53 @@ public sealed class EventBindingWorkbenchSampleTests
     }
 
     /// <summary>
-    /// 验证 Godot 复杂组合示例使用 BindEvent 帮助方法绑定子 View 自带事件。
+    /// 验证 Avalonia 复杂组合示例的子 ViewModel 不再暴露命令属性（事件绑定改为 IEventSource + EventBinding 模式）。
     /// </summary>
     [Test]
-    public async Task GodotWorkbench_Should_ProvideIndependentChildViewsUsingBindEventHelpersAsync()
+    public async Task AvaloniaWorkbench_ChildViewModels_Should_NotExposeCommandPropertiesAsync()
+    {
+        string repositoryRoot = GetRepositoryRoot();
+        string modelsPath = Path.Combine(repositoryRoot, "sample", "MiKiNuo.Mvi.Samples.Avalonia", "Features", "EventBindingWorkbench", "EventBindingWorkbenchModels.cs");
+        string models = await File.ReadAllTextAsync(modelsPath);
+
+        await Assert.That(models).DoesNotContain("QueryTextChangedCommand");
+        await Assert.That(models).DoesNotContain("SelectionChangedCommand");
+        await Assert.That(models).DoesNotContain("DetailPressedCommand");
+        await Assert.That(models).DoesNotContain("RefreshCommand");
+        await Assert.That(models).DoesNotContain("InitializeGeneratedCommands");
+    }
+
+    /// <summary>
+    /// 验证 Avalonia 复杂组合示例的子 View 使用 IEventSource 适配器 + EventBinding 模式绑定事件。
+    /// </summary>
+    [Test]
+    public async Task AvaloniaWorkbench_ChildViews_Should_UseEventSourceAdapterPatternAsync()
+    {
+        string repositoryRoot = GetRepositoryRoot();
+        string workbenchDir = Path.Combine(repositoryRoot, "sample", "MiKiNuo.Mvi.Samples.Avalonia", "Features", "EventBindingWorkbench");
+
+        string searchViewCode = await File.ReadAllTextAsync(Path.Combine(workbenchDir, "EventBindingSearchPanelView.axaml.cs"));
+        string selectionViewCode = await File.ReadAllTextAsync(Path.Combine(workbenchDir, "EventBindingSelectionPanelView.axaml.cs"));
+        string detailViewCode = await File.ReadAllTextAsync(Path.Combine(workbenchDir, "EventBindingDetailPanelView.axaml.cs"));
+
+        await Assert.That(searchViewCode).Contains("AvaloniaEventSources.FromTextChanged");
+        await Assert.That(searchViewCode).Contains("EventBinding<");
+        await Assert.That(searchViewCode).Contains("AddEventBinding");
+
+        await Assert.That(selectionViewCode).Contains("AvaloniaEventSources.FromSelectionChanged");
+        await Assert.That(selectionViewCode).Contains("EventBinding<");
+        await Assert.That(selectionViewCode).Contains("AddEventBinding");
+
+        await Assert.That(detailViewCode).Contains("AvaloniaEventSources.FromPointerPressed");
+        await Assert.That(detailViewCode).Contains("AvaloniaEventSources.FromClick");
+        await Assert.That(detailViewCode).Contains("AddEventBinding");
+    }
+
+    /// <summary>
+    /// 验证 Godot 复杂组合示例使用 IEventSource 适配器 + EventBinding 模式绑定子 View 事件。
+    /// </summary>
+    [Test]
+    public async Task GodotWorkbench_Should_ProvideIndependentChildViewsUsingEventSourceAdaptersAsync()
     {
         string sampleRoot = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -83,12 +134,66 @@ public sealed class EventBindingWorkbenchSampleTests
         string selectionView = await File.ReadAllTextAsync(selectionViewPath);
         string detailView = await File.ReadAllTextAsync(detailViewPath);
 
-        await Assert.That(searchView).Contains("BindEvent<string, LineEdit.TextChangedEventHandler>");
-        await Assert.That(searchView).Contains("QueryTextChangedCommand");
-        await Assert.That(selectionView).Contains("BindEvent<long, ItemList.ItemSelectedEventHandler>");
-        await Assert.That(selectionView).Contains("SelectionChangedCommand");
-        await Assert.That(detailView).Contains("BindEvent(");
-        await Assert.That(detailView).Contains("PrepareCommand");
+        await Assert.That(searchView).Contains("GodotEventSources.FromTextChanged");
+        await Assert.That(searchView).Contains("EventBinding<string>");
+        await Assert.That(searchView).Contains("AddEventBinding");
+
+        await Assert.That(selectionView).Contains("GodotEventSources.FromItemSelected");
+        await Assert.That(selectionView).Contains("EventBinding<long>");
+        await Assert.That(selectionView).Contains("AddEventBinding");
+
+        await Assert.That(detailView).Contains("GodotEventSources.FromPressed");
+        await Assert.That(detailView).Contains("EventBinding<EventArgs>");
+        await Assert.That(detailView).Contains("AddEventBinding");
+    }
+
+    /// <summary>
+    /// 验证记录型中介者对不支持的请求类型抛出明确异常。
+    /// </summary>
+    [Test]
+    public async Task AvaloniaWorkbench_Mediator_Should_ThrowForUnsupportedRequestTypeAsync()
+    {
+        await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
+
+        InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await composition.Mediator.SendAsync<string, AvaloniaWorkbench.EventBindingWorkbenchInteractionResponse>("bad-request");
+        });
+
+        await Assert.That(ex!.Message).Contains("不支持请求类型");
+    }
+
+    /// <summary>
+    /// 验证记录型中介者对不兼容的响应类型抛出明确异常。
+    /// </summary>
+    [Test]
+    public async Task AvaloniaWorkbench_Mediator_Should_ThrowForIncompatibleResponseTypeAsync()
+    {
+        await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
+
+        InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await composition.Mediator.SendAsync<AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest, string>(
+                new AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
+        });
+
+        await Assert.That(ex!.Message).Contains("无法将响应转换为请求类型");
+    }
+
+    /// <summary>
+    /// 验证记录型中介者构造时注入 Store，消除两阶段初始化。
+    /// </summary>
+    [Test]
+    public async Task AvaloniaWorkbench_Mediator_Should_DispatchToWorkbenchStoreImmediatelyAsync()
+    {
+        await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
+
+        await composition.Mediator.SendAsync<AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest, AvaloniaWorkbench.EventBindingWorkbenchInteractionResponse>(
+            new AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
+        await Task.Delay(50);
+
+        await Assert.That(composition.WorkbenchStore.CurrentState.InteractionCount).IsEqualTo(1);
+        await Assert.That(composition.Mediator.RecordedRequests.Count).IsEqualTo(1);
     }
 
     private static string GetRepositoryRoot()

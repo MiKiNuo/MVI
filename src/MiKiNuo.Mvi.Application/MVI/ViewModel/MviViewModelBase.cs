@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using MiKiNuo.Mvi.Application.MVI.EventBinding;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using R3;
@@ -15,7 +16,7 @@ namespace MiKiNuo.Mvi.Application.MVI.ViewModel;
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
 /// <typeparam name="TEffect">副作用类型。</typeparam>
-public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyPropertyChanged, IDisposable
+public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent, INotifyPropertyChanged
     where TState : IMviState
     where TIntent : IMviIntent
     where TEffect : IMviEffect
@@ -62,6 +63,25 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
     protected async ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default)
     {
         await Store.DispatchAsync(intent, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Reliability",
+        "CA2012:Avoid unnecessary zero-bit allocation",
+        Justification = "fire-and-forget 派发 Intent，Store 内部已处理异步完成。")]
+    protected override void Dispatch(IMviIntent intent)
+    {
+        if (intent is TIntent typedIntent)
+        {
+            _ = DispatchAsync(typedIntent);
+        }
+        else
+        {
+            throw new ArgumentException(
+                $"意图类型不匹配：期望 {typeof(TIntent).FullName}，实际 {intent?.GetType().FullName ?? "null"}。",
+                nameof(intent));
+        }
     }
 
     /// <summary>
@@ -133,17 +153,19 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : INotifyProper
     }
 
     /// <inheritdoc />
-    public void Dispose()
+    public override void Dispose()
     {
         if (_isDisposed)
         {
             return;
         }
 
+        _isDisposed = true;
+
         _stateSubscription.Dispose();
         DisposeManagedResources();
         OnDispose();
-        _isDisposed = true;
+        base.Dispose();
         GC.SuppressFinalize(this);
     }
 }
