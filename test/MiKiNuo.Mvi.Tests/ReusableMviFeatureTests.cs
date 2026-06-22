@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
+using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
 using TUnit.Assertions;
@@ -48,7 +48,14 @@ public sealed class ReusableMviFeatureTests
         /// </summary>
         public DashboardComponentInteractionRequest? LastRequest { get; private set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 异步发送请求并返回响应。
+        /// </summary>
+        /// <typeparam name="TRequest">请求类型。</typeparam>
+        /// <typeparam name="TResponse">响应类型。</typeparam>
+        /// <param name="request">请求实例。</param>
+        /// <param name="cancellationToken">取消标记。</param>
+        /// <returns>响应实例。</returns>
         public ValueTask<TResponse> SendAsync<TRequest, TResponse>(
             TRequest request,
             CancellationToken cancellationToken = default)

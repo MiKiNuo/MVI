@@ -9,13 +9,17 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.EventBindingWorkbench.SelectionPanel;
 
 /// <summary>
 /// 表示 Godot 事件绑定选择面板视图。
-/// 通过 <see cref="GodotEventSources.FromItemSelected"/> 把 <see cref="ItemList.ItemSelected"/> 封装为
+/// 通过 <c>ToEventSource().ItemSelected</c> 把 <see cref="ItemList.ItemSelected"/> 封装为
 /// <see cref="IEventSource{TEvent}"/>，再用 <see cref="EventBinding{TEvent}"/> 映射为
 /// <see cref="EventBindingSelectionIntent.ChangeSelection"/> 意图，注册到 ViewModel 生命周期。
 /// </summary>
 public partial class EventBindingSelectionPanelView : GodotMviControlView<EventBindingSelectionViewModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(EventBindingSelectionViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -24,7 +28,7 @@ public partial class EventBindingSelectionPanelView : GodotMviControlView<EventB
         ItemList missionList = GetNode<ItemList>("Panel/Margin/Layout/MissionList");
         Label selectedLabel = GetNode<Label>("Panel/Margin/Layout/SelectedLabel");
 
-        IEventSource<long> source = GodotEventSources.FromItemSelected(missionList);
+        IEventSource<long> source = missionList.ToEventSource().ItemSelected;
         EventBinding<long> binding = new(
             source,
             index => new EventBindingSelectionIntent.ChangeSelection(

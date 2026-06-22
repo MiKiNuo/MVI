@@ -19,7 +19,10 @@ public abstract class MviReducerGeneratorBase : IIncrementalGenerator
             SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
             | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化源生成器注册编译回调。
+    /// </summary>
+    /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterSourceOutput(context.CompilationProvider, Execute);

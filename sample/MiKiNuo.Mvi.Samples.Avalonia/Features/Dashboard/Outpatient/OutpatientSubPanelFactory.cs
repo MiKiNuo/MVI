@@ -38,12 +38,21 @@ public sealed class OutpatientSubPanelFactory : IOutpatientSubPanelFactory
         _reminderViewModel = reminderViewModel;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析候诊队列子组件 ViewModel。
+    /// </summary>
+    /// <returns>候诊队列 ViewModel 实例。</returns>
     public object CreateQueueViewModel() => _queueViewModel;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析电子病历编辑子组件 ViewModel。
+    /// </summary>
+    /// <returns>电子病历编辑 ViewModel 实例。</returns>
     public object CreateEditorViewModel() => _editorViewModel;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析临床提醒子组件 ViewModel。
+    /// </summary>
+    /// <returns>临床提醒 ViewModel 实例。</returns>
     public object CreateReminderViewModel() => _reminderViewModel;
 }

@@ -34,12 +34,21 @@ public sealed class EventBindingPanelFactory : IEventBindingPanelFactory
         _detailViewModel = detailViewModel;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析搜索面板子组件 ViewModel。
+    /// </summary>
+    /// <returns>搜索面板 ViewModel 实例。</returns>
     public object CreateSearchViewModel() => _searchViewModel;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析选择面板子组件 ViewModel。
+    /// </summary>
+    /// <returns>选择面板 ViewModel 实例。</returns>
     public object CreateSelectionViewModel() => _selectionViewModel;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析详情面板子组件 ViewModel。
+    /// </summary>
+    /// <returns>详情面板 ViewModel 实例。</returns>
     public object CreateDetailViewModel() => _detailViewModel;
 }

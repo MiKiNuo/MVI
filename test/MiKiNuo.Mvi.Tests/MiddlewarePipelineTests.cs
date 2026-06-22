@@ -52,7 +52,12 @@ public sealed class MiddlewarePipelineTests
     private sealed class EmptyPatientSearchEffectDispatcher
         : MiKiNuo.Mvi.Application.MVI.Effect.IMviEffectDispatcher<PatientSearchEffect>
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 分发副作用。
+        /// </summary>
+        /// <param name="effect">副作用。</param>
+        /// <param name="cancellationToken">取消标记。</param>
+        /// <returns>表示异步分发过程的任务。</returns>
         public ValueTask DispatchAsync(PatientSearchEffect effect, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(effect);

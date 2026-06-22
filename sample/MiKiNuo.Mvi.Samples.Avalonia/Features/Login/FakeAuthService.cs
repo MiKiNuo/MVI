@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Domain.DI;
+using MiKiNuo.Mvi.Domain.DI;
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
 /// <summary>
@@ -7,7 +7,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 [DiService(ServiceLifetime.Singleton, ServiceType = typeof(IAuthService))]
 public sealed class FakeAuthService : IAuthService
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 登录。
+    /// </summary>
+    /// <param name="userName">用户账号。</param>
+    /// <param name="password">用户密码。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>登录结果。</returns>
     public async ValueTask<LoginResult> LoginAsync(
         string userName,
         string password,

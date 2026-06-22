@@ -52,7 +52,12 @@ public sealed class CardEffectDispatcher : IMviEffectDispatcher<CardEffect>
         _allStores = allStores;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public async ValueTask DispatchAsync(CardEffect effect, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(effect);

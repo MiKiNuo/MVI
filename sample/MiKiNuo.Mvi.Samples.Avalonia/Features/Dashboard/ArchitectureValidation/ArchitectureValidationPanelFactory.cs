@@ -34,7 +34,11 @@ public sealed class ArchitectureValidationPanelFactory : IArchitectureValidation
         _auditTimelineFactory = auditTimelineFactory;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析复用患者检索子组件 ViewModel。
+    /// </summary>
+    /// <param name="contextName">上下文名称。</param>
+    /// <returns>患者检索 ViewModel 实例。</returns>
     public object CreatePatientSearchViewModel(string contextName)
     {
         ArgumentNullException.ThrowIfNull(contextName);
@@ -47,7 +51,11 @@ public sealed class ArchitectureValidationPanelFactory : IArchitectureValidation
         return viewModel;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析复用审计时间线子组件 ViewModel。
+    /// </summary>
+    /// <param name="contextName">上下文名称。</param>
+    /// <returns>审计时间线 ViewModel 实例。</returns>
     public object CreateAuditTimelineViewModel(string contextName)
     {
         ArgumentNullException.ThrowIfNull(contextName);

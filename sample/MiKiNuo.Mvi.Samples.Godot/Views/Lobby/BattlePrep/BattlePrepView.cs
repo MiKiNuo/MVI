@@ -18,7 +18,11 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.BattlePrep;
 [MviGodotView("BattlePrepView", "res://Views/Lobby/BattlePrep/BattlePrepView.tscn")]
 public partial class BattlePrepView : GodotMviControlView<BattlePrepViewModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(BattlePrepViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);

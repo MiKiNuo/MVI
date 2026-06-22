@@ -18,7 +18,9 @@ namespace MiKiNuo.Mvi.Tests;
 /// </summary>
 public sealed class HeadlessTestApp : global::Avalonia.Application
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化应用程序。
+    /// </summary>
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);

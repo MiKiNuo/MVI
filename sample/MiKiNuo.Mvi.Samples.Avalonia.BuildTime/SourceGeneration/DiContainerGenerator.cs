@@ -19,7 +19,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
             | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化源生成器。
+    /// </summary>
+    /// <param name="context">源生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterSourceOutput(context.CompilationProvider, Execute);
@@ -388,7 +391,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("        _container = container;");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 创建平台视图对象。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"viewModel\">视图模型。</param>");
+        builder.AppendLine("    /// <returns>平台视图对象。</returns>");
         builder.AppendLine("    public object CreateView(object viewModel)");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(viewModel);");
@@ -412,7 +419,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         GenerationModel model,
         string containerName)
     {
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 创建平台视图对象。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"viewModel\">视图模型。</param>");
+        builder.AppendLine("    /// <returns>平台视图对象。</returns>");
         builder.AppendLine("    public object CreateView(object viewModel)");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(viewModel);");
@@ -604,30 +615,48 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("        };");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 获取服务描述集合。");
+        builder.AppendLine("    /// </summary>");
         builder.AppendLine("    public IReadOnlyList<MviServiceDescriptor> ServiceDescriptors => _serviceDescriptors;");
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 解析服务。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <typeparam name=\"TService\">服务类型。</typeparam>");
+        builder.AppendLine("    /// <returns>服务实例。</returns>");
         builder.AppendLine("    public TService Resolve<TService>()");
         builder.AppendLine("        where TService : notnull");
         builder.AppendLine("    {");
         builder.AppendLine("        return (TService)Resolve(typeof(TService));");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 解析指定类型的服务。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"serviceType\">服务类型。</param>");
+        builder.AppendLine("    /// <returns>服务实例。</returns>");
         builder.AppendLine("    public object Resolve(Type serviceType)");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(serviceType);");
         builder.AppendLine("        return ResolveCore(serviceType);");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 创建作用域。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <returns>服务作用域。</returns>");
         builder.AppendLine("    public IMviScope CreateScope()");
         builder.AppendLine("    {");
         builder.Append("        return new ").Append(containerName).AppendLine("Scope(this);");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 按构造参数即时构造服务实例。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <typeparam name=\"TService\">服务类型。</typeparam>");
+        builder.AppendLine("    /// <param name=\"args\">构造函数实参。</param>");
+        builder.AppendLine("    /// <returns>新构造的实例。</returns>");
         builder.AppendLine("    public TService CreateWith<TService>(params object[] args)");
         builder.AppendLine("        where TService : notnull");
         builder.AppendLine("    {");
@@ -702,7 +731,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("        throw new InvalidOperationException($\"未找到匹配 {args.Length} 个参数的构造函数：{serviceType.FullName}\");");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 记录诊断条目。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"entry\">诊断条目。</param>");
         builder.AppendLine("    public void Record(MviDiagnosticEntry entry)");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(entry);");
@@ -733,7 +765,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
     private static void AppendNavigateToDashboard(StringBuilder builder, FeatureInfo shell, FeatureInfo? dashboard)
     {
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 导航到 Dashboard。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"displayName\">显示名称。</param>");
+        builder.AppendLine("    /// <param name=\"cancellationToken\">取消标记。</param>");
+        builder.AppendLine("    /// <returns>表示异步导航过程的任务。</returns>");
         builder.AppendLine("    public async ValueTask NavigateToDashboardAsync(string displayName, CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         if (dashboard is not null)
@@ -757,7 +794,14 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
     private static void AppendMediator(StringBuilder builder, FeatureInfo? dashboard, FeatureInfo? clinicalEditor, FeatureInfo? clinicalReminder, FeatureInfo? businessPage)
     {
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 发送请求并返回响应。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <typeparam name=\"TRequest\">请求类型。</typeparam>");
+        builder.AppendLine("    /// <typeparam name=\"TResponse\">响应类型。</typeparam>");
+        builder.AppendLine("    /// <param name=\"request\">请求对象。</param>");
+        builder.AppendLine("    /// <param name=\"cancellationToken\">取消标记。</param>");
+        builder.AppendLine("    /// <returns>响应对象。</returns>");
         builder.AppendLine("    public async ValueTask<TResponse> SendAsync<TRequest, TResponse>(");
         builder.AppendLine("        TRequest request,");
         builder.AppendLine("        CancellationToken cancellationToken = default)");
@@ -1198,7 +1242,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         // IDashboardPageFactory.CreatePage：把 menuKey 解析为具体的顶层页面 ViewModel。
         // 容器直接实现该接口，避免父 VM 长期持有子 VM 引用造成的"VM-in-VM"反模式。
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 根据页面键创建顶层页面 ViewModel。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"pageKey\">页面键。</param>");
+        builder.AppendLine("    /// <returns>页面 ViewModel；未识别时返回 null。</returns>");
         builder.AppendLine("    public object? CreatePage(string pageKey)");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(pageKey);");

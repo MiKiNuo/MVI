@@ -22,7 +22,10 @@ public sealed class InMemoryPatientRegistry : IMviPatientRegistry, IDisposable
     private readonly Subject<PatientRegistrySnapshot> _changes = new();
     private bool _disposed;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册新入院患者。
+    /// </summary>
+    /// <param name="patient">患者记录。</param>
     public void Register(Patient patient)
     {
         ArgumentNullException.ThrowIfNull(patient);
@@ -32,7 +35,10 @@ public sealed class InMemoryPatientRegistry : IMviPatientRegistry, IDisposable
         _changes.OnNext(GetSnapshot());
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取当前注册表快照。
+    /// </summary>
+    /// <returns>当前快照。</returns>
     public PatientRegistrySnapshot GetSnapshot()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -43,7 +49,11 @@ public sealed class InMemoryPatientRegistry : IMviPatientRegistry, IDisposable
         return new PatientRegistrySnapshot(ordered);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 订阅注册表变更。
+    /// </summary>
+    /// <param name="onChange">接收快照回调。</param>
+    /// <returns>取消订阅句柄。</returns>
     public IDisposable Subscribe(Action<PatientRegistrySnapshot> onChange)
     {
         ArgumentNullException.ThrowIfNull(onChange);
@@ -52,7 +62,9 @@ public sealed class InMemoryPatientRegistry : IMviPatientRegistry, IDisposable
         return _changes.Subscribe(onChange);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放注册表资源。
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)

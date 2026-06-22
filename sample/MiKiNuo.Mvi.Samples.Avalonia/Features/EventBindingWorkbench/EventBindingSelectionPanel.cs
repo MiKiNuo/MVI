@@ -111,7 +111,12 @@ public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public async ValueTask DispatchAsync(EventBindingSelectionEffect effect, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(effect);

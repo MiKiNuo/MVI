@@ -18,7 +18,11 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.Inventory;
 [MviGodotView("InventoryView", "res://Views/Lobby/Inventory/InventoryView.tscn")]
 public partial class InventoryView : GodotMviControlView<InventoryViewModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(InventoryViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);

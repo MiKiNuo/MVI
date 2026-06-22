@@ -83,7 +83,9 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Presentation 层应保持平台无关，编译期不得通过 PackageReference 引入 Avalonia / Godot 等具体平台包.");
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取支持的诊断描述集合。
+    /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
             DomainReferenceRule,
@@ -95,7 +97,10 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
             PresentationReferencePlatformRule,
             PresentationPackageIsolationRule);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化分析器注册诊断动作。
+    /// </summary>
+    /// <param name="context">分析上下文。</param>
     public override void Initialize(AnalysisContext context)
     {
         if (context is null)

@@ -214,7 +214,9 @@ file sealed class CardAdmissionHarness : IDisposable
             CancellationToken.None).ConfigureAwait(false);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放资源。
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)

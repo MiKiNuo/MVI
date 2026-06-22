@@ -37,7 +37,10 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
     private const string DisposableBagMetadataName = "MiKiNuo.Mvi.Presentation.Disposables.MviDisposableBag";
     private const string ResolverMetadataName = "MiKiNuo.Mvi.Application.DI.IMviResolver";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化源生成器注册槽位分析。
+    /// </summary>
+    /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         IncrementalValuesProvider<SlotFieldModel> slots = context.SyntaxProvider

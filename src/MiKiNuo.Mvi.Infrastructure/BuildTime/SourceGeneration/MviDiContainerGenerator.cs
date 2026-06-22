@@ -16,7 +16,10 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 [Generator]
 public sealed class MviDiContainerGenerator : IIncrementalGenerator
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化源生成器注册编译回调。
+    /// </summary>
+    /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterSourceOutput(context.CompilationProvider, Execute);
@@ -348,7 +351,9 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("    {");
             builder.AppendLine("    }");
             builder.AppendLine();
-            builder.AppendLine("    /// <inheritdoc />");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 获取服务描述集合。");
+            builder.AppendLine("    /// </summary>");
             builder.AppendLine("    public IReadOnlyList<MviServiceDescriptor> ServiceDescriptors => _descriptors;");
             builder.AppendLine();
             builder.AppendLine("    private static readonly IReadOnlyList<MviServiceDescriptor> _descriptors = new MviServiceDescriptor[]");
@@ -363,14 +368,22 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
 
             builder.AppendLine("    };");
             builder.AppendLine();
-            builder.AppendLine("    /// <inheritdoc />");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 解析服务。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <typeparam name=\"TService\">服务类型。</typeparam>");
+            builder.AppendLine("    /// <returns>服务实例。</returns>");
             builder.AppendLine("    public TService Resolve<TService>()");
             builder.AppendLine("        where TService : notnull");
             builder.AppendLine("    {");
             builder.AppendLine("        return (TService)Resolve(typeof(TService));");
             builder.AppendLine("    }");
             builder.AppendLine();
-            builder.AppendLine("    /// <inheritdoc />");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 解析指定类型的服务。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <param name=\"serviceType\">服务类型。</param>");
+            builder.AppendLine("    /// <returns>服务实例。</returns>");
             builder.AppendLine("    public object Resolve(Type serviceType)");
             builder.AppendLine("    {");
             builder.AppendLine("        if (serviceType is null)");
@@ -410,13 +423,21 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("        throw new InvalidOperationException($\"未注册服务：{serviceType.FullName}\");");
             builder.AppendLine("    }");
             builder.AppendLine();
-            builder.AppendLine("    /// <inheritdoc />");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 创建作用域。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <returns>服务作用域。</returns>");
             builder.AppendLine("    public IMviScope CreateScope()");
             builder.AppendLine("    {");
             builder.AppendLine("        return new GeneratedMviScope(this);");
             builder.AppendLine("    }");
             builder.AppendLine();
-            builder.AppendLine("    /// <inheritdoc />");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 按构造参数即时构造服务实例。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <typeparam name=\"TService\">要实例化的服务类型。</typeparam>");
+            builder.AppendLine("    /// <param name=\"args\">构造函数实参。</param>");
+            builder.AppendLine("    /// <returns>新构造的实例。</returns>");
             builder.AppendLine("    public TService CreateWith<TService>(params object[] args)");
             builder.AppendLine("        where TService : notnull");
             builder.AppendLine("    {");

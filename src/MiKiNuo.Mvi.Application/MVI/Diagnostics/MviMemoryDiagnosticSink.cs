@@ -31,7 +31,10 @@ public sealed class MviMemoryDiagnosticSink : IMviDiagnosticSink, IDisposable
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 记录诊断条目。
+    /// </summary>
+    /// <param name="entry">诊断条目。</param>
     public void Record(MviDiagnosticEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -48,7 +51,9 @@ public sealed class MviMemoryDiagnosticSink : IMviDiagnosticSink, IDisposable
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放所有资源。
+    /// </summary>
     public void Dispose()
     {
         if (_isDisposed)

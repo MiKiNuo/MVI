@@ -217,27 +217,42 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
     /// </summary>
     private sealed class EmptyScope : MiKiNuo.Mvi.Application.DI.IMviScope
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 解析作用域服务。
+        /// </summary>
+        /// <typeparam name="TService">服务类型。</typeparam>
+        /// <returns>服务实例。</returns>
         public TService Resolve<TService>()
             where TService : notnull
         {
             throw new NotSupportedException("Godot 端组合根作用域不解析服务，请直接访问 AppCompositionRoot 属性。");
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 解析指定类型的作用域服务。
+        /// </summary>
+        /// <param name="serviceType">服务类型。</param>
+        /// <returns>服务实例。</returns>
         public object Resolve(Type serviceType)
         {
             throw new NotSupportedException("Godot 端组合根作用域不解析服务，请直接访问 AppCompositionRoot 属性。");
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 按构造参数即时构造服务实例。
+        /// </summary>
+        /// <typeparam name="TService">服务类型。</typeparam>
+        /// <param name="args">构造函数实参。</param>
+        /// <returns>新构造的实例。</returns>
         public TService CreateWith<TService>(params object[] args)
             where TService : notnull
         {
             throw new NotSupportedException("Godot 端组合根作用域不支持 CreateWith<T>。");
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 释放作用域资源。
+        /// </summary>
         public void Dispose()
         {
         }

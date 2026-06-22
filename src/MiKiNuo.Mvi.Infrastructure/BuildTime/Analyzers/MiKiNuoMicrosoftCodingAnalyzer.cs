@@ -29,11 +29,16 @@ public sealed class MiKiNuoMicrosoftCodingAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "公共方法、属性、事件和常量应使用 PascalCase，异步方法应以 Async 结尾.");
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取支持的诊断描述集合。
+    /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(TypeNamingRule, MemberNamingRule);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化分析器注册诊断动作。
+    /// </summary>
+    /// <param name="context">分析上下文。</param>
     public override void Initialize(AnalysisContext context)
     {
         if (context is null)

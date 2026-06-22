@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Effect;
+using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 
@@ -22,7 +22,12 @@ public sealed class DashboardMenuEffectDispatcher : IMviEffectDispatcher<Dashboa
         _mediator = mediator;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public async ValueTask DispatchAsync(DashboardMenuEffect effect, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(effect);

@@ -18,7 +18,11 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.MissionBoard;
 [MviGodotView("MissionBoardView", "res://Views/Lobby/MissionBoard/MissionBoardView.tscn")]
 public partial class MissionBoardView : GodotMviControlView<MissionBoardViewModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(MissionBoardViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);

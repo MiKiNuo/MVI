@@ -44,7 +44,14 @@ public sealed class EventBindingRecordingMediator : IMviMediator
         _workbenchStore = workbenchStore ?? throw new ArgumentNullException(nameof(workbenchStore));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 发送请求并返回响应。
+    /// </summary>
+    /// <typeparam name="TRequest">请求类型。</typeparam>
+    /// <typeparam name="TResponse">响应类型。</typeparam>
+    /// <param name="request">请求对象。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>响应对象。</returns>
     public async ValueTask<TResponse> SendAsync<TRequest, TResponse>(
         TRequest request,
         CancellationToken cancellationToken = default)
@@ -117,7 +124,12 @@ public sealed partial class EventBindingWorkbenchReducer
 /// <summary>表示 Godot 事件绑定组合根空副作用分发器。</summary>
 public sealed class EventBindingWorkbenchEffectDispatcher : IMviEffectDispatcher<EventBindingWorkbenchEffect>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(EventBindingWorkbenchEffect effect, CancellationToken cancellationToken = default)
     {
         return ValueTask.CompletedTask;
@@ -232,7 +244,12 @@ public sealed class EventBindingSearchEffectDispatcher : IMviEffectDispatcher<Ev
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public async ValueTask DispatchAsync(EventBindingSearchEffect effect, CancellationToken cancellationToken = default)
     {
         if (effect is EventBindingSearchEffect.NotifyQueryChanged queryChanged)
@@ -330,7 +347,12 @@ public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public async ValueTask DispatchAsync(EventBindingSelectionEffect effect, CancellationToken cancellationToken = default)
     {
         if (effect is EventBindingSelectionEffect.NotifySelectionChanged selectionChanged)
@@ -420,7 +442,12 @@ public sealed class EventBindingDetailEffectDispatcher : IMviEffectDispatcher<Ev
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public async ValueTask DispatchAsync(EventBindingDetailEffect effect, CancellationToken cancellationToken = default)
     {
         if (effect is EventBindingDetailEffect.NotifyPrepare prepare)
@@ -555,7 +582,9 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
             workbenchViewModel);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放组合示例资源。
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)

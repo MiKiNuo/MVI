@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using MiKiNuo.Mvi.Application.MVI.EventBinding;
 using MiKiNuo.Mvi.Application.MVI.Store;
@@ -40,7 +40,9 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
         ApplyState(Store.CurrentState);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 属性变更事件。
+    /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
@@ -65,7 +67,10 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
         await Store.DispatchAsync(intent, cancellationToken);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 派发意图到状态存储。
+    /// </summary>
+    /// <param name="intent">意图。</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Reliability",
         "CA2012:Avoid unnecessary zero-bit allocation",
@@ -152,7 +157,9 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
         _uiDispatcher.Post(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放 ViewModel 资源。
+    /// </summary>
     public override void Dispose()
     {
         if (_isDisposed)

@@ -46,7 +46,11 @@ public sealed class LobbyPanelFactory : ILobbyPanelFactory
         };
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 根据面板键解析面板 ViewModel。
+    /// </summary>
+    /// <param name="panelKey">面板键。</param>
+    /// <returns>面板 ViewModel；未识别时返回 null。</returns>
     public object? CreatePanel(string panelKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(panelKey);

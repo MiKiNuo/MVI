@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Effect;
+using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -49,16 +49,27 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         _dispatchGate = new SemaphoreSlim(1, 1);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取当前状态。
+    /// </summary>
     public TState CurrentState => _state.Value;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取状态变化流。
+    /// </summary>
     public Observable<TState> States => _state;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取副作用变化流。
+    /// </summary>
     public Observable<TEffect> Effects => _effects;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 派发意图。
+    /// </summary>
+    /// <param name="intent">意图。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
     public async ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
@@ -90,7 +101,9 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放所有资源。
+    /// </summary>
     public void Dispose()
     {
         if (_isDisposed)

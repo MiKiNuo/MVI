@@ -69,7 +69,11 @@ public sealed class EventBinding<TEvent> : IEventBinding
         _mapper = mapper;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 附加绑定到派发回调并返回可释放资源。
+    /// </summary>
+    /// <param name="dispatch">Intent 派发回调。</param>
+    /// <returns>用于取消绑定的可释放资源。</returns>
     public IDisposable Attach(Action<IMviIntent> dispatch)
     {
         ArgumentNullException.ThrowIfNull(dispatch);
@@ -111,7 +115,9 @@ public abstract class MviComponent : IDisposable
     /// <param name="intent">意图。</param>
     protected abstract void Dispatch(IMviIntent intent);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放所有事件绑定资源。
+    /// </summary>
     public virtual void Dispose()
     {
         if (_isDisposed)
@@ -148,7 +154,11 @@ public sealed class DelegateEventSource<TEvent> : IEventSource<TEvent>
         _subscribeFunc = subscribeFunc;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 订阅事件源并返回可释放资源。
+    /// </summary>
+    /// <param name="handler">事件处理器。</param>
+    /// <returns>用于取消订阅的可释放资源。</returns>
     public IDisposable Subscribe(Action<TEvent> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
@@ -172,7 +182,9 @@ public sealed class ActionDisposable : IDisposable
         _disposeAction = disposeAction;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行一次性清理动作。
+    /// </summary>
     public void Dispose()
     {
         Interlocked.Exchange(ref _disposeAction, null)?.Invoke();

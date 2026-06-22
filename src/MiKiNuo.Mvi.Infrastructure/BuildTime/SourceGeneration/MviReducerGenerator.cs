@@ -12,13 +12,21 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 [Generator]
 public sealed class MviReducerGenerator : MviReducerGeneratorBase
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 判断指定类是否为生成目标。
+    /// </summary>
+    /// <param name="symbol">类型符号。</param>
+    /// <returns>如果是目标类则返回 true。</returns>
     protected override bool IsTargetClass(INamedTypeSymbol symbol)
     {
         return symbol.Name.EndsWith("Reducer", System.StringComparison.Ordinal);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 收集类型中的规约方法信息。
+    /// </summary>
+    /// <param name="reducerType">类型符号。</param>
+    /// <returns>规约方法信息列表。</returns>
     protected override List<ReducerMethodModel> GetReducerMethods(INamedTypeSymbol reducerType)
     {
         List<ReducerMethodModel> result = [];
@@ -56,7 +64,12 @@ public sealed class MviReducerGenerator : MviReducerGeneratorBase
         return result;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 生成目标源码。
+    /// </summary>
+    /// <param name="reducerType">类型符号。</param>
+    /// <param name="methods">规约方法信息列表。</param>
+    /// <returns>生成的源码字符串。</returns>
     protected override string GenerateSource(INamedTypeSymbol reducerType, IReadOnlyList<ReducerMethodModel> methods)
     {
         ReducerMethodModel first = methods[0];
@@ -73,7 +86,9 @@ public sealed class MviReducerGenerator : MviReducerGeneratorBase
         builder.AppendLine("/// </summary>");
         builder.Append("public sealed partial class ").Append(reducerType.Name).AppendLine();
         builder.AppendLine("{");
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 执行意图到状态的规约分发。");
+        builder.AppendLine("    /// </summary>");
         builder.Append("    public override global::MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<")
             .Append(first.StateTypeName).Append(", ").Append(first.EffectTypeName).Append("> Reduce(")
             .Append(first.StateTypeName).Append(" state, ").Append(first.RootIntentTypeName).AppendLine(" intent)");
@@ -96,7 +111,11 @@ public sealed class MviReducerGenerator : MviReducerGeneratorBase
         return builder.ToString();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取输出文件名。
+    /// </summary>
+    /// <param name="symbol">类型符号。</param>
+    /// <returns>输出文件名。</returns>
     protected override string GetOutputFileName(INamedTypeSymbol symbol)
     {
         return $"{symbol.Name}.g.cs";

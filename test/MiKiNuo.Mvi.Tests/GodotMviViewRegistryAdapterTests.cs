@@ -106,17 +106,28 @@ public sealed class GodotMviViewRegistryAdapterTests
         /// <summary>最近一次 <c>TryCreate</c> / <c>Create</c> 请求的 key。</summary>
         public string? LastRequestedKey { get; private set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 获取已注册的 View 键集合。
+        /// </summary>
         public IReadOnlyCollection<string> Keys => new[] { "MissionBoardView" };
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 根据键创建 View 实例。
+        /// </summary>
+        /// <param name="key">View 注册键。</param>
+        /// <returns>创建出的 Control 实例。</returns>
         public Control Create(string key)
         {
             LastRequestedKey = key;
             return new Control();
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 尝试根据键创建 View 实例。
+        /// </summary>
+        /// <param name="key">View 注册键。</param>
+        /// <param name="view">创建出的 View。</param>
+        /// <returns>创建成功返回 true。</returns>
         public bool TryCreate(string key, out Control? view)
         {
             LastRequestedKey = key;
@@ -130,13 +141,24 @@ public sealed class GodotMviViewRegistryAdapterTests
     /// </summary>
     private sealed class EmptyGodotViewRegistry : IGodotMviViewRegistry
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 获取已注册的 View 键集合。
+        /// </summary>
         public IReadOnlyCollection<string> Keys => Array.Empty<string>();
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 根据键创建 View 实例。
+        /// </summary>
+        /// <param name="key">View 注册键。</param>
+        /// <returns>创建出的 Control 实例。</returns>
         public Control Create(string key) => throw new KeyNotFoundException(key);
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 尝试根据键创建 View 实例。
+        /// </summary>
+        /// <param name="key">View 注册键。</param>
+        /// <param name="view">创建出的 View。</param>
+        /// <returns>创建成功返回 true。</returns>
         public bool TryCreate(string key, out Control? view)
         {
             view = null;

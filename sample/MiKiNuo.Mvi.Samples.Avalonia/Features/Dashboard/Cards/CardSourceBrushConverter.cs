@@ -12,7 +12,14 @@ public sealed class CardSourceBrushConverter : IValueConverter
     /// <summary>单例。</summary>
     public static readonly CardSourceBrushConverter Instance = new();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         string source = value as string ?? "Other";
@@ -58,7 +65,14 @@ public sealed class CardSourceBrushConverter : IValueConverter
         };
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换回值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         throw new NotSupportedException("CardSourceBrushConverter 是单向转换器。");
@@ -82,7 +96,14 @@ public sealed class ActionLogFlowIndicatorConverter : IValueConverter
     private static readonly SolidColorBrush BrushPending = new(Color.Parse("#F59E0B"));
     private static readonly SolidColorBrush BrushIdle = new(Color.Parse("#94A3B8"));
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         string? log = value as string;
@@ -109,7 +130,14 @@ public sealed class ActionLogFlowIndicatorConverter : IValueConverter
         return BrushIdle;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换回值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         throw new NotSupportedException("ActionLogFlowIndicatorConverter 是单向转换器。");

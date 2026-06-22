@@ -83,7 +83,9 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "XML 注释需要具备维护价值，不能使用空白、TODO 或占位文本.");
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取支持的诊断描述集合。
+    /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
             TypeDocumentationRule,
@@ -95,7 +97,10 @@ public sealed class MiKiNuoChineseDocumentationAnalyzer : DiagnosticAnalyzer
             ReturnDocumentationRule,
             InvalidDocumentationRule);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化分析器注册诊断动作。
+    /// </summary>
+    /// <param name="context">分析上下文。</param>
     public override void Initialize(AnalysisContext context)
     {
         if (context is null)

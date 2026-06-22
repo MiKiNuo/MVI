@@ -34,12 +34,21 @@ public sealed class LobbyChromeFactory : ILobbyChromeFactory
         _activityLogViewModel = activityLogViewModel;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析玩家头部子组件 ViewModel。
+    /// </summary>
+    /// <returns>玩家头部 ViewModel 实例。</returns>
     public object CreateHeaderViewModel() => _headerViewModel;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析大厅菜单子组件 ViewModel。
+    /// </summary>
+    /// <returns>大厅菜单 ViewModel 实例。</returns>
     public object CreateMenuViewModel() => _menuViewModel;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析活动日志子组件 ViewModel。
+    /// </summary>
+    /// <returns>活动日志 ViewModel 实例。</returns>
     public object CreateActivityLogViewModel() => _activityLogViewModel;
 }

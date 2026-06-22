@@ -110,7 +110,10 @@ internal sealed class RecordingUiDispatcher : IMviUiDispatcher
     /// <summary>已派发的回调次数。</summary>
     public int PostedCount => Volatile.Read(ref _postedCount);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 派发 UI 回调到调度器。
+    /// </summary>
+    /// <param name="action">回调动作。</param>
     public void Post(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);

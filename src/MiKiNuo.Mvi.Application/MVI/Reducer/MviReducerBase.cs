@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Domain.MVI.Effect;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
@@ -17,6 +17,11 @@ public abstract class MviReducerBase<TState, TIntent, TEffect>
     where TIntent : IMviIntent
     where TEffect : IMviEffect
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 根据状态和意图生成规约结果。
+    /// </summary>
+    /// <param name="state">当前状态。</param>
+    /// <param name="intent">用户意图。</param>
+    /// <returns>规约结果。</returns>
     public abstract MviReduceResult<TState, TEffect> Reduce(TState state, TIntent intent);
 }

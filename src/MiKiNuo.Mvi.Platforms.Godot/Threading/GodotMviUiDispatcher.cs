@@ -14,7 +14,9 @@ public partial class GodotMviUiDispatcher : Node, IMviUiDispatcher
     private readonly ConcurrentQueue<Action> _actions = new();
     private int _drainRequested;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 节点进入场景树后初始化。
+    /// </summary>
 #pragma warning disable CODE0002 // Godot 原生生命周期方法名称固定为 _Ready。
     public override void _Ready()
 #pragma warning restore CODE0002
@@ -24,7 +26,10 @@ public partial class GodotMviUiDispatcher : Node, IMviUiDispatcher
         base._Ready();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 每帧处理投递动作。
+    /// </summary>
+    /// <param name="delta">帧间隔时间（秒）。</param>
 #pragma warning disable CODE0002 // Godot 原生生命周期方法名称固定为 _Process。
     public override void _Process(double delta)
 #pragma warning restore CODE0002
@@ -33,7 +38,10 @@ public partial class GodotMviUiDispatcher : Node, IMviUiDispatcher
         base._Process(delta);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将操作投递到 UI 线程。
+    /// </summary>
+    /// <param name="action">需要在 UI 线程上执行的操作。</param>
     public void Post(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);

@@ -10,7 +10,9 @@ public partial class MainRoot : Control
 {
     private IDisposable? _runtime;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 节点进入场景树时初始化运行时。
+    /// </summary>
 #pragma warning disable CODE0002 // Godot 原生生命周期方法名称固定为 _Ready。
     public override void _Ready()
 #pragma warning restore CODE0002
@@ -19,7 +21,9 @@ public partial class MainRoot : Control
         StartRuntime();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 节点离开场景树时释放运行时。
+    /// </summary>
 #pragma warning disable CODE0002 // Godot 原生生命周期方法名称固定为 _ExitTree。
     public override void _ExitTree()
 #pragma warning restore CODE0002

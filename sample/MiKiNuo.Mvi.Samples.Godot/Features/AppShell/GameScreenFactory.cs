@@ -34,7 +34,11 @@ public sealed class GameScreenFactory : IGameScreenFactory
         };
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 根据页面键创建顶层页面 ViewModel。
+    /// </summary>
+    /// <param name="screenKey">页面键。</param>
+    /// <returns>页面 ViewModel；未识别时返回 null。</returns>
     public object? CreateScreen(string screenKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(screenKey);

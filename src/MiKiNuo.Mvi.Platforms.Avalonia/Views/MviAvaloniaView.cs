@@ -123,7 +123,10 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
         EnsureBindings().Add(dispose);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 脱离可视树时清理绑定资源。
+    /// </summary>
+    /// <param name="e">可视树附件事件参数。</param>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         ClearBindings();

@@ -34,7 +34,11 @@ public class GodotMviViewRegistryAdapter : IMviViewRegistry
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按 ViewModel 创建平台视图对象。
+    /// </summary>
+    /// <param name="viewModel">视图模型。</param>
+    /// <returns>平台视图对象。</returns>
     public object CreateView(object viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);

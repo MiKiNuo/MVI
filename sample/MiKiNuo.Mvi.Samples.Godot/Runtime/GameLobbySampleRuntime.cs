@@ -96,7 +96,9 @@ public sealed class GameLobbySampleRuntime : IDisposable
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放运行时资源。
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)

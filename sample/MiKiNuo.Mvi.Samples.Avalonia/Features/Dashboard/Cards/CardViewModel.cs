@@ -415,7 +415,9 @@ public sealed partial class CardViewModel
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放派生属性订阅资源。
+    /// </summary>
     protected override void OnDispose()
     {
         _derivedPropertiesSubscription.Dispose();

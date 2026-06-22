@@ -19,7 +19,14 @@ public sealed class IconKeyToGeometryConverter : IValueConverter
     private static readonly StreamGeometry IconQuality = StreamGeometry.Parse("M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm-1 14l-4-4 1.4-1.4L11 12.2l5.6-5.6L18 8l-7 7z");
     private static readonly StreamGeometry IconArch = StreamGeometry.Parse("M12 2L1 9l11 7 11-7L12 2zm0 4.5L18.5 9 12 12.5 5.5 9 12 6.5zM3 13.5l9 5.5 9-5.5v2.5l-9 5.5-9-5.5v-2.5z");
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         string iconKey = value as string ?? string.Empty;
@@ -35,7 +42,14 @@ public sealed class IconKeyToGeometryConverter : IValueConverter
         };
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换回值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         throw new NotSupportedException("IconKeyToGeometryConverter 是单向转换器。");

@@ -28,7 +28,12 @@ public sealed class GameShellNavigator : IGameShellNavigator
         _lobbyStore = lobbyStore ?? throw new ArgumentNullException(nameof(lobbyStore));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 异步打开大厅并切换壳状态。
+    /// </summary>
+    /// <param name="profile">玩家档案。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步操作的任务。</returns>
     public async ValueTask OpenLobbyAsync(PlayerProfile profile, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -37,7 +42,11 @@ public sealed class GameShellNavigator : IGameShellNavigator
         await _appShellStore.DispatchAsync(new AppShellIntent.ShowLobby(), cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 异步返回登录界面。
+    /// </summary>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步操作的任务。</returns>
     public ValueTask ReturnToLoginAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

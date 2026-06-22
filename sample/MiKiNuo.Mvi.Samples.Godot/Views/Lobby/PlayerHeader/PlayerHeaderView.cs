@@ -19,7 +19,11 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.PlayerHeader;
 [MviGodotView("PlayerHeaderView", "res://Views/Lobby/PlayerHeader/PlayerHeaderView.tscn")]
 public partial class PlayerHeaderView : GodotMviControlView<PlayerHeaderViewModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(PlayerHeaderViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);

@@ -25,7 +25,12 @@ public sealed class LoginEffectDispatcher : IMviEffectDispatcher<LoginEffect>
         _storeFactory = storeFactory;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public async ValueTask DispatchAsync(LoginEffect effect, CancellationToken cancellationToken = default)
     {
         switch (effect)

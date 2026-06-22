@@ -35,7 +35,11 @@ public sealed class DashboardChromeFactory : IDashboardChromeFactory
         _headerFactory = headerFactory;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析顶部头部子组件 ViewModel。
+    /// </summary>
+    /// <param name="displayName">当前登录显示名称。</param>
+    /// <returns>头部 ViewModel 实例。</returns>
     public object CreateHeaderViewModel(string displayName)
     {
         ArgumentNullException.ThrowIfNull(displayName);
@@ -48,6 +52,9 @@ public sealed class DashboardChromeFactory : IDashboardChromeFactory
         return header;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析左侧菜单子组件 ViewModel。
+    /// </summary>
+    /// <returns>菜单 ViewModel 实例。</returns>
     public object CreateMenuViewModel() => _menuViewModel;
 }

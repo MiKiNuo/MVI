@@ -35,11 +35,16 @@ public sealed class MiKiNuoInfrastructureSampleIsolationAnalyzer : DiagnosticAna
         isEnabledByDefault: true,
         description: "示例项目专属代码必须放在 sample 项目下，框架 src/MiKiNuo.Mvi.Infrastructure 不能反向依赖示例项目.");
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取支持的诊断描述集合。
+    /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(SampleIsolationRule);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化分析器注册诊断动作。
+    /// </summary>
+    /// <param name="context">分析上下文。</param>
     public override void Initialize(AnalysisContext context)
     {
         if (context is null)

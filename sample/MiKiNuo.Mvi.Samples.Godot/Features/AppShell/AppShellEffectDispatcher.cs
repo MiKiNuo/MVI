@@ -11,7 +11,12 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 /// </summary>
 public sealed class AppShellEffectDispatcher : IMviEffectDispatcher<AppShellEffect>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(AppShellEffect effect, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(effect);

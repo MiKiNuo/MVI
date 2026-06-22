@@ -17,7 +17,11 @@ public sealed class MviCommandBridge : IMviCommandBridge
     {
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将 MVI 命令包装为适配器。
+    /// </summary>
+    /// <param name="command">MVI 命令实例。</param>
+    /// <returns>实现 <see cref="ICommand"/> 的包装器。</returns>
     public ICommand Adapt(IMviCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -50,19 +54,28 @@ public sealed class MviCommandBridge : IMviCommandBridge
             _command = command;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 判断命令是否可执行。
+        /// </summary>
+        /// <param name="parameter">命令参数。</param>
+        /// <returns>可执行返回 true。</returns>
         public bool CanExecute(object? parameter)
         {
             return _command.CanExecute(parameter);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 执行命令。
+        /// </summary>
+        /// <param name="parameter">命令参数。</param>
         public void Execute(object? parameter)
         {
             _command.Execute(parameter);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 当可执行状态变化时触发。
+        /// </summary>
         public event EventHandler? CanExecuteChanged
         {
             add => _command.CanExecuteChanged += value;

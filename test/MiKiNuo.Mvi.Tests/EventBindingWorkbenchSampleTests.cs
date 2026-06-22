@@ -86,7 +86,7 @@ public sealed class EventBindingWorkbenchSampleTests
     }
 
     /// <summary>
-    /// 验证 Avalonia 复杂组合示例的子 View 使用 IEventSource 适配器 + EventBinding 模式绑定事件。
+    /// 验证 Avalonia 复杂组合示例的子 View 使用源生成器扩展方法 + EventBinding 模式绑定事件。
     /// </summary>
     [Test]
     public async Task AvaloniaWorkbench_ChildViews_Should_UseEventSourceAdapterPatternAsync()
@@ -98,21 +98,21 @@ public sealed class EventBindingWorkbenchSampleTests
         string selectionViewCode = await File.ReadAllTextAsync(Path.Combine(workbenchDir, "EventBindingSelectionPanelView.axaml.cs"));
         string detailViewCode = await File.ReadAllTextAsync(Path.Combine(workbenchDir, "EventBindingDetailPanelView.axaml.cs"));
 
-        await Assert.That(searchViewCode).Contains("AvaloniaEventSources.FromTextChanged");
+        await Assert.That(searchViewCode).Contains("ToEventSource().TextChanged");
         await Assert.That(searchViewCode).Contains("EventBinding<");
         await Assert.That(searchViewCode).Contains("AddEventBinding");
 
-        await Assert.That(selectionViewCode).Contains("AvaloniaEventSources.FromSelectionChanged");
+        await Assert.That(selectionViewCode).Contains("ToEventSource().SelectionChanged");
         await Assert.That(selectionViewCode).Contains("EventBinding<");
         await Assert.That(selectionViewCode).Contains("AddEventBinding");
 
-        await Assert.That(detailViewCode).Contains("AvaloniaEventSources.FromPointerPressed");
-        await Assert.That(detailViewCode).Contains("AvaloniaEventSources.FromClick");
+        await Assert.That(detailViewCode).Contains("ToEventSource().PointerPressed");
+        await Assert.That(detailViewCode).Contains("ToEventSource().Click");
         await Assert.That(detailViewCode).Contains("AddEventBinding");
     }
 
     /// <summary>
-    /// 验证 Godot 复杂组合示例使用 IEventSource 适配器 + EventBinding 模式绑定子 View 事件。
+    /// 验证 Godot 复杂组合示例使用源生成器扩展方法 + EventBinding 模式绑定子 View 事件。
     /// </summary>
     [Test]
     public async Task GodotWorkbench_Should_ProvideIndependentChildViewsUsingEventSourceAdaptersAsync()
@@ -134,15 +134,15 @@ public sealed class EventBindingWorkbenchSampleTests
         string selectionView = await File.ReadAllTextAsync(selectionViewPath);
         string detailView = await File.ReadAllTextAsync(detailViewPath);
 
-        await Assert.That(searchView).Contains("GodotEventSources.FromTextChanged");
+        await Assert.That(searchView).Contains("ToEventSource().TextChanged");
         await Assert.That(searchView).Contains("EventBinding<string>");
         await Assert.That(searchView).Contains("AddEventBinding");
 
-        await Assert.That(selectionView).Contains("GodotEventSources.FromItemSelected");
+        await Assert.That(selectionView).Contains("ToEventSource().ItemSelected");
         await Assert.That(selectionView).Contains("EventBinding<long>");
         await Assert.That(selectionView).Contains("AddEventBinding");
 
-        await Assert.That(detailView).Contains("GodotEventSources.FromPressed");
+        await Assert.That(detailView).Contains("ToEventSource().Pressed");
         await Assert.That(detailView).Contains("EventBinding<EventArgs>");
         await Assert.That(detailView).Contains("AddEventBinding");
     }

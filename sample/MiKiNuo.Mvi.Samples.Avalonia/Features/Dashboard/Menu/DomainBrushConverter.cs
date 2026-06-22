@@ -13,7 +13,14 @@ public sealed class DomainBrushConverter : IValueConverter
     /// <summary>单例。</summary>
     public static readonly DomainBrushConverter Instance = new();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         string domain = value as string ?? "Other";
@@ -49,7 +56,14 @@ public sealed class DomainBrushConverter : IValueConverter
         };
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 转换回值。
+    /// </summary>
+    /// <param name="value">源值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="parameter">转换参数。</param>
+    /// <param name="culture">区域信息。</param>
+    /// <returns>转换后的值。</returns>
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         throw new NotSupportedException("DomainBrushConverter 是单向转换器。");

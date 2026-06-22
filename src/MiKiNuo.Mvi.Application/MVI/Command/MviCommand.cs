@@ -23,7 +23,10 @@ public sealed class MviCommand : MviCommandBase, IMviCommand
         _execute = execute;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行命令。
+    /// </summary>
+    /// <param name="parameter">命令参数。</param>
     public override void Execute(object? parameter)
     {
         if (!CanExecute(parameter))

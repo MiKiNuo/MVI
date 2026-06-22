@@ -22,16 +22,27 @@ public sealed partial class GodotSampleGeneratedViewRegistry : IGodotMviViewRegi
         _inner = builder.Build();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取所有已注册的视图键。
+    /// </summary>
     public IReadOnlyCollection<string> Keys => _inner.Keys;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 创建指定键的视图。
+    /// </summary>
+    /// <param name="key">视图键。</param>
+    /// <returns>Godot 控件视图。</returns>
     public Control Create(string key)
     {
         return _inner.Create(key);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 尝试创建指定键的视图。
+    /// </summary>
+    /// <param name="key">视图键。</param>
+    /// <param name="view">输出视图实例。</param>
+    /// <returns>是否创建成功。</returns>
     public bool TryCreate(string key, out Control? view)
     {
         return _inner.TryCreate(key, out view);

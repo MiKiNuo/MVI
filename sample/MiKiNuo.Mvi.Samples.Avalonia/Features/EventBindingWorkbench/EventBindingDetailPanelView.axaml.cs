@@ -10,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 
 /// <summary>
 /// 表示事件绑定详情面板视图。
-/// 通过 <see cref="AvaloniaEventSources.FromPointerPressed"/> 和 <see cref="AvaloniaEventSources.FromClick"/>
+/// 通过 <c>ToEventSource().PointerPressed</c> 和 <c>ToEventSource().Click</c>
 /// 把 <see cref="InputElement.PointerPressed"/> 与 <see cref="Button.Click"/> 封装为
 /// <see cref="IEventSource{TEvent}"/>，再用 <see cref="EventBinding{TEvent}"/> 映射为
 /// <see cref="EventBindingDetailIntent.PressDetail"/> / <see cref="EventBindingDetailIntent.Refresh"/> 意图。
@@ -25,7 +25,10 @@ public sealed partial class EventBindingDetailPanelView : MviAvaloniaView<EventB
         AvaloniaXamlLoader.Load(this);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 绑定 ViewModel 时注册事件绑定。
+    /// </summary>
+    /// <param name="viewModel">当前绑定的视图模型。</param>
     protected override void OnBind(EventBindingDetailViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -36,8 +39,7 @@ public sealed partial class EventBindingDetailPanelView : MviAvaloniaView<EventB
             ?? throw new InvalidOperationException("未找到 DetailRefreshButton 控件。");
 
         // 指针按下 → PressDetail 意图
-        IEventSource<PointerPressedEventArgs> pointerSource =
-            AvaloniaEventSources.FromPointerPressed(pointerSurface);
+        IEventSource<PointerPressedEventArgs> pointerSource = pointerSurface.ToEventSource().PointerPressed;
         EventBinding<PointerPressedEventArgs> pointerBinding = new(
             pointerSource,
             args => new EventBindingDetailIntent.PressDetail(
@@ -45,8 +47,7 @@ public sealed partial class EventBindingDetailPanelView : MviAvaloniaView<EventB
         viewModel.AddEventBinding(pointerBinding);
 
         // 刷新按钮点击 → Refresh 意图
-        IEventSource<RoutedEventArgs> clickSource =
-            AvaloniaEventSources.FromClick(refreshButton);
+        IEventSource<RoutedEventArgs> clickSource = refreshButton.ToEventSource().Click;
         EventBinding<RoutedEventArgs> clickBinding = new(
             clickSource,
             args => new EventBindingDetailIntent.Refresh(

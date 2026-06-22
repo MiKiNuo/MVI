@@ -97,7 +97,9 @@ internal static class MviViewModelEmission
 
     private static void AppendBindProperty(StringBuilder builder, MviViewModelModels.BindPropertyModel property)
     {
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 获取或设置属性值并通知变更。");
+        builder.AppendLine("    /// </summary>");
         builder.Append("    public partial ").Append(property.TypeName).Append(' ').Append(property.Name).AppendLine();
         builder.AppendLine("    {");
         builder.Append("        get => ").Append(property.FieldName).AppendLine(";");
@@ -127,7 +129,9 @@ internal static class MviViewModelEmission
 
     private static void AppendCommandProperty(StringBuilder builder, MviViewModelModels.CommandPropertyModel property)
     {
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 获取命令实例。");
+        builder.AppendLine("    /// </summary>");
         builder.Append("    public partial ").Append(property.TypeName).Append(' ').Append(property.Name).AppendLine();
         builder.AppendLine("    {");
         builder.Append("        get => ").Append(property.FieldName).AppendLine(";");
@@ -229,7 +233,9 @@ internal static class MviViewModelEmission
         IReadOnlyList<MviViewModelModels.BindPropertyModel> bindProperties,
         bool hasTwoWay)
     {
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 映射状态到 ViewModel 属性。");
+        builder.AppendLine("    /// </summary>");
         builder.Append("    protected override void ApplyStateCore(").Append(stateTypeName).AppendLine(" state)");
         builder.AppendLine("    {");
         if (hasTwoWay)
@@ -263,7 +269,9 @@ internal static class MviViewModelEmission
         IReadOnlyList<MviViewModelModels.CommandPropertyModel> commandProperties)
     {
         builder.AppendLine();
-        builder.AppendLine("    /// <inheritdoc />");
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 释放命令资源。");
+        builder.AppendLine("    /// </summary>");
         builder.AppendLine("    protected override void DisposeManagedResources()");
         builder.AppendLine("    {");
         for (int commandIndex = 0; commandIndex < commandProperties.Count; commandIndex++)

@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -29,7 +29,12 @@ public sealed class MviStoreTests
     private sealed class EmptyLoginEffectDispatcher
         : MiKiNuo.Mvi.Application.MVI.Effect.IMviEffectDispatcher<LoginEffect>
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 分发副作用。
+        /// </summary>
+        /// <param name="effect">副作用。</param>
+        /// <param name="cancellationToken">取消标记。</param>
+        /// <returns>表示异步分发过程的任务。</returns>
         public ValueTask DispatchAsync(LoginEffect effect, CancellationToken cancellationToken = default)
         {
             return ValueTask.CompletedTask;

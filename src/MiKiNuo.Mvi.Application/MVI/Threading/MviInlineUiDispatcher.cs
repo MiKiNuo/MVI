@@ -19,7 +19,10 @@ public sealed class MviInlineUiDispatcher : IMviUiDispatcher
     {
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将操作投递到 UI 线程。
+    /// </summary>
+    /// <param name="action">需要在 UI 线程上执行的操作。</param>
     public void Post(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);

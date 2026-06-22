@@ -46,7 +46,14 @@ public sealed class EventBindingRecordingMediator : IMviMediator
     /// </summary>
     public List<EventBindingWorkbenchInteractionRequest> RecordedRequests { get; } = [];
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 发送请求并返回响应。
+    /// </summary>
+    /// <typeparam name="TRequest">请求类型。</typeparam>
+    /// <typeparam name="TResponse">响应类型。</typeparam>
+    /// <param name="request">请求对象。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>响应对象。</returns>
     public async ValueTask<TResponse> SendAsync<TRequest, TResponse>(
         TRequest request,
         CancellationToken cancellationToken = default)
@@ -226,7 +233,10 @@ public sealed class EventBindingWorkbenchComposition : IAsyncDisposable, IDispos
         _disposed = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 异步释放资源。
+    /// </summary>
+    /// <returns>表示异步释放过程的任务。</returns>
     public ValueTask DisposeAsync()
     {
         Dispose();

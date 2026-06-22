@@ -16,7 +16,9 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     private MviDisposableBag? _bindingBag;
     private IMviResolver? _resolver;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取当前绑定的 ViewModel。
+    /// </summary>
     public TViewModel? ViewModel { get; private set; }
 
     /// <summary>
@@ -29,7 +31,11 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     /// </summary>
     protected IMviResolver? Resolver => _resolver;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 绑定 ViewModel 与子组件解析容器。
+    /// </summary>
+    /// <param name="viewModel">需要绑定的 ViewModel。</param>
+    /// <param name="resolver">用于解析子 ViewModel 与子 View 的 <see cref="IMviResolver"/>。</param>
     public void Bind(TViewModel viewModel, IMviResolver resolver)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -52,7 +58,9 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解绑当前 ViewModel。
+    /// </summary>
     public void Unbind()
     {
         _bindingBag?.Dispose();
@@ -62,7 +70,9 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
         OnUnbind();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 节点离开场景树时解绑。
+    /// </summary>
 #pragma warning disable CODE0002 // Godot 原生生命周期方法名称固定为 _ExitTree。
     public override void _ExitTree()
 #pragma warning restore CODE0002

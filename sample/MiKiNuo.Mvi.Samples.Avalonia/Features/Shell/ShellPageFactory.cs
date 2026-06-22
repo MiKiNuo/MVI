@@ -35,7 +35,11 @@ public sealed class ShellPageFactory : IShellPageFactory
         };
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 根据页面键创建对应的页面 ViewModel。
+    /// </summary>
+    /// <param name="pageKey">页面键。</param>
+    /// <returns>页面 ViewModel；未识别时返回 null。</returns>
     public object? CreatePage(string pageKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pageKey);

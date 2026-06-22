@@ -9,13 +9,17 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.EventBindingWorkbench.SearchPanel;
 
 /// <summary>
 /// 表示 Godot 事件绑定搜索面板视图。
-/// 通过 <see cref="GodotEventSources.FromTextChanged"/> 把 <see cref="LineEdit.TextChanged"/> 封装为
+/// 通过 <c>ToEventSource().TextChanged</c> 把 <see cref="LineEdit.TextChanged"/> 封装为
 /// <see cref="IEventSource{TEvent}"/>，再用 <see cref="EventBinding{TEvent}"/> 映射为
 /// <see cref="EventBindingSearchIntent.ChangeQuery"/> 意图，注册到 ViewModel 生命周期。
 /// </summary>
 public partial class EventBindingSearchPanelView : GodotMviControlView<EventBindingSearchViewModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(EventBindingSearchViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -24,7 +28,7 @@ public partial class EventBindingSearchPanelView : GodotMviControlView<EventBind
         LineEdit queryEdit = GetNode<LineEdit>("Panel/Margin/Layout/QueryEdit");
         Label statusLabel = GetNode<Label>("Panel/Margin/Layout/StatusLabel");
 
-        IEventSource<string> source = GodotEventSources.FromTextChanged(queryEdit);
+        IEventSource<string> source = queryEdit.ToEventSource().TextChanged;
         EventBinding<string> binding = new(
             source,
             text => new EventBindingSearchIntent.ChangeQuery(

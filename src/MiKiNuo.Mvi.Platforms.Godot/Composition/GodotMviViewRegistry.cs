@@ -19,10 +19,16 @@ public sealed class GodotMviViewRegistry : IGodotMviViewRegistry
         Keys = new List<string>(_factories.Keys).AsReadOnly();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取已经注册的 View 键集合。
+    /// </summary>
     public IReadOnlyCollection<string> Keys { get; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 根据键创建 View 实例。
+    /// </summary>
+    /// <param name="key">View 注册键。</param>
+    /// <returns>创建出的 Control 实例。</returns>
     public Control Create(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -35,7 +41,12 @@ public sealed class GodotMviViewRegistry : IGodotMviViewRegistry
         throw new KeyNotFoundException($"找不到 Godot MVI View 注册键：{key}。");
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 尝试根据键创建 View 实例。
+    /// </summary>
+    /// <param name="key">View 注册键。</param>
+    /// <param name="view">创建出的 View。</param>
+    /// <returns>如果创建成功则返回 true。</returns>
     public bool TryCreate(string key, out Control? view)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);

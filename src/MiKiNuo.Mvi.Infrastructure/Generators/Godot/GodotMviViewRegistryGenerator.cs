@@ -19,7 +19,10 @@ public sealed class GodotMviViewRegistryGenerator : IIncrementalGenerator
     private const string ViewAttributeName = "MiKiNuo.Mvi.Platforms.Godot.Composition.MviGodotViewAttribute";
     private const string RegistryAttributeName = "MiKiNuo.Mvi.Platforms.Godot.Composition.MviGodotGeneratedRegistryAttribute";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 初始化源生成器注册视图注册分析。
+    /// </summary>
+    /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         IncrementalValuesProvider<ViewRegistration> views = context.SyntaxProvider

@@ -28,7 +28,10 @@ public sealed class MviAsyncCommand : MviCommandBase, IMviAsyncCommand
         _executeAsync = executeAsync;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行命令。
+    /// </summary>
+    /// <param name="parameter">命令参数。</param>
     public override void Execute(object? parameter)
     {
         if (!CanExecute(parameter))
@@ -49,7 +52,12 @@ public sealed class MviAsyncCommand : MviCommandBase, IMviAsyncCommand
 #pragma warning restore CA2012
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 异步执行命令。
+    /// </summary>
+    /// <param name="parameter">命令参数。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步执行过程的任务。</returns>
     public ValueTask ExecuteAsync(object? parameter, CancellationToken cancellationToken = default)
     {
         return CanExecute(parameter)

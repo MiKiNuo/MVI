@@ -19,7 +19,11 @@ namespace MiKiNuo.Mvi.Samples.Godot.Views.Lobby.Menu;
 [MviGodotView("LobbyMenuView", "res://Views/Lobby/Menu/LobbyMenuView.tscn")]
 public partial class LobbyMenuView : GodotMviControlView<LobbyMenuViewModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(LobbyMenuViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);

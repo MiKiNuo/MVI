@@ -32,7 +32,9 @@ public abstract class MviCommandBase : ICommand, IDisposable
         _canExecuteSubscription = canExecute.Subscribe(this, static (value, command) => command.SetCanExecute(value));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 当可执行状态变化时触发。
+    /// </summary>
     public event EventHandler? CanExecuteChanged;
 
     /// <summary>
@@ -41,16 +43,25 @@ public abstract class MviCommandBase : ICommand, IDisposable
     /// </summary>
     public event EventHandler<CommandExceptionEventArgs>? UnhandledException;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判断命令是否可执行。
+    /// </summary>
+    /// <param name="parameter">命令参数。</param>
+    /// <returns>可执行返回 true。</returns>
     public bool CanExecute(object? parameter)
     {
         return !_isDisposed && _canExecute;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行命令。
+    /// </summary>
+    /// <param name="parameter">命令参数。</param>
     public abstract void Execute(object? parameter);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放所有资源。
+    /// </summary>
     public void Dispose()
     {
         if (_isDisposed)

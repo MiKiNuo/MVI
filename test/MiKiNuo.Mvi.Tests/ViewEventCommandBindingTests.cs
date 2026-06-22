@@ -322,14 +322,22 @@ public sealed class ViewEventCommandBindingTests
         /// </summary>
         public List<IMviIntent> Dispatched { get; } = [];
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 派发 Intent 到 Store。
+        /// </summary>
+        /// <param name="intent">意图。</param>
         protected override void Dispatch(IMviIntent intent) => Dispatched.Add(intent);
     }
 
     private sealed class EmptyEventCommandEffectDispatcher
         : IMviEffectDispatcher<EventCommandEffect>
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 分发副作用。
+        /// </summary>
+        /// <param name="effect">副作用。</param>
+        /// <param name="cancellationToken">取消标记。</param>
+        /// <returns>表示异步分发过程的任务。</returns>
         public ValueTask DispatchAsync(EventCommandEffect effect, CancellationToken cancellationToken = default)
         {
             return ValueTask.CompletedTask;
@@ -360,17 +368,26 @@ public sealed class ViewEventCommandBindingTests
         /// </summary>
         public List<object?> ExecutedPayloads { get; } = [];
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 判断命令是否可执行。
+        /// </summary>
+        /// <param name="parameter">命令参数。</param>
+        /// <returns>可执行返回 true。</returns>
         public bool CanExecute(object? parameter) => _canExecute(parameter);
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 执行命令。
+        /// </summary>
+        /// <param name="parameter">命令参数。</param>
         public void Execute(object? parameter)
         {
             ExecutedPayloads.Add(parameter);
             _execute(parameter);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 当 CanExecute 结果可能变化时触发。
+        /// </summary>
         public event EventHandler? CanExecuteChanged;
 
         /// <summary>

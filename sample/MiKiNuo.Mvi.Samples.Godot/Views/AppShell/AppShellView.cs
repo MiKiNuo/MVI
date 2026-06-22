@@ -29,7 +29,11 @@ public partial class AppShellView : GodotMviControlView<AppShellViewModel>
     private Control? _currentScreenView;
     private object? _currentScreenViewModel;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 执行具体 View 的绑定逻辑。
+    /// </summary>
+    /// <param name="viewModel">当前 ViewModel。</param>
+    /// <param name="bindings">绑定生命周期集合。</param>
     protected override void OnBind(AppShellViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
