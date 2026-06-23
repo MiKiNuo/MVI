@@ -1,4 +1,4 @@
-namespace MiKiNuo.Mvi.Infrastructure.Mediator;
+namespace MiKiNuo.Mvi.Application.MVI.Mediator;
 
 /// <summary>
 /// 表示中介者路由未找到异常。

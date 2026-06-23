@@ -23,19 +23,19 @@ public sealed partial class MissionBoardViewModel : MviViewModelBase<LobbyState,
     }
 
     /// <summary>获取当前选中任务。</summary>
-    [MviBind(nameof(LobbyState.SelectedMission))]
+    [MviBind("Mission.SelectedMission")]
     public partial string SelectedMission { get; private set; }
 
     /// <summary>获取任务进度说明。</summary>
-    [MviBind(nameof(LobbyState.MissionProgress))]
+    [MviBind("Mission.MissionProgress")]
     public partial string MissionProgress { get; private set; }
 
     /// <summary>获取金币数量。</summary>
-    [MviBind(nameof(LobbyState.Gold))]
+    [MviBind("Player.Gold")]
     public partial int Gold { get; private set; }
 
     /// <summary>获取体力值。</summary>
-    [MviBind(nameof(LobbyState.Stamina))]
+    [MviBind("Player.Stamina")]
     public partial int Stamina { get; private set; }
 
     /// <summary>获取大厅命令是否允许执行。</summary>

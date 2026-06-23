@@ -47,7 +47,7 @@ public sealed partial class LobbyViewModel : MviViewModelBase<LobbyState, LobbyI
     }
 
     /// <summary>获取当前大厅面板键。</summary>
-    [MviBind(nameof(LobbyState.CurrentPanel))]
+    [MviBind("Navigation.CurrentPanel")]
     public partial string CurrentPanel { get; private set; }
 
     /// <summary>

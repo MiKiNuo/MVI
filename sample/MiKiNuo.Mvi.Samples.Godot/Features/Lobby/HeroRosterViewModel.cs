@@ -23,23 +23,23 @@ public sealed partial class HeroRosterViewModel : MviViewModelBase<LobbyState, L
     }
 
     /// <summary>获取英雄队伍战力。</summary>
-    [MviBind(nameof(LobbyState.HeroTeamPower))]
+    [MviBind("HeroRoster.HeroTeamPower")]
     public partial int HeroTeamPower { get; private set; }
 
     /// <summary>获取战士等级。</summary>
-    [MviBind(nameof(LobbyState.WarriorLevel))]
+    [MviBind("HeroRoster.WarriorLevel")]
     public partial int WarriorLevel { get; private set; }
 
     /// <summary>获取法师等级。</summary>
-    [MviBind(nameof(LobbyState.MageLevel))]
+    [MviBind("HeroRoster.MageLevel")]
     public partial int MageLevel { get; private set; }
 
     /// <summary>获取弓手等级。</summary>
-    [MviBind(nameof(LobbyState.ArcherLevel))]
+    [MviBind("HeroRoster.ArcherLevel")]
     public partial int ArcherLevel { get; private set; }
 
     /// <summary>获取金币数量。</summary>
-    [MviBind(nameof(LobbyState.Gold))]
+    [MviBind("Player.Gold")]
     public partial int Gold { get; private set; }
 
     /// <summary>获取大厅命令是否允许执行。</summary>

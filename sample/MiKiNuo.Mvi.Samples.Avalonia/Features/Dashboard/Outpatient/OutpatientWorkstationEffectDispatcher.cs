@@ -15,6 +15,6 @@ public sealed class OutpatientWorkstationEffectDispatcher : IMviEffectDispatcher
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(OutpatientWorkstationEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("门诊工作站当前无副作用需要派发。");
     }
 }

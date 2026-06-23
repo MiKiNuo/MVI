@@ -4,7 +4,8 @@
     <IsPackable>false</IsPackable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors></WarningsAsErrors>
-    <NoWarn>$(NoWarn);CS1591;CS8785</NoWarn>
+    <EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
+    <NoWarn>$(NoWarn);CS1591;CS8785;RS1035;RS1022;RS1024;RS1025;RS1026;RS1027;RS1028;RS1029;RS1030</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />
@@ -14,6 +15,7 @@
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Godot\MiKiNuo.Mvi.Samples.Godot.csproj" />
+    <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Shared\MiKiNuo.Mvi.Samples.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Controls.DataGrid" />
@@ -21,5 +23,6 @@
     <PackageReference Include="ZLinq" />
     <PackageReference Include="Avalonia.Headless" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 </Project>

@@ -23,15 +23,15 @@ public sealed partial class BattlePrepViewModel : MviViewModelBase<LobbyState, L
     }
 
     /// <summary>获取当前选中任务。</summary>
-    [MviBind(nameof(LobbyState.SelectedMission))]
+    [MviBind("Mission.SelectedMission")]
     public partial string SelectedMission { get; private set; }
 
     /// <summary>获取英雄队伍战力。</summary>
-    [MviBind(nameof(LobbyState.HeroTeamPower))]
+    [MviBind("HeroRoster.HeroTeamPower")]
     public partial int HeroTeamPower { get; private set; }
 
     /// <summary>获取体力值。</summary>
-    [MviBind(nameof(LobbyState.Stamina))]
+    [MviBind("Player.Stamina")]
     public partial int Stamina { get; private set; }
 
     /// <summary>获取战斗准备摘要。</summary>

@@ -12,8 +12,8 @@ using AvaloniaArchitectureValidation = MiKiNuo.Mvi.Samples.Avalonia.Features.Das
 using AvaloniaEventBinding = MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench.EventBindingWorkbenchViewModel;
 using GodotLobby = MiKiNuo.Mvi.Samples.Godot.Features.Lobby.LobbyViewModel;
 using GodotEventBinding = MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench.EventBindingWorkbenchViewModel;
-using AvaloniaEventBindingPanelFactory = MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench.IEventBindingPanelFactory;
-using GodotEventBindingPanelFactory = MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench.IEventBindingPanelFactory;
+using AvaloniaEventBindingPanelFactory = MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench.IEventBindingPanelFactory;
+using GodotEventBindingPanelFactory = MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench.IEventBindingPanelFactory;
 
 namespace MiKiNuo.Mvi.Tests;
 

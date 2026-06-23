@@ -92,11 +92,6 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
     /// </summary>
     internal static class Analysis
     {
-        private static readonly SymbolDisplayFormat TypeFormat = SymbolDisplayFormat.FullyQualifiedFormat
-            .WithMiscellaneousOptions(
-                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
-                | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
         /// <summary>
         /// 收集单个 [MviSlot] 字段的元数据；返回 null 表示应跳过。
         /// </summary>
@@ -106,6 +101,38 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            (IFieldSymbol fieldSymbol, INamedTypeSymbol containingType)? validated = ValidateSlotField(syntaxContext);
+            if (validated is null)
+            {
+                return null;
+            }
+
+            if (!ResolvePlatform(validated.Value.containingType))
+            {
+                return null;
+            }
+
+            (string factoryName, IReadOnlyList<string> observes)? parsed = ParseSlotAttributeArguments(syntaxContext);
+            if (parsed is null)
+            {
+                return null;
+            }
+
+            IFieldSymbol fieldSymbol = validated.Value.fieldSymbol;
+            return new SlotFieldModel(
+                validated.Value.containingType,
+                fieldSymbol.Name,
+                GeneratorSyntaxHelpers.FormatFullyQualified(fieldSymbol.Type),
+                parsed.Value.factoryName,
+                parsed.Value.observes);
+        }
+
+        /// <summary>
+        /// 验证字段所在类是否为 public partial class。
+        /// </summary>
+        private static (IFieldSymbol fieldSymbol, INamedTypeSymbol containingType)? ValidateSlotField(
+            GeneratorAttributeSyntaxContext syntaxContext)
+        {
             // ForAttributeWithMetadataName 对标在字段上的特性返回的 TargetNode 是 VariableDeclaratorSyntax
             //（字段声明 `int a, b;` 里每个变量名都是独立的 VariableDeclaratorSyntax），
             // 而非 FieldDeclarationSyntax。必须向上找到 FieldDeclarationSyntax 才能拿到 partial 修饰符。
@@ -149,12 +176,23 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
                 return null;
             }
 
-            SlotPlatform platform = DeterminePlatform(containingType);
-            if (platform == SlotPlatform.Unknown)
-            {
-                return null;
-            }
+            return (fieldSymbol, containingType);
+        }
 
+        /// <summary>
+        /// 确定平台是否为 Avalonia 或 Godot。
+        /// </summary>
+        private static bool ResolvePlatform(INamedTypeSymbol containingType)
+        {
+            return DeterminePlatform(containingType) != SlotPlatform.Unknown;
+        }
+
+        /// <summary>
+        /// 解析 [MviSlot] 特性构造函数实参。
+        /// </summary>
+        private static (string factoryName, IReadOnlyList<string> observes)? ParseSlotAttributeArguments(
+            GeneratorAttributeSyntaxContext syntaxContext)
+        {
             string? factoryName = null;
             IReadOnlyList<string> observes = Array.Empty<string>();
 
@@ -205,17 +243,7 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
                 return null;
             }
 
-            return new SlotFieldModel(
-                containingType,
-                fieldSymbol.Name,
-                FormatFieldType(fieldSymbol.Type),
-                factoryName,
-                observes);
-        }
-
-        private static string FormatFieldType(ITypeSymbol typeSymbol)
-        {
-            return typeSymbol.ToDisplayString(TypeFormat);
+            return (factoryName, observes);
         }
 
         /// <summary>
@@ -252,9 +280,40 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
                 return null;
             }
 
-            string viewModelTypeName = viewModelType.ToDisplayString(TypeFormat);
+            List<SlotFieldModel> validatedSlots = ValidateFactoryMethods(viewModelType, slotsForClass, compilation, cancellationToken);
+            if (validatedSlots.Count == 0)
+            {
+                return null;
+            }
 
-            // 校验所有 [MviSlot] 字段的 Factory 方法在父 VM 上确实存在。
+            string namespaceName = containingType.ContainingNamespace.IsGlobalNamespace
+                ? string.Empty
+                : containingType.ContainingNamespace.ToDisplayString();
+
+            string hintName = containingType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat)
+                .Replace("global::", string.Empty)
+                .Replace('.', '_') + ".MviSlot.g.cs";
+
+            return new SlotGenerationModel(
+                namespaceName,
+                GetAccessibilityText(containingType.DeclaredAccessibility),
+                containingType.Name,
+                platform,
+                viewModelType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
+                viewModelType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
+                validatedSlots,
+                hintName);
+        }
+
+        /// <summary>
+        /// 校验所有 [MviSlot] 字段的 Factory 方法在父 VM 上确实存在。
+        /// </summary>
+        private static List<SlotFieldModel> ValidateFactoryMethods(
+            INamedTypeSymbol viewModelType,
+            List<SlotFieldModel> slotsForClass,
+            Compilation compilation,
+            CancellationToken cancellationToken)
+        {
             List<SlotFieldModel> validatedSlots = new(slotsForClass.Count);
             foreach (SlotFieldModel slot in slotsForClass)
             {
@@ -266,28 +325,7 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
                 }
             }
 
-            if (validatedSlots.Count == 0)
-            {
-                return null;
-            }
-
-            string namespaceName = containingType.ContainingNamespace.IsGlobalNamespace
-                ? string.Empty
-                : containingType.ContainingNamespace.ToDisplayString();
-
-            string hintName = containingType.ToDisplayString(TypeFormat)
-                .Replace("global::", string.Empty)
-                .Replace('.', '_') + ".MviSlot.g.cs";
-
-            return new SlotGenerationModel(
-                namespaceName,
-                GetAccessibilityText(containingType.DeclaredAccessibility),
-                containingType.Name,
-                platform,
-                viewModelTypeName,
-                viewModelType.ToDisplayString(TypeFormat),
-                validatedSlots,
-                hintName);
+            return validatedSlots;
         }
 
         private static INamedTypeSymbol? ResolveViewModelType(
@@ -389,6 +427,17 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
         {
             StringBuilder builder = new();
 
+            EmitClassHeader(builder, model);
+            EmitOnBindSlotsMethod(builder, model);
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// 生成 using、namespace、class 声明与缓存字段。
+        /// </summary>
+        private static void EmitClassHeader(StringBuilder builder, SlotGenerationModel model)
+        {
             builder.AppendLine("// <auto-generated />");
             builder.AppendLine("#nullable enable");
             builder.AppendLine();
@@ -419,7 +468,13 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             // 1. IMviViewRegistry 缓存字段
             builder.AppendLine("    private IMviViewRegistry? __mviSlotViewRegistry;");
             builder.AppendLine();
+        }
 
+        /// <summary>
+        /// 生成 OnBindSlots 方法签名、参数校验与槽位绑定。
+        /// </summary>
+        private static void EmitOnBindSlotsMethod(StringBuilder builder, SlotGenerationModel model)
+        {
             // 2. OnBindSlots override
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 由 MviCompositeSlotBindingGenerator 自动生成：");
@@ -446,10 +501,11 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
 
             builder.AppendLine("    }");
             builder.AppendLine("}");
-
-            return builder.ToString();
         }
 
+        /// <summary>
+        /// 发射单个槽位绑定代码。
+        /// </summary>
         private static void EmitSlotBinding(StringBuilder builder, SlotGenerationModel model, SlotFieldModel slot)
         {
             string slotExpression = "this." + slot.FieldName;
@@ -460,6 +516,28 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             builder.AppendLine("    // ---- Slot: " + slot.FieldName + " ----");
             builder.AppendLine();
 
+            EmitRebindFunction(builder, model, slotExpression, rebindMethodName, factoryCall);
+
+            if (slot.Observes.Count == 0)
+            {
+                // 一次性绑定：直接在 OnBindSlots 末尾调用一次 rebind，不订阅 PropertyChanged。
+                builder.Append("    ").Append(rebindMethodName).AppendLine("();");
+                return;
+            }
+
+            EmitObserveSubscription(builder, slot, rebindMethodName, handlerLocalName);
+        }
+
+        /// <summary>
+        /// 生成局部重新绑定函数。
+        /// </summary>
+        private static void EmitRebindFunction(
+            StringBuilder builder,
+            SlotGenerationModel model,
+            string slotExpression,
+            string rebindMethodName,
+            string factoryCall)
+        {
             // 局部函数：重新解析子 ViewModel → 创建子 View → 挂载到槽位
             builder.Append("    void ").Append(rebindMethodName).AppendLine("()");
             builder.AppendLine("    {");
@@ -471,14 +549,17 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             builder.Append("        ").Append(MountSlotExpression(slotExpression + "!", model.Platform)).AppendLine(";");
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
 
-            if (slot.Observes.Count == 0)
-            {
-                // 一次性绑定：直接在 OnBindSlots 末尾调用一次 rebind，不订阅 PropertyChanged。
-                builder.Append("    ").Append(rebindMethodName).AppendLine("();");
-                return;
-            }
-
+        /// <summary>
+        /// 生成 PropertyChanged 订阅逻辑。
+        /// </summary>
+        private static void EmitObserveSubscription(
+            StringBuilder builder,
+            SlotFieldModel slot,
+            string rebindMethodName,
+            string handlerLocalName)
+        {
             // 订阅 PropertyChanged：当 Observes 列出的属性变化时重新触发 rebind。
             // 使用局部变量保存委托引用，便于后续取消订阅。
             builder.Append("    PropertyChangedEventHandler ").Append(handlerLocalName)

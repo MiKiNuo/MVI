@@ -12,6 +12,35 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 /// </summary>
 internal static class GeneratorSyntaxHelpers
 {
+    /// <summary>全限定可空类型格式。</summary>
+    public static readonly SymbolDisplayFormat FullyQualifiedNullableFormat = SymbolDisplayFormat.FullyQualifiedFormat
+        .WithMiscellaneousOptions(
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
+            | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+    /// <summary>格式化为全限定可空类型字符串。</summary>
+    /// <param name="symbol">类型符号。</param>
+    /// <returns>格式化后的字符串。</returns>
+    public static string FormatFullyQualified(ITypeSymbol symbol)
+    {
+        return symbol.ToDisplayString(FullyQualifiedNullableFormat);
+    }
+
+    /// <summary>将首字母转为小写。</summary>
+    /// <param name="value">原始字符串。</param>
+    /// <returns>首字母小写的字符串。</returns>
+    public static string ToCamelCase(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        return value.Length == 1
+            ? value.ToLowerInvariant()
+            : char.ToLowerInvariant(value[0]) + value.Substring(1);
+    }
+
     /// <summary>
     /// 遍历编译中所有语法树的类声明，返回对应的 <see cref="INamedTypeSymbol"/>。
     /// 期间响应 <paramref name="cancellationToken"/> 并跳过无法解析语义符号的节点。
@@ -79,6 +108,78 @@ internal static class GeneratorSyntaxHelpers
         }
 
         return false;
+    }
+
+    /// <summary>判断符号是否挂载任一候选特性。</summary>
+    /// <param name="symbol">要检查的符号。</param>
+    /// <param name="candidateAttributeShortNames">候选特性短名称。</param>
+    /// <returns>是否匹配。</returns>
+    public static bool HasAttribute(ISymbol symbol, params string[] candidateAttributeShortNames)
+    {
+        if (symbol is null)
+        {
+            throw new ArgumentNullException(nameof(symbol));
+        }
+
+        if (candidateAttributeShortNames is null)
+        {
+            throw new ArgumentNullException(nameof(candidateAttributeShortNames));
+        }
+
+        foreach (AttributeData attribute in symbol.GetAttributes())
+        {
+            string? attrName = attribute.AttributeClass?.Name;
+            if (attrName is null)
+            {
+                continue;
+            }
+
+            foreach (string candidate in candidateAttributeShortNames)
+            {
+                if (IsAttributeMatch(attrName, candidate))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>查找符号上的首个匹配特性。</summary>
+    /// <param name="symbol">要检查的符号。</param>
+    /// <param name="candidateAttributeShortNames">候选特性短名称。</param>
+    /// <returns>匹配的特性数据，未匹配返回 null。</returns>
+    public static AttributeData? FindAttribute(ISymbol symbol, params string[] candidateAttributeShortNames)
+    {
+        if (symbol is null)
+        {
+            throw new ArgumentNullException(nameof(symbol));
+        }
+
+        if (candidateAttributeShortNames is null)
+        {
+            throw new ArgumentNullException(nameof(candidateAttributeShortNames));
+        }
+
+        foreach (AttributeData attribute in symbol.GetAttributes())
+        {
+            string? attrName = attribute.AttributeClass?.Name;
+            if (attrName is null)
+            {
+                continue;
+            }
+
+            foreach (string candidate in candidateAttributeShortNames)
+            {
+                if (IsAttributeMatch(attrName, candidate))
+                {
+                    return attribute;
+                }
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

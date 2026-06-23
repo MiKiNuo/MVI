@@ -15,6 +15,6 @@ public sealed class BusinessCompositePageEffectDispatcher : IMviEffectDispatcher
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(BusinessCompositePageEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("业务组合页当前无副作用需要派发。");
     }
 }

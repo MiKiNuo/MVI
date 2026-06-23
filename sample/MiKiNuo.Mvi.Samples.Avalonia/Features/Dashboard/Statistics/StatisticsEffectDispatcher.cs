@@ -15,6 +15,6 @@ public sealed class StatisticsEffectDispatcher : IMviEffectDispatcher<Statistics
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(StatisticsEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("统计面板当前无副作用需要派发。");
     }
 }

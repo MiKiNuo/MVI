@@ -27,16 +27,25 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        string readyText = _gameLogicService.BuildBattleReadyText(state.SelectedMission, state.HeroTeamPower, intent.Profile.Stamina, state.PotionCount);
+        string readyText = _gameLogicService.BuildBattleReadyText(state.Mission.SelectedMission, state.HeroRoster.HeroTeamPower, intent.Profile.Stamina, state.Inventory.PotionCount);
         LobbyState nextState = state with
         {
-            PlayerName = intent.Profile.PlayerName,
-            PlayerLevel = intent.Profile.Level,
-            Gold = intent.Profile.Gold,
-            Stamina = intent.Profile.Stamina,
-            CurrentPanel = LobbyPanelKeys.MissionBoard,
-            CurrentPanelTitle = "任务大厅",
-            MissionProgress = "登录成功，任务大厅等待指挥官选择任务。",
+            Player = state.Player with
+            {
+                PlayerName = intent.Profile.PlayerName,
+                PlayerLevel = intent.Profile.Level,
+                Gold = intent.Profile.Gold,
+                Stamina = intent.Profile.Stamina,
+            },
+            Navigation = state.Navigation with
+            {
+                CurrentPanel = LobbyPanelKeys.MissionBoard,
+                CurrentPanelTitle = "任务大厅",
+            },
+            Mission = state.Mission with
+            {
+                MissionProgress = "登录成功，任务大厅等待指挥官选择任务。",
+            },
             BattleReadyText = readyText,
             ActivityLog = AppendLog(state.ActivityLog, $"Login MVI 传入玩家资料：{intent.Profile.PlayerName}。"),
         };
@@ -112,12 +121,18 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        int reward = _gameLogicService.CalculateMissionReward(60, state.HeroTeamPower);
+        int reward = _gameLogicService.CalculateMissionReward(60, state.HeroRoster.HeroTeamPower);
         LobbyState nextState = state with
         {
-            Gold = state.Gold + reward,
-            MissionProgress = $"{state.SelectedMission} 已完成，获得金币 {reward}。奖励由 GameLogicService 计算。",
-            ActivityLog = AppendLog(state.ActivityLog, $"任务完成：{state.SelectedMission}，奖励 {reward}。"),
+            Player = state.Player with
+            {
+                Gold = state.Player.Gold + reward,
+            },
+            Mission = state.Mission with
+            {
+                MissionProgress = $"{state.Mission.SelectedMission} 已完成，获得金币 {reward}。奖励由 GameLogicService 计算。",
+            },
+            ActivityLog = AppendLog(state.ActivityLog, $"任务完成：{state.Mission.SelectedMission}，奖励 {reward}。"),
         };
         nextState = RefreshBattle(nextState);
         return MviReduceResult.StateAndEffect<LobbyState, LobbyEffect>(nextState, new LobbyEffect.Trace($"Mission Complete reward={reward}"));
@@ -129,7 +144,7 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        return TrainHero(state, "战士", state.WarriorLevel, level => state with { WarriorLevel = level });
+        return TrainHero(state, "战士", state.HeroRoster.WarriorLevel, level => state with { HeroRoster = state.HeroRoster with { WarriorLevel = level } });
     }
 
     /// <summary>处理训练法师意图。</summary>
@@ -138,7 +153,7 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        return TrainHero(state, "法师", state.MageLevel, level => state with { MageLevel = level });
+        return TrainHero(state, "法师", state.HeroRoster.MageLevel, level => state with { HeroRoster = state.HeroRoster with { MageLevel = level } });
     }
 
     /// <summary>处理训练弓手意图。</summary>
@@ -147,7 +162,7 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        return TrainHero(state, "弓手", state.ArcherLevel, level => state with { ArcherLevel = level });
+        return TrainHero(state, "弓手", state.HeroRoster.ArcherLevel, level => state with { HeroRoster = state.HeroRoster with { ArcherLevel = level } });
     }
 
     /// <summary>处理使用药水意图。</summary>
@@ -156,15 +171,21 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        if (state.PotionCount <= 0)
+        if (state.Inventory.PotionCount <= 0)
         {
             return NoChange(state, "药水不足，不能恢复体力。");
         }
 
         LobbyState nextState = state with
         {
-            PotionCount = state.PotionCount - 1,
-            Stamina = Math.Min(100, state.Stamina + 20),
+            Inventory = state.Inventory with
+            {
+                PotionCount = state.Inventory.PotionCount - 1,
+            },
+            Player = state.Player with
+            {
+                Stamina = Math.Min(100, state.Player.Stamina + 20),
+            },
             ActivityLog = AppendLog(state.ActivityLog, "背包子 MVI 使用药水，体力恢复 20。"),
         };
         nextState = RefreshBattle(nextState);
@@ -179,7 +200,10 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
         ArgumentNullException.ThrowIfNull(intent);
         LobbyState nextState = state with
         {
-            Gold = state.Gold + 120,
+            Player = state.Player with
+            {
+                Gold = state.Player.Gold + 120,
+            },
             ActivityLog = AppendLog(state.ActivityLog, "背包子 MVI 打开金币箱，金币增加 120。"),
         };
         return MviReduceResult.StateAndEffect<LobbyState, LobbyEffect>(nextState, new LobbyEffect.Trace("Inventory OpenGoldBox"));
@@ -233,8 +257,11 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         LobbyState nextState = state with
         {
-            CurrentPanel = panel,
-            CurrentPanelTitle = title,
+            Navigation = state.Navigation with
+            {
+                CurrentPanel = panel,
+                CurrentPanelTitle = title,
+            },
             ActivityLog = AppendLog(state.ActivityLog, log),
         };
         return MviReduceResult.StateAndEffect<LobbyState, LobbyEffect>(nextState, new LobbyEffect.Trace($"Lobby Select {panel}"));
@@ -242,17 +269,23 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
 
     private MviReduceResult<LobbyState, LobbyEffect> AcceptMission(LobbyState state, string missionName, int staminaCost, int baseReward)
     {
-        if (state.Stamina < staminaCost)
+        if (state.Player.Stamina < staminaCost)
         {
             return NoChange(state, $"体力不足，无法接受 {missionName}。需要 {staminaCost} 点体力。 ");
         }
 
-        int previewReward = _gameLogicService.CalculateMissionReward(baseReward, state.HeroTeamPower);
+        int previewReward = _gameLogicService.CalculateMissionReward(baseReward, state.HeroRoster.HeroTeamPower);
         LobbyState nextState = state with
         {
-            SelectedMission = missionName,
-            Stamina = state.Stamina - staminaCost,
-            MissionProgress = $"已接受 {missionName}，消耗体力 {staminaCost}，预计奖励 {previewReward}。",
+            Player = state.Player with
+            {
+                Stamina = state.Player.Stamina - staminaCost,
+            },
+            Mission = state.Mission with
+            {
+                SelectedMission = missionName,
+                MissionProgress = $"已接受 {missionName}，消耗体力 {staminaCost}，预计奖励 {previewReward}。",
+            },
             ActivityLog = AppendLog(state.ActivityLog, $"任务子 MVI 接受 {missionName}，父 Lobby 状态同步体力和任务。"),
         };
         nextState = RefreshBattle(nextState);
@@ -263,17 +296,23 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         ArgumentNullException.ThrowIfNull(setLevel);
         int cost = _gameLogicService.CalculateTrainingCost(currentLevel);
-        if (state.Gold < cost)
+        if (state.Player.Gold < cost)
         {
             return NoChange(state, $"金币不足，无法训练{heroName}。需要 {cost} 金币。 ");
         }
 
         LobbyState leveledState = setLevel(currentLevel + 1);
-        int nextPower = CalculateHeroPower(leveledState.WarriorLevel, leveledState.MageLevel, leveledState.ArcherLevel);
+        int nextPower = CalculateHeroPower(leveledState.HeroRoster.WarriorLevel, leveledState.HeroRoster.MageLevel, leveledState.HeroRoster.ArcherLevel);
         LobbyState nextState = leveledState with
         {
-            Gold = state.Gold - cost,
-            HeroTeamPower = nextPower,
+            Player = leveledState.Player with
+            {
+                Gold = state.Player.Gold - cost,
+            },
+            HeroRoster = leveledState.HeroRoster with
+            {
+                HeroTeamPower = nextPower,
+            },
             ActivityLog = AppendLog(state.ActivityLog, $"英雄子 MVI 训练{heroName}，消耗 {cost} 金币，战力变为 {nextPower}。"),
         };
         nextState = RefreshBattle(nextState);
@@ -282,18 +321,24 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
 
     private MviReduceResult<LobbyState, LobbyEffect> Forge(LobbyState state, string itemName, int oreCost, int crystalCost, int powerBonus)
     {
-        if (state.OreCount < oreCost || state.CrystalCount < crystalCost)
+        if (state.Inventory.OreCount < oreCost || state.Inventory.CrystalCount < crystalCost)
         {
             return NoChange(state, $"材料不足，无法锻造{itemName}。 ");
         }
 
-        int forgeScore = _gameLogicService.CalculateForgeScore(state.HeroTeamPower, state.OreCount, state.CrystalCount);
+        int forgeScore = _gameLogicService.CalculateForgeScore(state.HeroRoster.HeroTeamPower, state.Inventory.OreCount, state.Inventory.CrystalCount);
         LobbyState nextState = state with
         {
-            OreCount = state.OreCount - oreCost,
-            CrystalCount = state.CrystalCount - crystalCost,
-            HeroTeamPower = state.HeroTeamPower + powerBonus,
-            ForgeScore = forgeScore,
+            Inventory = state.Inventory with
+            {
+                OreCount = state.Inventory.OreCount - oreCost,
+                CrystalCount = state.Inventory.CrystalCount - crystalCost,
+                ForgeScore = forgeScore,
+            },
+            HeroRoster = state.HeroRoster with
+            {
+                HeroTeamPower = state.HeroRoster.HeroTeamPower + powerBonus,
+            },
             ActivityLog = AppendLog(state.ActivityLog, $"锻造工坊复用 GameLogicService，锻造{itemName}评分 {forgeScore}，战力增加 {powerBonus}。"),
         };
         nextState = RefreshBattle(nextState);
@@ -313,7 +358,7 @@ public sealed partial class LobbyReducer : MviReducerBase<LobbyState, LobbyInten
     {
         return state with
         {
-            BattleReadyText = _gameLogicService.BuildBattleReadyText(state.SelectedMission, state.HeroTeamPower, state.Stamina, state.PotionCount),
+            BattleReadyText = _gameLogicService.BuildBattleReadyText(state.Mission.SelectedMission, state.HeroRoster.HeroTeamPower, state.Player.Stamina, state.Inventory.PotionCount),
         };
     }
 

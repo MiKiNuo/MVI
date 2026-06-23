@@ -13,22 +13,10 @@ using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
+using MiKiNuo.Mvi.Presentation.Events;
+using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
-
-/// <summary>表示 Godot 事件绑定组合示例内的组件交互请求。</summary>
-/// <param name="SourceComponent">来源组件。</param>
-/// <param name="ActionKey">动作键。</param>
-/// <param name="ContextText">上下文文本。</param>
-public sealed record EventBindingWorkbenchInteractionRequest(
-    string SourceComponent,
-    string ActionKey,
-    string ContextText);
-
-/// <summary>表示 Godot 事件绑定组合示例内的组件交互响应。</summary>
-/// <param name="Message">响应消息。</param>
-/// <param name="Changed">是否产生变化。</param>
-public sealed record EventBindingWorkbenchInteractionResponse(string Message, bool Changed);
 
 /// <summary>表示 Godot 事件绑定组合示例的记录型中介者。</summary>
 public sealed class EventBindingRecordingMediator : IMviMediator
@@ -77,62 +65,6 @@ public sealed class EventBindingRecordingMediator : IMviMediator
             $"{interactionRequest.SourceComponent}:{interactionRequest.ActionKey}",
             true);
         return (TResponse)response;
-    }
-}
-
-/// <summary>表示 Godot 事件绑定组合根状态。</summary>
-/// <param name="LastInteractionText">最后一次交互文本。</param>
-/// <param name="InteractionCount">交互次数。</param>
-public sealed record EventBindingWorkbenchState(
-    string LastInteractionText,
-    int InteractionCount) : IMviState;
-
-/// <summary>表示 Godot 事件绑定组合根意图。</summary>
-public abstract partial record EventBindingWorkbenchIntent : IMviIntent
-{
-    /// <summary>表示记录子组件交互意图。</summary>
-    /// <param name="SourceComponent">来源组件。</param>
-    /// <param name="ActionKey">动作键。</param>
-    /// <param name="ContextText">上下文文本。</param>
-    public sealed partial record RecordInteraction(
-        string SourceComponent,
-        string ActionKey,
-        string ContextText) : EventBindingWorkbenchIntent;
-}
-
-/// <summary>表示 Godot 事件绑定组合根副作用。</summary>
-public abstract partial record EventBindingWorkbenchEffect : IMviEffect;
-
-/// <summary>表示 Godot 事件绑定组合根规约器。</summary>
-public sealed partial class EventBindingWorkbenchReducer
-    : MviReducerBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
-{
-    /// <summary>处理记录子组件交互意图。</summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingWorkbenchState, EventBindingWorkbenchEffect> Reduce(
-        EventBindingWorkbenchState state,
-        EventBindingWorkbenchIntent.RecordInteraction intent)
-    {
-        return MviReduceResult.State<EventBindingWorkbenchState, EventBindingWorkbenchEffect>(state with
-        {
-            LastInteractionText = $"{intent.SourceComponent}/{intent.ActionKey}: {intent.ContextText}",
-            InteractionCount = state.InteractionCount + 1
-        });
-    }
-}
-
-/// <summary>表示 Godot 事件绑定组合根空副作用分发器。</summary>
-public sealed class EventBindingWorkbenchEffectDispatcher : IMviEffectDispatcher<EventBindingWorkbenchEffect>
-{
-    /// <summary>
-    /// 分发副作用。
-    /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>表示异步分发过程的任务。</returns>
-    public ValueTask DispatchAsync(EventBindingWorkbenchEffect effect, CancellationToken cancellationToken = default)
-    {
-        return ValueTask.CompletedTask;
     }
 }
 
@@ -193,22 +125,6 @@ public sealed record EventBindingSearchState(
 {
     /// <summary>获取初始状态。</summary>
     public static EventBindingSearchState Initial { get; } = new(string.Empty, 0, "等待 LineEdit.TextChanged。");
-}
-
-/// <summary>表示 Godot 搜索面板意图。</summary>
-public abstract partial record EventBindingSearchIntent : IMviIntent
-{
-    /// <summary>表示查询文本变化意图。</summary>
-    /// <param name="Payload">文本变化载荷。</param>
-    public sealed partial record ChangeQuery(MviTextChangedEventPayload Payload) : EventBindingSearchIntent;
-}
-
-/// <summary>表示 Godot 搜索面板副作用。</summary>
-public abstract partial record EventBindingSearchEffect : IMviEffect
-{
-    /// <summary>表示通知查询变化副作用。</summary>
-    /// <param name="QueryText">查询文本。</param>
-    public sealed partial record NotifyQueryChanged(string QueryText) : EventBindingSearchEffect;
 }
 
 /// <summary>表示 Godot 搜索面板规约器。</summary>

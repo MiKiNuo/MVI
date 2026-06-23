@@ -21,22 +21,22 @@ public sealed partial class PlayerHeaderViewModel : MviViewModelBase<LobbyState,
     }
 
     /// <summary>获取玩家名称。</summary>
-    [MviBind(nameof(LobbyState.PlayerName))]
+    [MviBind("Player.PlayerName")]
     public partial string PlayerName { get; private set; }
 
     /// <summary>获取玩家等级。</summary>
-    [MviBind(nameof(LobbyState.PlayerLevel))]
+    [MviBind("Player.PlayerLevel")]
     public partial int PlayerLevel { get; private set; }
 
     /// <summary>获取金币数量。</summary>
-    [MviBind(nameof(LobbyState.Gold))]
+    [MviBind("Player.Gold")]
     public partial int Gold { get; private set; }
 
     /// <summary>获取体力值。</summary>
-    [MviBind(nameof(LobbyState.Stamina))]
+    [MviBind("Player.Stamina")]
     public partial int Stamina { get; private set; }
 
     /// <summary>获取当前大厅面板标题。</summary>
-    [MviBind(nameof(LobbyState.CurrentPanelTitle))]
+    [MviBind("Navigation.CurrentPanelTitle")]
     public partial string CurrentPanelTitle { get; private set; }
 }

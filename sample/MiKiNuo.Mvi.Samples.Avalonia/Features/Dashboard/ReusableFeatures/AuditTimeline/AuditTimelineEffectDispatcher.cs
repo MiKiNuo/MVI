@@ -18,6 +18,6 @@ public sealed class AuditTimelineEffectDispatcher : IMviEffectDispatcher<AuditTi
         ArgumentNullException.ThrowIfNull(effect);
 
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("审计时间线当前无副作用需要派发。");
     }
 }

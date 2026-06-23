@@ -17,6 +17,6 @@ public sealed class ArchitectureValidationEffectDispatcher : IMviEffectDispatche
     {
         ArgumentNullException.ThrowIfNull(effect);
 
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("架构验证页是演示页，无副作用需要派发。");
     }
 }

@@ -21,22 +21,6 @@ public interface IEventSource<TEvent>
 }
 
 /// <summary>
-/// 表示 Intent 源接口，提供统一的 Intent 订阅能力。
-/// </summary>
-/// <remarks>
-/// 用于把多个事件绑定汇总为统一的 Intent 流，供 Store 直接订阅。
-/// </remarks>
-public interface IIntentSource
-{
-    /// <summary>
-    /// 订阅 Intent 源。
-    /// </summary>
-    /// <param name="handler">Intent 处理器。</param>
-    /// <returns>用于取消订阅的可释放资源。</returns>
-    public IDisposable Subscribe(Action<IMviIntent> handler);
-}
-
-/// <summary>
 /// 表示事件绑定接口，把事件源 + Intent 映射器组合为可附加到组件的绑定。
 /// </summary>
 public interface IEventBinding
@@ -82,32 +66,33 @@ public sealed class EventBinding<TEvent> : IEventBinding
 }
 
 /// <summary>
-/// 表示 MVI 组件基类，管理事件绑定生命周期并派发 Intent。
+/// 表示 MVI 组件基类，提供 Intent 派发入口并管理组件生命周期。
 /// </summary>
 /// <remarks>
-/// ViewModel 基类继承本类，通过 <see cref="Bind(IEventBinding)"/> 注册事件绑定，
-/// 绑定触发时调用 <see cref="Dispatch(IMviIntent)"/> 派发 Intent 到 Store。
+/// ViewModel 基类继承本类，通过 <see cref="GetIntentDispatcher"/> 暴露派发入口；
+/// View 层创建 <see cref="EventBinding{TEvent}"/> 后调用
+/// <see cref="EventBinding{TEvent}.Attach"/> 注册到 View 侧的 <c>MviDisposableBag</c>，
+/// 实现"事件订阅生命周期随 View 重新绑定自动回收"。
 /// </remarks>
-public abstract class MviComponent : IDisposable
+public abstract class MviComponent : IDisposable, IMviIntentDispatcher
 {
-    private readonly List<IDisposable> _disposables = new();
     private bool _isDisposed;
 
     /// <summary>
-    /// 注册事件绑定，绑定触发时自动派发 Intent。
+    /// 显式实现 <see cref="IMviIntentDispatcher.Dispatch"/>，转发到 protected 抽象方法。
     /// </summary>
-    /// <param name="binding">事件绑定。</param>
-    protected void Bind(IEventBinding binding)
+    /// <param name="intent">意图。</param>
+    void IMviIntentDispatcher.Dispatch(IMviIntent intent)
     {
-        ArgumentNullException.ThrowIfNull(binding);
-        _disposables.Add(binding.Attach(Dispatch));
+        ArgumentNullException.ThrowIfNull(intent);
+        Dispatch(intent);
     }
 
     /// <summary>
-    /// 注册事件绑定（供 View 层调用）。
+    /// 获取 Intent 派发器，供 View 层把事件绑定映射为 Intent 派发。
     /// </summary>
-    /// <param name="binding">事件绑定。</param>
-    public void AddEventBinding(IEventBinding binding) => Bind(binding);
+    /// <returns>当前组件的 Intent 派发器。</returns>
+    public IMviIntentDispatcher GetIntentDispatcher() => this;
 
     /// <summary>
     /// 派发 Intent 到 Store。
@@ -116,7 +101,7 @@ public abstract class MviComponent : IDisposable
     protected abstract void Dispatch(IMviIntent intent);
 
     /// <summary>
-    /// 释放所有事件绑定资源。
+    /// 释放组件资源。
     /// </summary>
     public virtual void Dispose()
     {
@@ -126,13 +111,6 @@ public abstract class MviComponent : IDisposable
         }
 
         _isDisposed = true;
-
-        for (int index = _disposables.Count - 1; index >= 0; index--)
-        {
-            _disposables[index].Dispose();
-        }
-
-        _disposables.Clear();
         GC.SuppressFinalize(this);
     }
 }

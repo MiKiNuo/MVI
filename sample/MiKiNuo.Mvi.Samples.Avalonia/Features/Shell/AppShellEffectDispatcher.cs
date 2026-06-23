@@ -15,6 +15,6 @@ public sealed class AppShellEffectDispatcher : IMviEffectDispatcher<AppShellEffe
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(AppShellEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("应用壳当前无副作用需要派发。");
     }
 }

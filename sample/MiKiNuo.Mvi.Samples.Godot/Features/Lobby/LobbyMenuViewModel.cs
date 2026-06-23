@@ -23,7 +23,7 @@ public sealed partial class LobbyMenuViewModel : MviViewModelBase<LobbyState, Lo
     }
 
     /// <summary>获取当前大厅面板键。</summary>
-    [MviBind(nameof(LobbyState.CurrentPanel))]
+    [MviBind("Navigation.CurrentPanel")]
     public partial string CurrentPanel { get; private set; }
 
     /// <summary>获取大厅命令是否允许执行。</summary>

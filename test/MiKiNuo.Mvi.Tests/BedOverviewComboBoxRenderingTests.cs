@@ -9,6 +9,7 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
+using MiKiNuo.Mvi.Tests.TestSupport;
 using TUnit.Assertions;
 using TUnit.Core;
 namespace MiKiNuo.Mvi.Tests;
@@ -410,27 +411,5 @@ public sealed class BedOverviewComboBoxRenderingTests
         view.Measure(cardSize);
         view.Arrange(new Rect(cardSize));
         return (view, viewModel);
-    }
-}
-
-/// <summary>
-/// 内部测试辅助 Mediator：仅返回 <c>TResponse</c> 默认实例，不与兄弟卡片产生联动。
-/// </summary>
-file sealed class NoopMediator : IMviMediator
-{
-    /// <summary>
-    /// 发送请求并返回响应。
-    /// </summary>
-    /// <typeparam name="TRequest">请求类型。</typeparam>
-    /// <typeparam name="TResponse">响应类型。</typeparam>
-    /// <param name="request">请求对象。</param>
-    /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>响应对象。</returns>
-    public ValueTask<TResponse> SendAsync<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken = default)
-        where TRequest : notnull
-    {
-        _ = request;
-        _ = cancellationToken;
-        return new ValueTask<TResponse>((TResponse)default!);
     }
 }

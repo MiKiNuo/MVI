@@ -138,6 +138,108 @@ public static class BedCatalog
         };
     }
 
+    /// <summary>
+    /// 合并三种筛选维度：ComboBox 单选状态 + CheckBox 多选类型 + CheckBox 多选状态。
+    /// 单选状态优先取对应 <see cref="BedStatus"/>，再与多选状态取交集；多选集合为空表示该维度不过滤。
+    /// </summary>
+    /// <param name="filter">ComboBox 单选筛选维度（<see cref="BedFilter.All"/> 不参与状态过滤）。</param>
+    /// <param name="typeFilter">CheckBox 多选床位类型集合（空集合 = 不限类型）。</param>
+    /// <param name="statusFilter">CheckBox 多选床位状态集合（空集合 = 不限状态）。</param>
+    /// <returns>三个维度都满足的床位集合（按 BedNo 升序）。</returns>
+    public static IReadOnlyList<BedRecord> QueryCombined(
+        BedFilter filter,
+        IReadOnlySet<BedType> typeFilter,
+        IReadOnlySet<BedStatus> statusFilter)
+    {
+        ArgumentNullException.ThrowIfNull(typeFilter);
+        ArgumentNullException.ThrowIfNull(statusFilter);
+
+        BedStatus? filterStatus = filter == BedFilter.All ? null : ToStatus(filter);
+        bool filterTypeEmpty = typeFilter.Count == 0;
+        bool filterStatusEmpty = statusFilter.Count == 0;
+        if (filterStatus is null && filterTypeEmpty && filterStatusEmpty)
+        {
+            return _all;
+        }
+
+        List<BedRecord> result = new(_all.Count);
+        foreach (BedRecord record in _all)
+        {
+            if (MatchesCombined(record, filterStatus, typeFilter, statusFilter, filterTypeEmpty))
+            {
+                result.Add(record);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 合并三种筛选维度后统计匹配条数。语义与 <see cref="QueryCombined"/> 一致。
+    /// </summary>
+    /// <param name="filter">ComboBox 单选筛选维度。</param>
+    /// <param name="typeFilter">CheckBox 多选床位类型集合（空集合 = 不限类型）。</param>
+    /// <param name="statusFilter">CheckBox 多选床位状态集合（空集合 = 不限状态）。</param>
+    /// <returns>三个维度都满足的床位条数。</returns>
+    public static int CountCombined(
+        BedFilter filter,
+        IReadOnlySet<BedType> typeFilter,
+        IReadOnlySet<BedStatus> statusFilter)
+    {
+        ArgumentNullException.ThrowIfNull(typeFilter);
+        ArgumentNullException.ThrowIfNull(statusFilter);
+
+        BedStatus? filterStatus = filter == BedFilter.All ? null : ToStatus(filter);
+        bool filterTypeEmpty = typeFilter.Count == 0;
+        bool filterStatusEmpty = statusFilter.Count == 0;
+        if (filterStatus is null && filterTypeEmpty && filterStatusEmpty)
+        {
+            return _all.Count;
+        }
+
+        int count = 0;
+        foreach (BedRecord record in _all)
+        {
+            if (MatchesCombined(record, filterStatus, typeFilter, statusFilter, filterTypeEmpty))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// 判断单条床位是否同时满足三个筛选维度。
+    /// </summary>
+    /// <param name="record">床位记录。</param>
+    /// <param name="filterStatus">单选状态（null 表示不过滤）。</param>
+    /// <param name="typeFilter">多选类型集合。</param>
+    /// <param name="statusFilter">多选状态集合。</param>
+    /// <param name="filterTypeEmpty">类型集合是否为空。</param>
+    /// <returns>是否满足全部维度。</returns>
+    private static bool MatchesCombined(
+        BedRecord record,
+        BedStatus? filterStatus,
+        IReadOnlySet<BedType> typeFilter,
+        IReadOnlySet<BedStatus> statusFilter,
+        bool filterTypeEmpty)
+    {
+        bool typeOk = filterTypeEmpty || typeFilter.Contains(record.Type);
+        bool statusOk = true;
+        if (filterStatus is not null)
+        {
+            statusOk = record.Status == filterStatus.Value;
+        }
+
+        if (statusOk && statusFilter.Count > 0)
+        {
+            statusOk = statusFilter.Contains(record.Status);
+        }
+
+        return typeOk && statusOk;
+    }
+
     private static IReadOnlyList<BedRecord> Build()
     {
         // 4 个病区 × 每病区 15 张床位 = 60 张；床位类型与状态按固定模式分布，确保 ComboBox 切换有可视差异。

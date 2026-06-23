@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using MiKiNuo.Mvi.Samples.Avalonia.Composition;
+﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using TUnit.Assertions;
 using TUnit.Core;

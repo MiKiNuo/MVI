@@ -10,6 +10,8 @@ using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
+using MiKiNuo.Mvi.Presentation.Events;
+using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 

@@ -15,6 +15,6 @@ public sealed class ClinicalEditorEffectDispatcher : IMviEffectDispatcher<Clinic
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(ClinicalEditorEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("门诊病历编辑当前无副作用需要派发。");
     }
 }

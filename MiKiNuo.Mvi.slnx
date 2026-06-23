@@ -13,6 +13,7 @@
     </Project>
     <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" Type="C#" />
     <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia.BuildTime\MiKiNuo.Mvi.Samples.Avalonia.BuildTime.csproj" Type="C#" />
+    <Project Path="sample\MiKiNuo.Mvi.Samples.Shared\MiKiNuo.Mvi.Samples.Shared.csproj" Type="C#" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test\MiKiNuo.Mvi.Tests\MiKiNuo.Mvi.Tests.csproj" Type="C#" />

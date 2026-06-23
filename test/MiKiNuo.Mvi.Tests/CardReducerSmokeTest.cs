@@ -3,6 +3,7 @@ using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
+using MiKiNuo.Mvi.Tests.TestSupport;
 using TUnit.Assertions;
 using TUnit.Core;
 using ZLinq;
@@ -210,25 +211,5 @@ public sealed class CardReducerSmokeTest
     private static Func<IReadOnlyList<CardFormValueEntry>, (bool CanSubmit, string StatusText, string ActionLog)> BuildAlwaysValidProbeValidator()
     {
         return values => (true, "Probe 资料已完整，可以提交", "Probe 提交 -> 探测流程。");
-    }
-}
-
-/// <summary>
-/// 内部测试辅助 Mediator：空实现，避免 CardEffectDispatcher 在测试中需要真实 Mediator。
-/// </summary>
-file sealed class NoopMediator : MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator
-{
-    /// <summary>
-    /// 始终返回 TResponse 默认实例；不派发任何请求。
-    /// </summary>
-    /// <typeparam name="TRequest">请求类型。</typeparam>
-    /// <typeparam name="TResponse">响应类型。</typeparam>
-    /// <param name="request">请求对象（忽略）。</param>
-    /// <param name="cancellationToken">取消标记（忽略）。</param>
-    /// <returns>默认构造的响应实例。</returns>
-    public ValueTask<TResponse> SendAsync<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken = default)
-        where TRequest : notnull
-    {
-        return new ValueTask<TResponse>(Activator.CreateInstance<TResponse>()!);
     }
 }

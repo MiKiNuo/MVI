@@ -10,7 +10,10 @@ using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
+using MiKiNuo.Mvi.Presentation.Binding;
 using MiKiNuo.Mvi.Presentation.Command;
+using MiKiNuo.Mvi.Presentation.Disposables;
+using MiKiNuo.Mvi.Presentation.Events;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -116,14 +119,31 @@ public sealed class ViewEventCommandBindingTests
     }
 
     /// <summary>
-    /// 验证 <see cref="MviComponent"/> 在 Dispose 时释放所有事件绑定，事件不再派发。
+    /// 验证 <see cref="MviComponent.GetIntentDispatcher"/> 返回的派发器能把 Intent 转发到 protected Dispatch。
     /// </summary>
     [Test]
-    public async Task MviComponent_Should_DisposeAllEventBindingsOnDisposeAsync()
+    public async Task MviComponent_GetIntentDispatcher_Should_ForwardIntentToDispatchAsync()
+    {
+        using TestComponent component = new();
+        IMviIntentDispatcher dispatcher = component.GetIntentDispatcher();
+
+        dispatcher.Dispatch(new TestIntent("hello"));
+        await Assert.That(component.Dispatched.Count).IsEqualTo(1);
+        await Assert.That(((TestIntent)component.Dispatched[0]!).Value).IsEqualTo("hello");
+    }
+
+    /// <summary>
+    /// 验证 <see cref="EventBindingExtensions.BindTo{TEvent}"/> 把事件订阅注册到 <see cref="MviDisposableBag"/>，
+    /// 释放 <see cref="MviDisposableBag"/> 后事件不再派发。
+    /// </summary>
+    [Test]
+    public async Task BindTo_Should_RegisterSubscriptionToDisposableBagAndStopOnDisposeAsync()
     {
         TestEventSource rawSource1 = new();
         TestEventSource rawSource2 = new();
-        TestComponent component = new();
+        using TestComponent component = new();
+        IMviIntentDispatcher dispatcher = component.GetIntentDispatcher();
+        MviDisposableBag bindings = new();
 
         IEventSource<string> source1 = new DelegateEventSource<string>(handler =>
         {
@@ -136,40 +156,42 @@ public sealed class ViewEventCommandBindingTests
             return new ActionDisposable(() => rawSource2.Event -= handler);
         });
 
-        component.AddEventBinding(new EventBinding<string>(source1, text => new TestIntent(text)));
-        component.AddEventBinding(new EventBinding<string>(source2, text => new TestIntent(text)));
+        source1.BindTo(dispatcher, text => new TestIntent(text), bindings);
+        source2.BindTo(dispatcher, text => new TestIntent(text), bindings);
 
         rawSource1.Raise("a");
         rawSource2.Raise("b");
         await Assert.That(component.Dispatched.Count).IsEqualTo(2);
 
-        component.Dispose();
+        bindings.Dispose();
         rawSource1.Raise("ignored1");
         rawSource2.Raise("ignored2");
         await Assert.That(component.Dispatched.Count).IsEqualTo(2);
     }
 
     /// <summary>
-    /// 验证 <see cref="MviComponent"/> 多次调用 Dispose 不会抛异常且保持幂等。
+    /// 验证 <see cref="MviDisposableBag"/> 多次调用 Dispose 不会抛异常且保持幂等。
     /// </summary>
     [Test]
-    public async Task MviComponent_Should_BeIdempotentOnMultipleDisposeAsync()
+    public async Task DisposableBag_Should_BeIdempotentOnMultipleDisposeAsync()
     {
         TestEventSource rawSource = new();
-        TestComponent component = new();
+        using TestComponent component = new();
+        IMviIntentDispatcher dispatcher = component.GetIntentDispatcher();
+        MviDisposableBag bindings = new();
 
         IEventSource<string> source = new DelegateEventSource<string>(handler =>
         {
             rawSource.Event += handler;
             return new ActionDisposable(() => rawSource.Event -= handler);
         });
-        component.AddEventBinding(new EventBinding<string>(source, text => new TestIntent(text)));
+        source.BindTo(dispatcher, text => new TestIntent(text), bindings);
 
         rawSource.Raise("before");
         await Assert.That(component.Dispatched.Count).IsEqualTo(1);
 
-        component.Dispose();
-        component.Dispose();
+        bindings.Dispose();
+        bindings.Dispose();
 
         rawSource.Raise("after");
         await Assert.That(component.Dispatched.Count).IsEqualTo(1);
@@ -235,10 +257,10 @@ public sealed class ViewEventCommandBindingTests
     }
 
     /// <summary>
-    /// 验证 Avalonia MVI View 基类提供绑定生命周期注册入口。
+    /// 验证 Avalonia MVI View 基类提供 OnBind 钩子与可视树脱离清理。
     /// </summary>
     [Test]
-    public async Task AvaloniaMviView_Should_ExposeBindingLifecycleHelpersAsync()
+    public async Task AvaloniaMviView_Should_ExposeOnBindHookAndDetachedCleanupAsync()
     {
         string root = FindRepositoryRoot();
         string viewBase = await File.ReadAllTextAsync(Path.Combine(
@@ -248,7 +270,7 @@ public sealed class ViewEventCommandBindingTests
             "Views",
             "MviAvaloniaView.cs"));
 
-        await Assert.That(viewBase).Contains("protected void RegisterBinding");
+        await Assert.That(viewBase).Contains("protected virtual void OnBind(TViewModel viewModel, MviDisposableBag bindings)");
         await Assert.That(viewBase).Contains("OnDetachedFromVisualTree");
     }
 

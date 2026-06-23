@@ -49,12 +49,12 @@ public sealed class ArchitectureValidationStateTests
     {
         Type viewModelType = typeof(ArchitectureValidationViewModel);
 
-        await Assert.That(viewModelType.GetMethod("CreatePatientSearchViewModel")).IsNotNull();
-        await Assert.That(viewModelType.GetMethod("CreateAuditTimelineViewModel")).IsNotNull();
-        await Assert.That(viewModelType.GetMethod("CreateMiddlewareMetricViewModel")).IsNotNull();
-        await Assert.That(viewModelType.GetMethod("CreateReuseMetricViewModel")).IsNotNull();
-        await Assert.That(viewModelType.GetMethod("CreateMediatorMetricViewModel")).IsNotNull();
-        await Assert.That(viewModelType.GetMethod("CreateEffectMetricViewModel")).IsNotNull();
+        await Assert.That(viewModelType.GetMethod("CreatePatientSearchViewModel", Type.EmptyTypes)).IsNotNull();
+        await Assert.That(viewModelType.GetMethod("CreateAuditTimelineViewModel", Type.EmptyTypes)).IsNotNull();
+        await Assert.That(viewModelType.GetMethod("CreateMiddlewareMetricViewModel", Type.EmptyTypes)).IsNotNull();
+        await Assert.That(viewModelType.GetMethod("CreateReuseMetricViewModel", Type.EmptyTypes)).IsNotNull();
+        await Assert.That(viewModelType.GetMethod("CreateMediatorMetricViewModel", Type.EmptyTypes)).IsNotNull();
+        await Assert.That(viewModelType.GetMethod("CreateEffectMetricViewModel", Type.EmptyTypes)).IsNotNull();
     }
 
     /// <summary>
@@ -68,9 +68,9 @@ public sealed class ArchitectureValidationStateTests
         Type patientSearchType = typeof(PatientSearchViewModel);
         Type auditTimelineType = typeof(AuditTimelineViewModel);
 
-        await Assert.That(viewModelType.GetMethod("CreatePatientSearchViewModel")!.ReturnType)
+        await Assert.That(viewModelType.GetMethod("CreatePatientSearchViewModel", Type.EmptyTypes)!.ReturnType)
             .IsEqualTo(typeof(object));
-        await Assert.That(viewModelType.GetMethod("CreateAuditTimelineViewModel")!.ReturnType)
+        await Assert.That(viewModelType.GetMethod("CreateAuditTimelineViewModel", Type.EmptyTypes)!.ReturnType)
             .IsEqualTo(typeof(object));
         await Assert.That(patientSearchType).IsNotNull();
         await Assert.That(auditTimelineType).IsNotNull();
@@ -85,13 +85,13 @@ public sealed class ArchitectureValidationStateTests
         Type viewModelType = typeof(ArchitectureValidationViewModel);
         Type cardViewModelType = typeof(CardViewModel);
 
-        await Assert.That(viewModelType.GetMethod("CreateMiddlewareMetricViewModel")!.ReturnType)
+        await Assert.That(viewModelType.GetMethod("CreateMiddlewareMetricViewModel", Type.EmptyTypes)!.ReturnType)
             .IsEqualTo(typeof(object));
-        await Assert.That(viewModelType.GetMethod("CreateReuseMetricViewModel")!.ReturnType)
+        await Assert.That(viewModelType.GetMethod("CreateReuseMetricViewModel", Type.EmptyTypes)!.ReturnType)
             .IsEqualTo(typeof(object));
-        await Assert.That(viewModelType.GetMethod("CreateMediatorMetricViewModel")!.ReturnType)
+        await Assert.That(viewModelType.GetMethod("CreateMediatorMetricViewModel", Type.EmptyTypes)!.ReturnType)
             .IsEqualTo(typeof(object));
-        await Assert.That(viewModelType.GetMethod("CreateEffectMetricViewModel")!.ReturnType)
+        await Assert.That(viewModelType.GetMethod("CreateEffectMetricViewModel", Type.EmptyTypes)!.ReturnType)
             .IsEqualTo(typeof(object));
         await Assert.That(cardViewModelType.Name).IsEqualTo("CardViewModel");
     }

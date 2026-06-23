@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using MiKiNuo.Mvi.Presentation.Events;
 
 namespace MiKiNuo.Mvi.Platforms.Avalonia.Events;
 

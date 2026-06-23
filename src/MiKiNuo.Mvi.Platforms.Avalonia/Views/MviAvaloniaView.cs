@@ -46,7 +46,7 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
 
         ClearBindings();
         DataContext = viewModel;
-        OnBind(viewModel);
+        OnBind(viewModel, EnsureBindings());
     }
 
     /// <summary>
@@ -65,26 +65,29 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
 
         ClearBindings();
         DataContext = viewModel;
-        OnBind(viewModel);
+        MviDisposableBag bindings = EnsureBindings();
+        OnBind(viewModel, bindings);
 
         // 触发组合模式槽位绑定钩子；源生成器会 emit override 实现
         // —— 扫描子类的 [MviSlot] 字段，按需解析子 ViewModel 并写入 MviSlotHost。
-        OnBindSlots(viewModel, EnsureBindings(), resolver);
+        OnBindSlots(viewModel, bindings, resolver);
     }
 
     /// <summary>
     /// View 绑定 ViewModel 时的事件绑定扩展点。
     /// <para>
-    /// 子类 <c>override</c> 本方法，通过 <see cref="Application.MVI.EventBinding.IEventSource{TEvent}"/> 适配器 +
-    /// <see cref="Application.MVI.EventBinding.EventBinding{TEvent}"/> 创建事件绑定，
-    /// 并调用 <c>viewModel.AddEventBinding(binding)</c> 注册到 ViewModel 生命周期。
+    /// 子类 <c>override</c> 本方法，通过 <c>ToEventSource().EventName</c> 获取
+    /// <see cref="Application.MVI.EventBinding.IEventSource{TEvent}"/>，
+    /// 调用 <see cref="Presentation.Binding.EventBindingExtensions.BindTo{TEvent}"/> 把事件映射为 Intent 并注册到 <paramref name="bindings"/>。
     /// 基类提供空实现；不依赖事件绑定的 View 得到零成本默认行为。
     /// </para>
     /// </summary>
     /// <param name="viewModel">当前绑定的视图模型。</param>
-    protected virtual void OnBind(TViewModel viewModel)
+    /// <param name="bindings">随 View 生命周期释放的可释放资源集合。</param>
+    protected virtual void OnBind(TViewModel viewModel, MviDisposableBag bindings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(bindings);
     }
 
     /// <summary>
@@ -101,26 +104,6 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(bindings);
         ArgumentNullException.ThrowIfNull(resolver);
-    }
-
-    /// <summary>
-    /// 注册随 View 重新绑定或脱离可视树自动释放的绑定资源。
-    /// </summary>
-    /// <param name="binding">绑定资源。</param>
-    protected void RegisterBinding(IDisposable binding)
-    {
-        ArgumentNullException.ThrowIfNull(binding);
-        EnsureBindings().Add(binding);
-    }
-
-    /// <summary>
-    /// 注册随 View 重新绑定或脱离可视树自动执行的解绑动作。
-    /// </summary>
-    /// <param name="dispose">解绑动作。</param>
-    protected void RegisterBinding(Action dispose)
-    {
-        ArgumentNullException.ThrowIfNull(dispose);
-        EnsureBindings().Add(dispose);
     }
 
     /// <summary>

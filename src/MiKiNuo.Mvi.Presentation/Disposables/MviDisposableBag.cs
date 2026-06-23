@@ -1,3 +1,4 @@
+using MiKiNuo.Mvi.Application.MVI.EventBinding;
 
 namespace MiKiNuo.Mvi.Presentation.Disposables;
 
@@ -8,7 +9,7 @@ namespace MiKiNuo.Mvi.Presentation.Disposables;
 /// <remarks>
 /// 与 Godot 版本一致地处理"已释放后追加"的竞态：再追加的资源会立即被释放而不是泄漏。
 /// <see cref="Add(Action)"/> 重载把 <see cref="Action"/> 包装为 <see cref="IDisposable"/>，
-/// 内部 <see cref="ActionDisposable"/> 用 <c>Interlocked.Exchange</c> 防止重复执行。
+/// 内部复用 Application 层的 <see cref="ActionDisposable"/> 用 <c>Interlocked.Exchange</c> 防止重复执行。
 /// </remarks>
 public sealed class MviDisposableBag : IDisposable
 {
@@ -61,23 +62,5 @@ public sealed class MviDisposableBag : IDisposable
         }
 
         _items.Clear();
-    }
-
-    /// <summary>
-    /// 包装一次性清理动作为 <see cref="IDisposable"/>，用 <c>Interlocked.Exchange</c> 保证动作只执行一次。
-    /// </summary>
-    private sealed class ActionDisposable : IDisposable
-    {
-        private Action? _disposeAction;
-
-        public ActionDisposable(Action disposeAction)
-        {
-            _disposeAction = disposeAction;
-        }
-
-        public void Dispose()
-        {
-            Interlocked.Exchange(ref _disposeAction, null)?.Invoke();
-        }
     }
 }

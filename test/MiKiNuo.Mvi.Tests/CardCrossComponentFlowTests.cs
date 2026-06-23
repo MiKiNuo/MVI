@@ -2,6 +2,7 @@ using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
+using MiKiNuo.Mvi.Tests.TestSupport;
 using R3;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -229,28 +230,5 @@ file sealed class NoopCardEffectDispatcher : MiKiNuo.Mvi.Application.MVI.Effect.
         _ = effect;
         _ = cancellationToken;
         return ValueTask.CompletedTask;
-    }
-}
-
-/// <summary>
-/// 内部测试辅助 Mediator：仅返回 TResponse 默认实例，不与兄弟卡片产生联动。
-/// 返回 default(TResponse) 以兼容无参数构造函数的 record 类型响应。
-/// </summary>
-file sealed class NoopMediator : IMviMediator
-{
-    /// <summary>
-    /// 始终返回 TResponse 默认实例；不派发任何请求。
-    /// </summary>
-    /// <typeparam name="TRequest">请求类型。</typeparam>
-    /// <typeparam name="TResponse">响应类型。</typeparam>
-    /// <param name="request">请求对象（忽略）。</param>
-    /// <param name="cancellationToken">取消标记（忽略）。</param>
-    /// <returns>默认构造的响应实例（可能为 null，测试不消费）。</returns>
-    public ValueTask<TResponse> SendAsync<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken = default)
-        where TRequest : notnull
-    {
-        _ = request;
-        _ = cancellationToken;
-        return new ValueTask<TResponse>((TResponse)default!);
     }
 }

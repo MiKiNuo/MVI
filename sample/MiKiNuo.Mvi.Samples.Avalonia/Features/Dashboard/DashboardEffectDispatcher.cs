@@ -15,6 +15,6 @@ public sealed class DashboardEffectDispatcher : IMviEffectDispatcher<DashboardEf
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(DashboardEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("仪表板当前无副作用需要派发。");
     }
 }

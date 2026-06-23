@@ -1,25 +1,9 @@
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
+using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
-
-/// <summary>
-/// 表示事件绑定组合示例内的组件交互请求。
-/// </summary>
-/// <param name="SourceComponent">来源组件。</param>
-/// <param name="ActionKey">动作键。</param>
-/// <param name="ContextText">上下文文本。</param>
-public sealed record EventBindingWorkbenchInteractionRequest(
-    string SourceComponent,
-    string ActionKey,
-    string ContextText);
-
-/// <summary>
-/// 表示事件绑定组合示例内的组件交互响应。
-/// </summary>
-/// <param name="Message">响应消息。</param>
-public sealed record EventBindingWorkbenchInteractionResponse(string Message);
 
 /// <summary>
 /// 表示事件绑定组合示例的记录型中介者。
@@ -74,7 +58,8 @@ public sealed class EventBindingRecordingMediator : IMviMediator
             cancellationToken).ConfigureAwait(false);
 
         EventBindingWorkbenchInteractionResponse response = new(
-            $"{interactionRequest.SourceComponent}:{interactionRequest.ActionKey}");
+            $"{interactionRequest.SourceComponent}:{interactionRequest.ActionKey}",
+            true);
 
         if (response is not TResponse typedResponse)
         {

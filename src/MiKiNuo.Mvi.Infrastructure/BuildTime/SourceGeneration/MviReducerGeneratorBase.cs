@@ -12,14 +12,6 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 public abstract class MviReducerGeneratorBase : IIncrementalGenerator
 {
     /// <summary>
-    /// 符号显示格式：完整限定名 + 可空修饰符。
-    /// </summary>
-    protected static readonly SymbolDisplayFormat TypeFormat = SymbolDisplayFormat.FullyQualifiedFormat
-        .WithMiscellaneousOptions(
-            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
-            | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-    /// <summary>
     /// 初始化源生成器注册编译回调。
     /// </summary>
     /// <param name="context">增量生成器初始化上下文。</param>

@@ -1,3 +1,5 @@
+using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
+
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 
 /// <summary>

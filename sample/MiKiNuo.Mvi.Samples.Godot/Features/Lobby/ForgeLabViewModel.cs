@@ -23,19 +23,19 @@ public sealed partial class ForgeLabViewModel : MviViewModelBase<LobbyState, Lob
     }
 
     /// <summary>获取锻造评分。</summary>
-    [MviBind(nameof(LobbyState.ForgeScore))]
+    [MviBind("Inventory.ForgeScore")]
     public partial int ForgeScore { get; private set; }
 
     /// <summary>获取矿石数量。</summary>
-    [MviBind(nameof(LobbyState.OreCount))]
+    [MviBind("Inventory.OreCount")]
     public partial int OreCount { get; private set; }
 
     /// <summary>获取水晶数量。</summary>
-    [MviBind(nameof(LobbyState.CrystalCount))]
+    [MviBind("Inventory.CrystalCount")]
     public partial int CrystalCount { get; private set; }
 
     /// <summary>获取英雄队伍战力。</summary>
-    [MviBind(nameof(LobbyState.HeroTeamPower))]
+    [MviBind("HeroRoster.HeroTeamPower")]
     public partial int HeroTeamPower { get; private set; }
 
     /// <summary>获取大厅命令是否允许执行。</summary>

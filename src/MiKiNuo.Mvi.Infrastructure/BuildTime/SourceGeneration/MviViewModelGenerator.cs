@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿using System.Collections.Generic;
+﻿﻿﻿﻿﻿﻿﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -62,11 +62,6 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
     /// </summary>
     internal static class Analysis
     {
-        private static readonly SymbolDisplayFormat TypeFormat = SymbolDisplayFormat.FullyQualifiedFormat
-            .WithMiscellaneousOptions(
-                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
-                | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
         private static readonly DiagnosticDescriptor AmbiguousPayloadConstructorRule = new(
             id: DiagnosticIdCatalog.MviAmbiguousPayloadConstructor,
             title: "命令 Intent 存在多个 payload 构造函数",
@@ -149,7 +144,7 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
 
             foreach (IPropertySymbol property in viewModelSymbol.GetMembers().OfType<IPropertySymbol>())
             {
-                AttributeData? attribute = property.GetAttributes().FirstOrDefault(static item => item.AttributeClass?.Name == "MviBindAttribute");
+                AttributeData? attribute = GeneratorSyntaxHelpers.FindAttribute(property, "MviBind");
                 if (attribute is null)
                 {
                     continue;
@@ -169,18 +164,18 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
                     }
                     else if (namedArgument.Key == "IntentType" && namedArgument.Value.Value is INamedTypeSymbol intentType)
                     {
-                        intentTypeName = intentType.ToDisplayString(TypeFormat);
+                        intentTypeName = intentType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
                     }
                 }
 
                 result.Add(new MviViewModelModels.BindPropertyModel(
                     property.Name,
-                    property.Type.ToDisplayString(TypeFormat),
+                    property.Type.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
                     stateProperty,
                     intentTypeName,
                     isTwoWay,
                     GetSetterAccessibility(property),
-                    "_" + ToCamelCase(property.Name)));
+                    "_" + GeneratorSyntaxHelpers.ToCamelCase(property.Name)));
             }
 
             return result;
@@ -194,30 +189,13 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
 
             foreach (IPropertySymbol property in viewModelSymbol.GetMembers().OfType<IPropertySymbol>())
             {
-                AttributeData? attribute = property.GetAttributes().FirstOrDefault(static item => item.AttributeClass?.Name == "MviCommandAttribute");
+                AttributeData? attribute = GeneratorSyntaxHelpers.FindAttribute(property, "MviCommand");
                 if (attribute is null || attribute.ConstructorArguments.Length == 0 || attribute.ConstructorArguments[0].Value is not INamedTypeSymbol intentType)
                 {
                     continue;
                 }
 
-                string? canExecuteProperty = null;
-                bool isAsync = false;
-                ITypeSymbol? explicitPayloadType = null;
-                foreach (KeyValuePair<string, TypedConstant> namedArgument in attribute.NamedArguments)
-                {
-                    if (namedArgument.Key == "CanExecuteProperty")
-                    {
-                        canExecuteProperty = namedArgument.Value.Value?.ToString();
-                    }
-                    else if (namedArgument.Key == "IsAsync")
-                    {
-                        isAsync = namedArgument.Value.Value is true;
-                    }
-                    else if (namedArgument.Key == "PayloadType" && namedArgument.Value.Value is ITypeSymbol payloadType)
-                    {
-                        explicitPayloadType = payloadType;
-                    }
-                }
+                (string? canExecuteProperty, bool isAsync, ITypeSymbol? explicitPayloadType) = ParseCommandAttribute(attribute);
 
                 MviViewModelModels.ConstructorBindingModel constructorBinding = ResolveConstructorBinding(
                     property,
@@ -227,17 +205,46 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
 
                 result.Add(new MviViewModelModels.CommandPropertyModel(
                     property.Name,
-                    property.Type.ToDisplayString(TypeFormat),
-                    intentType.ToDisplayString(TypeFormat),
+                    property.Type.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
+                    intentType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
                     constructorBinding.PayloadTypeName,
                     constructorBinding.HasParameterlessConstructor,
                     canExecuteProperty,
                     isAsync,
                     GetSetterAccessibility(property),
-                    "_" + ToCamelCase(property.Name)));
+                    "_" + GeneratorSyntaxHelpers.ToCamelCase(property.Name)));
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 解析命令特性的命名参数。
+        /// </summary>
+        private static (string? CanExecuteProperty, bool IsAsync, ITypeSymbol? ExplicitPayloadType) ParseCommandAttribute(
+            AttributeData attribute)
+        {
+            string? canExecuteProperty = null;
+            bool isAsync = false;
+            ITypeSymbol? explicitPayloadType = null;
+
+            foreach (KeyValuePair<string, TypedConstant> namedArgument in attribute.NamedArguments)
+            {
+                if (namedArgument.Key == "CanExecuteProperty")
+                {
+                    canExecuteProperty = namedArgument.Value.Value?.ToString();
+                }
+                else if (namedArgument.Key == "IsAsync")
+                {
+                    isAsync = namedArgument.Value.Value is true;
+                }
+                else if (namedArgument.Key == "PayloadType" && namedArgument.Value.Value is ITypeSymbol payloadType)
+                {
+                    explicitPayloadType = payloadType;
+                }
+            }
+
+            return (canExecuteProperty, isAsync, explicitPayloadType);
         }
 
         private static MviViewModelModels.ConstructorBindingModel ResolveConstructorBinding(
@@ -253,8 +260,36 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             List<IMethodSymbol> payloadConstructors = publicConstructors
                 .Where(static constructor => constructor.Parameters.Length == 1)
                 .ToList();
-            ITypeSymbol? payloadType = null;
 
+            ITypeSymbol? payloadType = FindPayloadConstructor(
+                payloadConstructors,
+                explicitPayloadType,
+                commandProperty,
+                intentType,
+                context);
+
+            ReportConstructorDiagnostic(
+                hasParameterlessConstructor,
+                payloadType,
+                commandProperty,
+                intentType,
+                context);
+
+            return new MviViewModelModels.ConstructorBindingModel(
+                hasParameterlessConstructor,
+                payloadType?.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
+        }
+
+        /// <summary>
+        /// 查找匹配的载荷构造函数。
+        /// </summary>
+        private static ITypeSymbol? FindPayloadConstructor(
+            IReadOnlyList<IMethodSymbol> payloadConstructors,
+            ITypeSymbol? explicitPayloadType,
+            IPropertySymbol commandProperty,
+            INamedTypeSymbol intentType,
+            SourceProductionContext context)
+        {
             if (explicitPayloadType is not null)
             {
                 IMethodSymbol? matchingConstructor = payloadConstructors.FirstOrDefault(
@@ -267,28 +302,42 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
                         MissingPayloadConstructorRule,
                         commandProperty,
                         commandProperty.Name,
-                        intentType.ToDisplayString(TypeFormat),
-                        explicitPayloadType.ToDisplayString(TypeFormat));
+                        intentType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
+                        explicitPayloadType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
+                    return null;
                 }
-                else
-                {
-                    payloadType = explicitPayloadType;
-                }
+
+                return explicitPayloadType;
             }
-            else if (payloadConstructors.Count == 1)
+
+            if (payloadConstructors.Count == 1)
             {
-                payloadType = payloadConstructors[0].Parameters[0].Type;
+                return payloadConstructors[0].Parameters[0].Type;
             }
-            else if (payloadConstructors.Count > 1)
+
+            if (payloadConstructors.Count > 1)
             {
                 Report(
                     context,
                     AmbiguousPayloadConstructorRule,
                     commandProperty,
                     commandProperty.Name,
-                    intentType.ToDisplayString(TypeFormat));
+                    intentType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
             }
 
+            return null;
+        }
+
+        /// <summary>
+        /// 报告缺少构造函数的诊断。
+        /// </summary>
+        private static void ReportConstructorDiagnostic(
+            bool hasParameterlessConstructor,
+            ITypeSymbol? payloadType,
+            IPropertySymbol commandProperty,
+            INamedTypeSymbol intentType,
+            SourceProductionContext context)
+        {
             if (!hasParameterlessConstructor && payloadType is null)
             {
                 Report(
@@ -296,12 +345,8 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
                     MissingIntentConstructorRule,
                     commandProperty,
                     commandProperty.Name,
-                    intentType.ToDisplayString(TypeFormat));
+                    intentType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
             }
-
-            return new MviViewModelModels.ConstructorBindingModel(
-                hasParameterlessConstructor,
-                payloadType?.ToDisplayString(TypeFormat));
         }
 
         private static void Report(
@@ -318,18 +363,6 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
         {
             Accessibility accessibility = property.SetMethod?.DeclaredAccessibility ?? Accessibility.Private;
             return accessibility == Accessibility.Private ? "private set" : "set";
-        }
-
-        private static string ToCamelCase(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return value;
-            }
-
-            return value.Length == 1
-                ? value.ToLowerInvariant()
-                : char.ToLowerInvariant(value[0]) + value.Substring(1);
         }
     }
 }

@@ -46,11 +46,6 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
     /// </summary>
     internal static class Analysis
     {
-        private static readonly SymbolDisplayFormat TypeFormat = SymbolDisplayFormat.FullyQualifiedFormat
-            .WithMiscellaneousOptions(
-                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
-                | SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
         /// <summary>
         /// 编译中是否包含 [DiService] 或 [MviFeatureModule] 标记的类。
         /// 用于在确认无需生成代码时短路 <see cref="IIncrementalGenerator"/>，避免空跑分析。
@@ -92,53 +87,48 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
 
         private static Models.DiServiceInfo? ParseDiService(INamedTypeSymbol classSymbol)
         {
-            foreach (AttributeData attr in classSymbol.GetAttributes())
+            AttributeData? attr = GeneratorSyntaxHelpers.FindAttribute(classSymbol, "DiService");
+            if (attr is null)
             {
-                string? attrName = attr.AttributeClass?.Name;
-                if (attrName is not ("DiService" or "DiServiceAttribute"))
-                {
-                    continue;
-                }
-
-                string serviceTypeName = classSymbol.ToDisplayString(TypeFormat);
-                string implementationTypeName = classSymbol.ToDisplayString(TypeFormat);
-                Models.GeneratedLifetime lifetime = Models.GeneratedLifetime.Singleton;
-                string? @namespace = classSymbol.ContainingNamespace?.ToDisplayString();
-
-                if (attr.ConstructorArguments.Length > 0
-                    && attr.ConstructorArguments[0].Value is int lifetimeValue)
-                {
-                    lifetime = lifetimeValue switch
-                    {
-                        0 => Models.GeneratedLifetime.Singleton,
-                        1 => Models.GeneratedLifetime.Scoped,
-                        2 => Models.GeneratedLifetime.Transient,
-                        _ => Models.GeneratedLifetime.Singleton,
-                    };
-                }
-
-                foreach (KeyValuePair<string, TypedConstant> namedArgument in attr.NamedArguments)
-                {
-                    if (namedArgument.Key == "ServiceType"
-                        && namedArgument.Value.Value is INamedTypeSymbol serviceType)
-                    {
-                        serviceTypeName = serviceType.ToDisplayString(TypeFormat);
-                    }
-                }
-
-                (IReadOnlyList<string> constructorExpressions, IReadOnlyList<string> constructorParameterTypeNames) =
-                    BuildConstructorArguments(classSymbol);
-
-                return new Models.DiServiceInfo(
-                    serviceTypeName,
-                    implementationTypeName,
-                    lifetime,
-                    @namespace,
-                    constructorExpressions,
-                    constructorParameterTypeNames);
+                return null;
             }
 
-            return null;
+            string serviceTypeName = classSymbol.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
+            string implementationTypeName = classSymbol.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
+            Models.GeneratedLifetime lifetime = Models.GeneratedLifetime.Singleton;
+            string? @namespace = classSymbol.ContainingNamespace?.ToDisplayString();
+
+            if (attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is int lifetimeValue)
+            {
+                lifetime = lifetimeValue switch
+                {
+                    0 => Models.GeneratedLifetime.Singleton,
+                    1 => Models.GeneratedLifetime.Scoped,
+                    2 => Models.GeneratedLifetime.Transient,
+                    _ => Models.GeneratedLifetime.Singleton,
+                };
+            }
+
+            foreach (KeyValuePair<string, TypedConstant> namedArgument in attr.NamedArguments)
+            {
+                if (namedArgument.Key == "ServiceType"
+                    && namedArgument.Value.Value is INamedTypeSymbol serviceType)
+                {
+                    serviceTypeName = serviceType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
+                }
+            }
+
+            (IReadOnlyList<string> constructorExpressions, IReadOnlyList<string> constructorParameterTypeNames) =
+                BuildConstructorArguments(classSymbol);
+
+            return new Models.DiServiceInfo(
+                serviceTypeName,
+                implementationTypeName,
+                lifetime,
+                @namespace,
+                constructorExpressions,
+                constructorParameterTypeNames);
         }
 
         /// <summary>
@@ -156,21 +146,17 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
         {
             IMethodSymbol? selected = null;
 
-            foreach (AttributeData attribute in classSymbol.GetAttributes())
+            AttributeData? diConstructorAttribute = GeneratorSyntaxHelpers.FindAttribute(classSymbol, "DiConstructor");
+            if (diConstructorAttribute is not null
+                && diConstructorAttribute.ApplicationSyntaxReference?.GetSyntax() is { } syntax)
             {
-                if (attribute.AttributeClass?.Name is "DiConstructor" or "DiConstructorAttribute")
+                foreach (IMethodSymbol constructor in classSymbol.Constructors)
                 {
-                    if (attribute.ApplicationSyntaxReference?.GetSyntax() is { } syntax)
+                    if (constructor.Locations.Any(location => location.SourceTree == syntax.SyntaxTree)
+                        && constructor.Locations.Any(location => location.SourceSpan == syntax.Span))
                     {
-                        foreach (IMethodSymbol constructor in classSymbol.Constructors)
-                        {
-                            if (constructor.Locations.Any(location => location.SourceTree == syntax.SyntaxTree)
-                                && constructor.Locations.Any(location => location.SourceSpan == syntax.Span))
-                            {
-                                selected = constructor;
-                                break;
-                            }
-                        }
+                        selected = constructor;
+                        break;
                     }
                 }
             }
@@ -189,7 +175,7 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             List<string> parameterTypeNames = new(selected.Parameters.Length);
             foreach (IParameterSymbol parameter in selected.Parameters)
             {
-                string typeName = parameter.Type.ToDisplayString(TypeFormat);
+                string typeName = parameter.Type.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
                 arguments.Add("this.Resolve<" + typeName + ">()");
                 parameterTypeNames.Add(typeName);
             }
@@ -310,6 +296,24 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             StringBuilder builder = new();
             string containerNamespace = string.IsNullOrEmpty(assemblyName) ? "GeneratedContainer" : assemblyName;
 
+            EmitFileHeader(builder, containerNamespace, services);
+            EmitConstructor(builder, services);
+            EmitResolveMethods(builder, services);
+            EmitCreateScope(builder);
+            EmitCreateWith(builder, services);
+            EmitScopeClass(builder);
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// 生成文件头：using、namespace、类声明与字段。
+        /// </summary>
+        private static void EmitFileHeader(
+            StringBuilder builder,
+            string containerNamespace,
+            IReadOnlyList<Models.DiServiceInfo> services)
+        {
             builder.AppendLine("// <auto-generated />");
             builder.AppendLine("#nullable enable");
             builder.AppendLine();
@@ -320,7 +324,6 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine();
 
             HashSet<string> addedNamespaces = new HashSet<string>();
-
             foreach (Models.DiServiceInfo service in services)
             {
                 if (service.Namespace is { Length: > 0 } ns && addedNamespaces.Add(ns))
@@ -342,7 +345,13 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("{");
             builder.AppendLine("    private readonly Dictionary<Type, object> _singletons = new();");
             builder.AppendLine();
+        }
 
+        /// <summary>
+        /// 生成构造函数与服务描述符字段。
+        /// </summary>
+        private static void EmitConstructor(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 初始化由源生成器生成的泛型 DI 容器。");
             builder.AppendLine("    /// 仅注册服务描述符，不做服务实例化，避免构造期出现未注册依赖的级联失败。");
@@ -368,6 +377,22 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
 
             builder.AppendLine("    };");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成 Resolve&lt;T&gt; 与 Resolve(Type) 方法。
+        /// </summary>
+        private static void EmitResolveMethods(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        {
+            EmitResolveGeneric(builder);
+            EmitResolveByType(builder, services);
+        }
+
+        /// <summary>
+        /// 生成 Resolve&lt;T&gt; 泛型方法。
+        /// </summary>
+        private static void EmitResolveGeneric(StringBuilder builder)
+        {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 解析服务。");
             builder.AppendLine("    /// </summary>");
@@ -379,6 +404,13 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("        return (TService)Resolve(typeof(TService));");
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成 Resolve(Type) 非泛型方法。
+        /// </summary>
+        private static void EmitResolveByType(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 解析指定类型的服务。");
             builder.AppendLine("    /// </summary>");
@@ -396,7 +428,6 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("            return existing;");
             builder.AppendLine("        }");
             builder.AppendLine();
-
             foreach (Models.DiServiceInfo service in services)
             {
                 builder.Append("        if (serviceType == typeof(").Append(service.ServiceTypeName)
@@ -418,11 +449,17 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
                     builder.AppendLine(");");
                 }
             }
-
             builder.AppendLine();
             builder.AppendLine("        throw new InvalidOperationException($\"未注册服务：{serviceType.FullName}\");");
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成 CreateScope 方法。
+        /// </summary>
+        private static void EmitCreateScope(StringBuilder builder)
+        {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 创建作用域。");
             builder.AppendLine("    /// </summary>");
@@ -432,6 +469,22 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("        return new GeneratedMviScope(this);");
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成 CreateWith&lt;T&gt; 与 CreateWithCore 方法。
+        /// </summary>
+        private static void EmitCreateWith(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        {
+            EmitCreateWithGeneric(builder);
+            EmitCreateWithCore(builder, services);
+        }
+
+        /// <summary>
+        /// 生成 CreateWith&lt;T&gt; 泛型方法。
+        /// </summary>
+        private static void EmitCreateWithGeneric(StringBuilder builder)
+        {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 按构造参数即时构造服务实例。");
             builder.AppendLine("    /// </summary>");
@@ -449,6 +502,13 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("        return (TService)CreateWithCore(typeof(TService), args);");
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成 CreateWithCore 核心方法。
+        /// </summary>
+        private static void EmitCreateWithCore(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 按构造参数即时构造并返回服务实例的核心实现。");
             builder.AppendLine("    /// 不走单例缓存，按运行时参数匹配公共构造函数。");
@@ -460,6 +520,17 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("            throw new ArgumentNullException(nameof(serviceType));");
             builder.AppendLine("        }");
             builder.AppendLine();
+            EmitCreateWithZeroArgs(builder, services);
+            EmitCreateWithOneArg(builder, services);
+            builder.AppendLine("        throw new InvalidOperationException($\"CreateWith 暂不支持 {args.Length} 个参数的构造：{serviceType.FullName}\");");
+            builder.AppendLine("    }");
+        }
+
+        /// <summary>
+        /// 生成 CreateWithCore 零参分支。
+        /// </summary>
+        private static void EmitCreateWithZeroArgs(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        {
             builder.AppendLine("        if (args.Length == 0)");
             builder.AppendLine("        {");
             foreach (Models.DiServiceInfo service in services)
@@ -475,6 +546,13 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("            throw new InvalidOperationException($\"CreateWith 未注册实现类型：{serviceType.FullName}\");");
             builder.AppendLine("        }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成 CreateWithCore 单参分支。
+        /// </summary>
+        private static void EmitCreateWithOneArg(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        {
             builder.AppendLine("        if (args.Length == 1)");
             builder.AppendLine("        {");
             foreach (Models.DiServiceInfo service in services)
@@ -495,8 +573,13 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("            throw new InvalidOperationException($\"CreateWith 未找到匹配 1 个参数的构造函数：{serviceType.FullName}\");");
             builder.AppendLine("        }");
             builder.AppendLine();
-            builder.AppendLine("        throw new InvalidOperationException($\"CreateWith 暂不支持 {args.Length} 个参数的构造：{serviceType.FullName}\");");
-            builder.AppendLine("    }");
+        }
+
+        /// <summary>
+        /// 生成作用域嵌套类。
+        /// </summary>
+        private static void EmitScopeClass(StringBuilder builder)
+        {
             builder.AppendLine("}");
             builder.AppendLine();
             builder.AppendLine("/// <summary>");
@@ -517,8 +600,6 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             builder.AppendLine("    public TService CreateWith<TService>(params object[] args) where TService : notnull => _container.CreateWith<TService>(args);");
             builder.AppendLine("    public void Dispose() { }");
             builder.AppendLine("}");
-
-            return builder.ToString();
         }
     }
 }

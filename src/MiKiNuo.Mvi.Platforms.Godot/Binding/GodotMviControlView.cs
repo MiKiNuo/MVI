@@ -83,10 +83,20 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
 
     /// <summary>
     /// 执行具体 View 的绑定逻辑。
+    /// <para>
+    /// 子类 <c>override</c> 本方法，通过 <c>ToEventSource().EventName</c> 获取
+    /// <see cref="Application.MVI.EventBinding.IEventSource{TEvent}"/>，
+    /// 调用 <see cref="Presentation.Binding.EventBindingExtensions.BindTo{TEvent}"/> 把事件映射为 Intent 并注册到 <paramref name="bindings"/>。
+    /// 基类提供空实现；不依赖事件绑定的 View 得到零成本默认行为。
+    /// </para>
     /// </summary>
     /// <param name="viewModel">当前 ViewModel。</param>
     /// <param name="bindings">绑定生命周期集合。</param>
-    protected abstract void OnBind(TViewModel viewModel, MviDisposableBag bindings);
+    protected virtual void OnBind(TViewModel viewModel, MviDisposableBag bindings)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(bindings);
+    }
 
     /// <summary>
     /// 组合模式槽位绑定钩子；由源生成器在子类 <c>override</c> 实现，

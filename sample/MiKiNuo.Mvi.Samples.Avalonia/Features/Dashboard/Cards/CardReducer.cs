@@ -152,7 +152,7 @@ public sealed partial class CardReducer
             return MviReduceResult.State<CardState, CardEffect>(state);
         }
 
-        int count = QueryCombinedCount(intent.Filter, state.SelectedBedTypes, state.SelectedBedStatuses);
+        int count = BedCatalog.CountCombined(intent.Filter, state.SelectedBedTypes, state.SelectedBedStatuses);
         return MviReduceResult.State<CardState, CardEffect>(state with
         {
             CurrentBedFilter = intent.Filter,
@@ -190,7 +190,7 @@ public sealed partial class CardReducer
             return MviReduceResult.State<CardState, CardEffect>(state);
         }
 
-        int count = QueryCombinedCount(state.CurrentBedFilter, nextTypes, state.SelectedBedStatuses);
+        int count = BedCatalog.CountCombined(state.CurrentBedFilter, nextTypes, state.SelectedBedStatuses);
         string verb = intent.IsSelected ? "加入" : "移除";
         return MviReduceResult.State<CardState, CardEffect>(state with
         {
@@ -229,7 +229,7 @@ public sealed partial class CardReducer
             return MviReduceResult.State<CardState, CardEffect>(state);
         }
 
-        int count = QueryCombinedCount(state.CurrentBedFilter, state.SelectedBedTypes, nextStatuses);
+        int count = BedCatalog.CountCombined(state.CurrentBedFilter, state.SelectedBedTypes, nextStatuses);
         string verb = intent.IsSelected ? "加入" : "移除";
         return MviReduceResult.State<CardState, CardEffect>(state with
         {
@@ -237,66 +237,6 @@ public sealed partial class CardReducer
             FilteredBedCount = count,
             ActionLog = $"床位状态筛选：{BedRecordRow.ToStatusText(intent.BedStatus)} 已{verb}；当前匹配 {count} 张。",
         });
-    }
-
-    /// <summary>
-    /// 合并三种筛选维度（ComboBox 单选 + CheckBox 多选类型 + CheckBox 多选状态）后统计匹配条数。
-    /// 行为与 <c>CardViewModel.QueryCombined</c> 保持一致；reducer 不能复用 ViewModel 私有方法，因此单独复制。
-    /// </summary>
-    /// <param name="filter">ComboBox 单选筛选维度。</param>
-    /// <param name="typeFilter">CheckBox 多选床位类型集合（空集合 = 不限类型）。</param>
-    /// <param name="statusFilter">CheckBox 多选床位状态集合（空集合 = 不限状态）。</param>
-    /// <returns>三个维度都满足的床位条数。</returns>
-    private static int QueryCombinedCount(
-        BedFilter filter,
-        IReadOnlySet<BedType> typeFilter,
-        IReadOnlySet<BedStatus> statusFilter)
-    {
-        ArgumentNullException.ThrowIfNull(typeFilter);
-        ArgumentNullException.ThrowIfNull(statusFilter);
-
-        BedStatus? filterStatus = filter == BedFilter.All ? null : ToStatusFromFilter(filter);
-        bool filterTypeEmpty = typeFilter.Count == 0;
-        bool filterStatusEmpty = statusFilter.Count == 0;
-        if (filterStatus is null && filterTypeEmpty && filterStatusEmpty)
-        {
-            return BedCatalog.TotalCount;
-        }
-
-        int count = 0;
-        foreach (BedRecord record in BedCatalog.All)
-        {
-            bool typeOk = filterTypeEmpty || typeFilter.Contains(record.Type);
-            bool statusOk = true;
-            if (filterStatus is not null)
-            {
-                statusOk = record.Status == filterStatus.Value;
-            }
-
-            if (statusOk && statusFilter.Count > 0)
-            {
-                statusOk = statusFilter.Contains(record.Status);
-            }
-
-            if (typeOk && statusOk)
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    private static BedStatus ToStatusFromFilter(BedFilter filter)
-    {
-        return filter switch
-        {
-            BedFilter.Open => BedStatus.Open,
-            BedFilter.Occupied => BedStatus.Occupied,
-            BedFilter.Locked => BedStatus.Locked,
-            BedFilter.Isolated => BedStatus.Isolated,
-            _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "未知的 BedFilter 值。"),
-        };
     }
 
     /// <summary>处理 SetFormField。</summary>

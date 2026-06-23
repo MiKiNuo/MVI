@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
+    <ProjectReference Include="..\MiKiNuo.Mvi.Samples.Shared\MiKiNuo.Mvi.Samples.Shared.csproj" />
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <PackageReference Include="GodotSharp" />
     <PackageReference Include="R3" />

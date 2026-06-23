@@ -1,5 +1,7 @@
 using AvaloniaWorkbench = MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
+using SharedWorkbench = MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
+using MiKiNuo.Mvi.Presentation.Events;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -43,7 +45,7 @@ public sealed class EventBindingWorkbenchSampleTests
     {
         await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
 
-        await composition.SearchStore.DispatchAsync(new AvaloniaWorkbench.EventBindingSearchIntent.ChangeQuery(
+        await composition.SearchStore.DispatchAsync(new SharedWorkbench.EventBindingSearchIntent.ChangeQuery(
             new MviTextChangedEventPayload("张三", string.Empty, true, null)));
         await composition.SelectionStore.DispatchAsync(new AvaloniaWorkbench.EventBindingSelectionIntent.ChangeSelection(
             new MviSelectionChangedEventPayload("P10001", 0, null, null)));
@@ -99,16 +101,16 @@ public sealed class EventBindingWorkbenchSampleTests
         string detailViewCode = await File.ReadAllTextAsync(Path.Combine(workbenchDir, "EventBindingDetailPanelView.axaml.cs"));
 
         await Assert.That(searchViewCode).Contains("ToEventSource().TextChanged");
-        await Assert.That(searchViewCode).Contains("EventBinding<");
-        await Assert.That(searchViewCode).Contains("AddEventBinding");
+        await Assert.That(searchViewCode).Contains("BindTo");
+        await Assert.That(searchViewCode).Contains("GetIntentDispatcher");
 
         await Assert.That(selectionViewCode).Contains("ToEventSource().SelectionChanged");
-        await Assert.That(selectionViewCode).Contains("EventBinding<");
-        await Assert.That(selectionViewCode).Contains("AddEventBinding");
+        await Assert.That(selectionViewCode).Contains("BindTo");
+        await Assert.That(selectionViewCode).Contains("GetIntentDispatcher");
 
         await Assert.That(detailViewCode).Contains("ToEventSource().PointerPressed");
         await Assert.That(detailViewCode).Contains("ToEventSource().Click");
-        await Assert.That(detailViewCode).Contains("AddEventBinding");
+        await Assert.That(detailViewCode).Contains("BindTo");
     }
 
     /// <summary>
@@ -135,16 +137,16 @@ public sealed class EventBindingWorkbenchSampleTests
         string detailView = await File.ReadAllTextAsync(detailViewPath);
 
         await Assert.That(searchView).Contains("ToEventSource().TextChanged");
-        await Assert.That(searchView).Contains("EventBinding<string>");
-        await Assert.That(searchView).Contains("AddEventBinding");
+        await Assert.That(searchView).Contains("BindTo");
+        await Assert.That(searchView).Contains("GetIntentDispatcher");
 
         await Assert.That(selectionView).Contains("ToEventSource().ItemSelected");
-        await Assert.That(selectionView).Contains("EventBinding<long>");
-        await Assert.That(selectionView).Contains("AddEventBinding");
+        await Assert.That(selectionView).Contains("BindTo");
+        await Assert.That(selectionView).Contains("GetIntentDispatcher");
 
         await Assert.That(detailView).Contains("ToEventSource().Pressed");
-        await Assert.That(detailView).Contains("EventBinding<EventArgs>");
-        await Assert.That(detailView).Contains("AddEventBinding");
+        await Assert.That(detailView).Contains("BindTo");
+        await Assert.That(detailView).Contains("GetIntentDispatcher");
     }
 
     /// <summary>
@@ -157,7 +159,7 @@ public sealed class EventBindingWorkbenchSampleTests
 
         InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await composition.Mediator.SendAsync<string, AvaloniaWorkbench.EventBindingWorkbenchInteractionResponse>("bad-request");
+            await composition.Mediator.SendAsync<string, SharedWorkbench.EventBindingWorkbenchInteractionResponse>("bad-request");
         });
 
         await Assert.That(ex!.Message).Contains("不支持请求类型");
@@ -173,8 +175,8 @@ public sealed class EventBindingWorkbenchSampleTests
 
         InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await composition.Mediator.SendAsync<AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest, string>(
-                new AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
+            await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionRequest, string>(
+                new SharedWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
         });
 
         await Assert.That(ex!.Message).Contains("无法将响应转换为请求类型");
@@ -188,8 +190,8 @@ public sealed class EventBindingWorkbenchSampleTests
     {
         await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
 
-        await composition.Mediator.SendAsync<AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest, AvaloniaWorkbench.EventBindingWorkbenchInteractionResponse>(
-            new AvaloniaWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
+        await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionRequest, SharedWorkbench.EventBindingWorkbenchInteractionResponse>(
+            new SharedWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
         await Task.Delay(50);
 
         await Assert.That(composition.WorkbenchStore.CurrentState.InteractionCount).IsEqualTo(1);

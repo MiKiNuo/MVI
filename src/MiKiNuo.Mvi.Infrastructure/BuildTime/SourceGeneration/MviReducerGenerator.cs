@@ -55,10 +55,10 @@ public sealed class MviReducerGenerator : MviReducerGeneratorBase
 
             result.Add(new ReducerMethodModel(
                 method.Name,
-                stateType.ToDisplayString(TypeFormat),
-                intentType.ToDisplayString(TypeFormat),
-                rootIntentType.ToDisplayString(TypeFormat),
-                effectType.ToDisplayString(TypeFormat)));
+                stateType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
+                intentType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
+                rootIntentType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
+                effectType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat)));
         }
 
         return result;
@@ -126,15 +126,6 @@ public sealed class MviReducerGenerator : MviReducerGeneratorBase
     /// </summary>
     private static bool HasReduceAttribute(IMethodSymbol method)
     {
-        foreach (AttributeData attribute in method.GetAttributes())
-        {
-            string? attributeName = attribute.AttributeClass?.Name;
-            if (attributeName is "MviReduceAttribute" or "MviReducerAttribute")
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return GeneratorSyntaxHelpers.HasAttribute(method, "MviReduce", "MviReducer");
     }
 }

@@ -5,6 +5,7 @@ using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
+using MiKiNuo.Mvi.Tests.TestSupport;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -134,22 +135,5 @@ public sealed class CardViewModelMultiFilterTests
         stores[key] = store;
         return new CardViewModel(store);
 #pragma warning restore CA2000
-    }
-
-    private sealed class NoopMediator : IMviMediator
-    {
-        /// <summary>
-        /// 同步测试桩实现：始终返回 <c>default</c>，不真正路由请求。
-        /// </summary>
-        /// <typeparam name="TRequest">请求类型（未使用）。</typeparam>
-        /// <typeparam name="TResponse">响应类型（未使用）。</typeparam>
-        /// <param name="request">请求对象（未使用）。</param>
-        /// <param name="cancellationToken">取消标记（未使用）。</param>
-        /// <returns>默认响应。</returns>
-        public ValueTask<TResponse> SendAsync<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken = default)
-            where TRequest : notnull
-        {
-            return ValueTask.FromResult<TResponse>(default!);
-        }
     }
 }

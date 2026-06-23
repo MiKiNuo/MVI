@@ -15,6 +15,6 @@ public sealed class UserProfileEffectDispatcher : IMviEffectDispatcher<UserProfi
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(UserProfileEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("用户资料当前无副作用需要派发。");
     }
 }

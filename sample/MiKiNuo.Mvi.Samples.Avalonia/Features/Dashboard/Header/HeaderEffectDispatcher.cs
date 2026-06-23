@@ -15,6 +15,6 @@ public sealed class HeaderEffectDispatcher : IMviEffectDispatcher<HeaderEffect>
     /// <returns>表示异步分发过程的任务。</returns>
     public ValueTask DispatchAsync(HeaderEffect effect, CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        throw new NotImplementedException("头部组件当前无副作用需要派发。");
     }
 }

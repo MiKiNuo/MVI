@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using TUnit.Assertions;
+﻿﻿﻿﻿﻿﻿using TUnit.Assertions;
 using TUnit.Core;
 
 namespace MiKiNuo.Mvi.Tests;

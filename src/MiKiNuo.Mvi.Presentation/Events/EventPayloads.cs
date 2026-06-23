@@ -1,7 +1,7 @@
-namespace MiKiNuo.Mvi.Platforms.Avalonia.Events;
+namespace MiKiNuo.Mvi.Presentation.Events;
 
 /// <summary>
-/// 表示 Avalonia 平台指针按钮。
+/// 表示平台无关的指针按钮。
 /// </summary>
 public enum MviPointerButton
 {
@@ -31,7 +31,7 @@ public enum MviPointerButton
 }
 
 /// <summary>
-/// 表示 Avalonia 平台输入修饰键。
+/// 表示平台无关的输入修饰键。
 /// </summary>
 [Flags]
 public enum MviInputModifiers

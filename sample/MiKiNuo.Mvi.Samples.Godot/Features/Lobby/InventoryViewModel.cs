@@ -23,23 +23,23 @@ public sealed partial class InventoryViewModel : MviViewModelBase<LobbyState, Lo
     }
 
     /// <summary>获取药水数量。</summary>
-    [MviBind(nameof(LobbyState.PotionCount))]
+    [MviBind("Inventory.PotionCount")]
     public partial int PotionCount { get; private set; }
 
     /// <summary>获取矿石数量。</summary>
-    [MviBind(nameof(LobbyState.OreCount))]
+    [MviBind("Inventory.OreCount")]
     public partial int OreCount { get; private set; }
 
     /// <summary>获取水晶数量。</summary>
-    [MviBind(nameof(LobbyState.CrystalCount))]
+    [MviBind("Inventory.CrystalCount")]
     public partial int CrystalCount { get; private set; }
 
     /// <summary>获取金币数量。</summary>
-    [MviBind(nameof(LobbyState.Gold))]
+    [MviBind("Player.Gold")]
     public partial int Gold { get; private set; }
 
     /// <summary>获取体力值。</summary>
-    [MviBind(nameof(LobbyState.Stamina))]
+    [MviBind("Player.Stamina")]
     public partial int Stamina { get; private set; }
 
     /// <summary>获取大厅命令是否允许执行。</summary>

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
+﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -352,7 +352,7 @@ public sealed class GeneratedContainerTests
 
     /// <summary>
     /// 验证 <c>SampleGeneratedContainer</c> 的 <c>CreateWith</c> 调度：
-    /// 走反射匹配公共构造函数，按运行时参数即时构造新实例。
+    /// 走源生成器生成的类型分支，按运行时参数即时构造新实例。
     /// 此前容器默认抛 <see cref="NotImplementedException"/>；本次补全后，
     /// 父 ViewModel（按构造参数缓存的"按需实例化子 ViewModel"）场景可走容器入口，
     /// 避免绕过容器手写 <c>new ChildViewModel(args)</c>。
@@ -378,25 +378,5 @@ public sealed class GeneratedContainerTests
         SampleGeneratedContainer container = new();
 
         Assert.Throws<InvalidOperationException>(() => container.CreateWith<SampleGreetingViewModel>());
-    }
-
-    /// <summary>
-    /// 表示仅供 <c>SampleGeneratedContainer.CreateWith</c> 测试用的目标 ViewModel。
-    /// </summary>
-    private sealed class SampleGreetingViewModel
-    {
-        /// <summary>
-        /// 使用 <paramref name="greeting"/> 初始化 <see cref="Greeting"/>。
-        /// </summary>
-        /// <param name="greeting">问候语。</param>
-        public SampleGreetingViewModel(string greeting)
-        {
-            Greeting = greeting;
-        }
-
-        /// <summary>
-        /// 获取构造时传入的问候语。
-        /// </summary>
-        public string Greeting { get; }
     }
 }
