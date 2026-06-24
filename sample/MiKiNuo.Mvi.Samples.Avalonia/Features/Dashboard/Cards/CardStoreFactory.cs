@@ -74,9 +74,10 @@ public sealed class CardStoreFactory
         CardDefinition definition,
         IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> allStores)
     {
-        return new MviStore<CardState, CardIntent, CardEffect>(
+        return new MviMutationStore<CardState, CardIntent, CardMutation, CardEffect>(
             initialState: CardState.FromDefinition(definition),
-            reducer: new CardReducer(),
+            intentHandler: new CardIntentHandler(DashboardCardRegistry.All),
+            reducer: new CardMutationReducer(),
             effectDispatcher: new CardEffectDispatcher(mediator, patientRegistry, definition.Key, allStores),
             middlewares: null);
     }

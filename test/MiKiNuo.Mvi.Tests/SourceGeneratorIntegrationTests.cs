@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Samples.Avalonia.Composition;
+﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -66,7 +66,7 @@ public sealed class SourceGeneratorIntegrationTests
     [Test]
     public async Task GeneratedTypes_Should_BeAvailableAtCompileTimeAsync()
     {
-        LoginReducer dispatcher = new();
+        LoginMutationReducer dispatcher = new();
         SampleGeneratedContainer container = new();
         LoginViewModel loginViewModel = container.Resolve<LoginViewModel>();
 

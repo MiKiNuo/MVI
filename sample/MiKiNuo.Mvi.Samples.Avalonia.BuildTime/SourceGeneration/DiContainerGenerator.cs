@@ -94,10 +94,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             SyntaxNode root = tree.GetRoot(cancellationToken);
             SemanticModel semanticModel = compilation.GetSemanticModel(tree);
 
-            foreach (ClassDeclarationSyntax classDeclaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+            // 同时查找 class 和 record 声明，record 用于 Mutation 类型定义。
+            foreach (TypeDeclarationSyntax typeDeclaration in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (semanticModel.GetDeclaredSymbol(classDeclaration, cancellationToken) is INamedTypeSymbol symbol
+                if (semanticModel.GetDeclaredSymbol(typeDeclaration, cancellationToken) is INamedTypeSymbol symbol
                     && symbol.DeclaredAccessibility == Accessibility.Public)
                 {
                     classes.Add(symbol);
@@ -128,6 +129,16 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             INamedTypeSymbol intentType = (INamedTypeSymbol)viewModelBase.TypeArguments[1];
             INamedTypeSymbol effectType = (INamedTypeSymbol)viewModelBase.TypeArguments[2];
 
+            INamedTypeSymbol? mutationType = FindByMetadataName(
+                classesByFullName,
+                containingNamespace + "." + baseName + "Mutation");
+            INamedTypeSymbol? intentHandlerType = FindByMetadataName(
+                classesByFullName,
+                containingNamespace + "." + baseName + "IntentHandler");
+            INamedTypeSymbol? mutationReducerType = FindByMetadataName(
+                classesByFullName,
+                containingNamespace + "." + baseName + "MutationReducer");
+
             INamedTypeSymbol? reducerType = FindByMetadataName(
                 classesByFullName,
                 containingNamespace + "." + baseName + "Reducer");
@@ -135,7 +146,15 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 classesByFullName,
                 containingNamespace + "." + baseName + "EffectDispatcher");
 
-            if (reducerType is null || dispatcherType is null)
+            // 优先使用 Mutation + IntentHandler 模式；
+            // 若存在 Mutation 三件套则用 MutationReducer 替代旧 Reducer，
+            // 否则回退到旧 Reducer + EffectDispatcher 模式。
+            bool isMutationBased = mutationType is not null
+                && intentHandlerType is not null
+                && mutationReducerType is not null;
+
+            INamedTypeSymbol? effectiveReducerType = isMutationBased ? mutationReducerType : reducerType;
+            if (effectiveReducerType is null || dispatcherType is null)
             {
                 continue;
             }
@@ -146,11 +165,14 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 stateType,
                 intentType,
                 effectType,
-                reducerType,
+                effectiveReducerType,
                 dispatcherType,
                 GetDispatcherConstructorKind(dispatcherType),
                 HasStaticInitial(stateType),
-                HasStringCreateInitial(stateType)));
+                HasStringCreateInitial(stateType),
+                isMutationBased ? mutationType : null,
+                isMutationBased ? intentHandlerType : null,
+                isMutationBased ? mutationReducerType : null));
         }
 
         return features
@@ -669,8 +691,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         AppendDescriptor(builder, "global::MiKiNuo.Mvi.Presentation.ViewRegistry.IMviViewRegistry", containerName, "Singleton");
         AppendDescriptor(builder, shell.ViewModelTypeName, shell.ViewModelTypeName, "Singleton");
         AppendDescriptor(builder, login.ViewModelTypeName, login.ViewModelTypeName, "Scoped");
-        AppendDescriptor(builder, StoreType(login), "global::MiKiNuo.Mvi.Application.MVI.Store.MviStore<" + login.StateTypeName + ", " + login.IntentTypeName + ", " + login.EffectTypeName + ">", "Scoped");
-        AppendDescriptor(builder, ReducerInterfaceType(login), login.ReducerTypeName, "Scoped");
+        AppendDescriptor(builder, StoreType(login), "global::MiKiNuo.Mvi.Application.MVI.Store.MviMutationStore<" + login.StateTypeName + ", " + login.IntentTypeName + ", " + login.MutationTypeName + ", " + login.EffectTypeName + ">", "Scoped");
+        AppendDescriptor(builder, MutationReducerInterfaceType(login), login.ReducerTypeName, "Scoped");
         if (dashboard is not null)
         {
             AppendDescriptor(builder, dashboard.ViewModelTypeName, dashboard.ViewModelTypeName, "Singleton");
@@ -1157,13 +1179,11 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.Append("    private ").Append(shell.ViewModelTypeName).AppendLine(" CreateShellViewModel()");
         builder.AppendLine("    {");
-        builder.Append("        ").Append(StoreType(shell)).AppendLine(" store = new MviStore<")
-            .Append("            ").Append(shell.StateTypeName).AppendLine(",")
-            .Append("            ").Append(shell.IntentTypeName).AppendLine(",")
-            .Append("            ").Append(shell.EffectTypeName).AppendLine(">(")
-            .Append("            ").Append(shell.StateTypeName).AppendLine(".Initial,")
-            .Append("            new ").Append(shell.ReducerTypeName).AppendLine("(),")
-            .Append("            new ").Append(shell.DispatcherTypeName).AppendLine("());");
+        builder.Append("        ").Append(StoreType(shell)).Append(" store = ");
+        EmitStoreConstructionHeader(builder, shell);
+        builder.Append("            ").Append(shell.StateTypeName).AppendLine(".Initial,");
+        EmitStoreReducerArgs(builder, shell);
+        builder.Append("            ").Append(CreateDispatcherExpression(shell)).AppendLine(");");
         builder.Append("        return new ").Append(shell.ViewModelTypeName).AppendLine("(store, this, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -1181,14 +1201,25 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append(indent).Append("private ").Append(StoreType(login)).Append(" CreateLoginStore(Func<")
             .Append(StoreType(login)).AppendLine("> storeFactory)");
         builder.Append(indent).AppendLine("{");
-        builder.Append(indent).Append("    ").Append(login.DispatcherTypeName).Append(" dispatcher = new(");
-        builder.Append("Resolve<").Append("global::").Append(login.ViewModelType.ContainingNamespace.ToDisplayString())
-            .Append(".IAuthService>(), this, storeFactory);").AppendLine();
-        builder.Append(indent).Append("    return new MviStore<").Append(login.StateTypeName).Append(", ")
-            .Append(login.IntentTypeName).Append(", ").Append(login.EffectTypeName).AppendLine(">(");
-        builder.Append(indent).Append("        ").Append(login.StateTypeName).AppendLine(".Initial,");
-        builder.Append(indent).Append("        new ").Append(login.ReducerTypeName).AppendLine("(),");
-        builder.Append(indent).AppendLine("        dispatcher);");
+        string authNamespace = "global::" + login.ViewModelType.ContainingNamespace.ToDisplayString();
+        if (login.IsMutationBased)
+        {
+            // Mutation 模式：IntentHandler 直接调用 AuthService，EffectDispatcher 只处理导航。
+            builder.Append(indent).Append("    ").Append(login.DispatcherTypeName).Append(" dispatcher = new(");
+            builder.Append("Resolve<").Append(authNamespace).Append(".ILoginNavigationService>());").AppendLine();
+            builder.Append(indent).Append("    return new MviMutationStore<").Append(login.StateTypeName).Append(", ")
+                .Append(login.IntentTypeName).Append(", ").Append(login.MutationTypeName).Append(", ")
+                .Append(login.EffectTypeName).AppendLine(">(");
+            builder.Append(indent).Append("        ").Append(login.StateTypeName).AppendLine(".Initial,");
+            builder.Append(indent).Append("        new ").Append(login.IntentHandlerTypeName)
+                .Append("(Resolve<").Append(authNamespace).AppendLine(".IAuthService>()),");
+            builder.Append(indent).Append("        new ").Append(login.ReducerTypeName).AppendLine("(),");
+            builder.Append(indent).AppendLine("        dispatcher);");
+        }
+        else
+        {
+            throw new System.InvalidOperationException("Login 特性必须使用 Mutation 模式。");
+        }
         builder.Append(indent).AppendLine("}");
         builder.AppendLine();
     }
@@ -1228,15 +1259,15 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         // 父 VM 不再直接持有 Menu/Header 子 VM 引用；改用 IDashboardChromeFactory 工厂封装 2 个 chrome 子 VM，
         // 由父 VM 在 View 按需解析时通过工厂方法获取，避免"VM-in-VM"反模式。
         builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.DashboardChromeFactory chromeFactory = new(menuViewModel, displayName => CreateHeaderViewModel(displayName));");
-        builder.Append("        _dashboardStore = new MviStore<").Append(dashboard.StateTypeName).Append(", ")
-            .Append(dashboard.IntentTypeName).Append(", ").Append(dashboard.EffectTypeName).AppendLine(">(");
+        builder.Append("        _dashboardStore = ");
+        EmitStoreConstructionHeader(builder, dashboard);
         builder.Append("            new ").Append(dashboard.StateTypeName).AppendLine("(");
         builder.AppendLine("                displayName,");
         builder.AppendLine("                \"门诊工作站\",");
         builder.AppendLine("                \"门诊工作站\",");
         builder.AppendLine("                \"通过源生成组合根创建的 Dashboard 初始页面。\"),");
-        builder.Append("            new ").Append(dashboard.ReducerTypeName).AppendLine("(),");
-        builder.Append("            new ").Append(dashboard.DispatcherTypeName).AppendLine("());");
+        EmitStoreReducerArgs(builder, dashboard);
+        builder.Append("            ").Append(CreateDispatcherExpression(dashboard)).AppendLine(");");
         builder.Append("        _dashboardViewModel = new ").Append(dashboard.ViewModelTypeName)
             .AppendLine("(store: _dashboardStore, chromeFactory: chromeFactory, pageFactory: this, uiDispatcher: ResolveUiDispatcher());");
         builder.AppendLine("        return _dashboardViewModel;");
@@ -1255,13 +1286,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         builder.Append("    private ").Append(header.ViewModelTypeName).AppendLine(" CreateHeaderViewModel(string displayName)");
         builder.AppendLine("    {");
-        builder.Append("        ").Append(StoreType(header)).Append(" store = new MviStore<")
-            .Append(header.StateTypeName).Append(", ").Append(header.IntentTypeName).Append(", ")
-            .Append(header.EffectTypeName).AppendLine(">(");
+        builder.Append("        ").Append(StoreType(header)).Append(" store = ");
+        EmitStoreConstructionHeader(builder, header);
         builder.Append("            new ").Append(header.StateTypeName)
             .AppendLine("(\"HIS/EMR 组合式 Dashboard\", $\"欢迎，{displayName}\"),");
-        builder.Append("            new ").Append(header.ReducerTypeName).AppendLine("(),");
-        builder.Append("            new ").Append(header.DispatcherTypeName).AppendLine("());");
+        EmitStoreReducerArgs(builder, header);
+        builder.Append("            ").Append(CreateDispatcherExpression(header)).AppendLine(");");
         builder.Append("        return new ").Append(header.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -1283,13 +1313,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.PatientQueue.PatientQueueViewModel queueViewModel = CreatePatientQueueViewModel();").AppendLine();
         EmitOutpatientClinicalStores(builder, clinicalEditor, clinicalReminder);
-        builder.Append("        ").Append(StoreType(outpatient)).Append(" store = new MviStore<")
-            .Append(outpatient.StateTypeName).Append(", ").Append(outpatient.IntentTypeName).Append(", ")
-            .Append(outpatient.EffectTypeName).AppendLine(">(");
+        builder.Append("        ").Append(StoreType(outpatient)).Append(" store = ");
+        EmitStoreConstructionHeader(builder, outpatient);
         builder.Append("            new ").Append(outpatient.StateTypeName)
             .AppendLine("(\"等待子组件交互。\"),");
-        builder.Append("            new ").Append(outpatient.ReducerTypeName).AppendLine("(),");
-        builder.Append("            new ").Append(outpatient.DispatcherTypeName).AppendLine("());");
+        EmitStoreReducerArgs(builder, outpatient);
+        builder.Append("            ").Append(CreateDispatcherExpression(outpatient)).AppendLine(");");
         // 父 VM 不再直接持有子 VM 引用；改用 IOutpatientSubPanelFactory 工厂封装 3 个子 VM，
         // 由父 VM 在 View 按需解析时通过工厂方法获取，避免"VM-in-VM"反模式。
         builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.OutpatientSubPanelFactory subPanelFactory = new(queueViewModel, editorViewModel, reminderViewModel);");
@@ -1307,11 +1336,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
     {
         if (clinicalEditor is not null)
         {
-            builder.Append("        ").Append(StoreType(clinicalEditor)).AppendLine(" editorStore = new MviStore<")
-                .Append(clinicalEditor.StateTypeName).Append(", ").Append(clinicalEditor.IntentTypeName).Append(", ")
-                .Append(clinicalEditor.EffectTypeName).AppendLine(">(");
+            builder.Append("        ").Append(StoreType(clinicalEditor)).Append(" editorStore = ");
+            EmitStoreConstructionHeader(builder, clinicalEditor);
             builder.Append("            ").Append(clinicalEditor.StateTypeName).AppendLine(".Initial,");
-            builder.Append("            new ").Append(clinicalEditor.ReducerTypeName).AppendLine("(),");
+            EmitStoreReducerArgs(builder, clinicalEditor);
             builder.Append("            ").Append(CreateDispatcherExpression(clinicalEditor)).AppendLine(");");
             builder.AppendLine("        _clinicalEditorStore = editorStore;");
             builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor.ClinicalEditorViewModel editorViewModel = new ")
@@ -1323,11 +1351,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         }
         if (clinicalReminder is not null)
         {
-            builder.Append("        ").Append(StoreType(clinicalReminder)).AppendLine(" reminderStore = new MviStore<")
-                .Append(clinicalReminder.StateTypeName).Append(", ").Append(clinicalReminder.IntentTypeName).Append(", ")
-                .Append(clinicalReminder.EffectTypeName).AppendLine(">(");
+            builder.Append("        ").Append(StoreType(clinicalReminder)).Append(" reminderStore = ");
+            EmitStoreConstructionHeader(builder, clinicalReminder);
             builder.Append("            ").Append(clinicalReminder.StateTypeName).AppendLine(".Initial,");
-            builder.Append("            new ").Append(clinicalReminder.ReducerTypeName).AppendLine("(),");
+            EmitStoreReducerArgs(builder, clinicalReminder);
             builder.Append("            ").Append(CreateDispatcherExpression(clinicalReminder)).AppendLine(");");
             builder.AppendLine("        _clinicalReminderStore = reminderStore;");
             builder.Append("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder.ClinicalReminderViewModel reminderViewModel = new ")
@@ -1627,9 +1654,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("        string summary,");
         builder.AppendLine("        string layout)");
         builder.AppendLine("    {");
-        builder.Append("        ").Append(StoreType(feature)).Append(" store = new MviStore<")
-            .Append(feature.StateTypeName).Append(", ").Append(feature.IntentTypeName).Append(", ")
-            .Append(feature.EffectTypeName).AppendLine(">(");
+        builder.Append("        ").Append(StoreType(feature)).Append(" store = ");
+        EmitStoreConstructionHeader(builder, feature);
         builder.Append("            new ").Append(feature.StateTypeName).AppendLine("(");
         builder.AppendLine("                title,");
         builder.AppendLine("                summary,");
@@ -1637,7 +1663,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("                \"等待子组件交互。\",");
         builder.AppendLine("                \"等待子组件交互。\",");
         builder.AppendLine("                \"等待子组件交互。\"),");
-        builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
+        EmitStoreReducerArgs(builder, feature);
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.AppendLine("        _businessCompositePageStore = store;");
         builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveCardStoreFactory(), ResolveUiDispatcher());");
@@ -1686,11 +1712,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("    private ").Append(feature.ViewModelTypeName).Append(' ').Append(methodName)
             .AppendLine("(string pageKey)");
         builder.AppendLine("    {");
-        builder.Append("        ").Append(StoreType(feature)).Append(" store = new MviStore<")
-            .Append(feature.StateTypeName).Append(", ").Append(feature.IntentTypeName).Append(", ")
-            .Append(feature.EffectTypeName).AppendLine(">(");
+        builder.Append("        ").Append(StoreType(feature)).Append(" store = ");
+        EmitStoreConstructionHeader(builder, feature);
         builder.Append("            ").Append(feature.StateTypeName).AppendLine(".CreateInitial(pageKey),");
-        builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
+        EmitStoreReducerArgs(builder, feature);
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
@@ -1724,14 +1749,13 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("        ").Append(patientSearch.ViewModelTypeName).AppendLine(" patientSearchViewModel = CreatePatientSearchViewModel(\"架构验证中心\");");
         builder.Append("        ").Append(auditTimeline.ViewModelTypeName).AppendLine(" auditTimelineViewModel = CreateAuditTimelineViewModel(\"架构验证中心\");");
         builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation.ArchitectureValidationPanelFactory panelFactory = new(contextName => CreatePatientSearchViewModel(contextName), contextName => CreateAuditTimelineViewModel(contextName));");
-        builder.Append("        ").Append(StoreType(feature)).Append(" store = new MviStore<")
-            .Append(feature.StateTypeName).Append(", ").Append(feature.IntentTypeName).Append(", ")
-            .Append(feature.EffectTypeName).AppendLine(">(");
+        builder.Append("        ").Append(StoreType(feature)).Append(" store = ");
+        EmitStoreConstructionHeader(builder, feature);
         builder.Append("            new ").Append(feature.StateTypeName).AppendLine("(");
         builder.AppendLine("                \"架构验证中心\",");
         builder.AppendLine("                \"MVI 4 大架构特性（中间件 / 复用组件 / 中介者 / 副作用）的静态展示，端到端验证请到 4 个生产页面。\",");
         builder.AppendLine("                \"等待子组件交互。\"),");
-        builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
+        EmitStoreReducerArgs(builder, feature);
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, panelFactory, ResolveCardStoreFactory(), ResolveUiDispatcher());");
         builder.AppendLine("    }");
@@ -1751,11 +1775,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         builder.Append("    private ").Append(feature.ViewModelTypeName).Append(' ').Append(methodName).AppendLine("()");
         builder.AppendLine("    {");
-        builder.Append("        ").Append(StoreType(feature)).Append(" store = new MviStore<")
-            .Append(feature.StateTypeName).Append(", ").Append(feature.IntentTypeName).Append(", ")
-            .Append(feature.EffectTypeName).AppendLine(">(");
+        builder.Append("        ").Append(StoreType(feature)).Append(" store = ");
+        EmitStoreConstructionHeader(builder, feature);
         builder.Append("            ").Append(stateExpression).AppendLine(",");
-        builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
+        EmitStoreReducerArgs(builder, feature);
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, ResolveUiDispatcher());");
         builder.AppendLine("    }");
@@ -1878,12 +1901,34 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         }
     }
 
-    private static string ReducerInterfaceType(FeatureInfo feature)
+    private static string MutationReducerInterfaceType(FeatureInfo feature)
     {
-        return "global::MiKiNuo.Mvi.Application.MVI.Reducer.IMviReducer<"
+        return "global::MiKiNuo.Mvi.Application.MVI.Reducer.IMviMutationReducer<"
             + feature.StateTypeName + ", "
-            + feature.IntentTypeName + ", "
+            + feature.MutationTypeName + ", "
             + feature.EffectTypeName + ">";
+    }
+
+    /// <summary>发射 Store 构造头部（类型名与左括号）。</summary>
+    private static void EmitStoreConstructionHeader(StringBuilder builder, FeatureInfo feature)
+    {
+        if (!feature.IsMutationBased)
+        {
+            throw new System.InvalidOperationException(feature.BaseName + " 特性必须使用 Mutation 模式。");
+        }
+
+        builder.Append("new MviMutationStore<")
+            .Append(feature.StateTypeName).Append(", ")
+            .Append(feature.IntentTypeName).Append(", ")
+            .Append(feature.MutationTypeName).Append(", ")
+            .Append(feature.EffectTypeName).AppendLine(">(");
+    }
+
+    /// <summary>发射 Store 规约器实参（变更模式额外发射意图处理器）。</summary>
+    private static void EmitStoreReducerArgs(StringBuilder builder, FeatureInfo feature)
+    {
+        builder.Append("            new ").Append(feature.IntentHandlerTypeName).AppendLine("(),");
+        builder.Append("            new ").Append(feature.ReducerTypeName).AppendLine("(),");
     }
 
     private static string StoreType(FeatureInfo feature)
@@ -2028,7 +2073,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             INamedTypeSymbol dispatcherType,
             DispatcherConstructorKind dispatcherConstructorKind,
             bool hasInitial,
-            bool hasStringCreateInitial)
+            bool hasStringCreateInitial,
+            INamedTypeSymbol? mutationType = null,
+            INamedTypeSymbol? intentHandlerType = null,
+            INamedTypeSymbol? mutationReducerType = null)
         {
             BaseName = baseName;
             ViewModelType = viewModelType;
@@ -2041,6 +2089,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             DispatcherConstructorKind = dispatcherConstructorKind;
             HasInitial = hasInitial;
             HasStringCreateInitial = hasStringCreateInitial;
+            MutationTypeName = mutationType is not null ? Format(mutationType) : null;
+            IntentHandlerTypeName = intentHandlerType is not null ? Format(intentHandlerType) : null;
+            MutationReducerTypeName = mutationReducerType is not null ? Format(mutationReducerType) : null;
+            IsMutationBased = mutationType is not null && intentHandlerType is not null && mutationReducerType is not null;
         }
 
         public string BaseName { get; }
@@ -2064,6 +2116,18 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         public bool HasInitial { get; }
 
         public bool HasStringCreateInitial { get; }
+
+        /// <summary>变更类型完整限定名；为 null 表示使用旧 Reducer 模式。</summary>
+        public string? MutationTypeName { get; }
+
+        /// <summary>意图处理器类型完整限定名；为 null 表示使用旧 Reducer 模式。</summary>
+        public string? IntentHandlerTypeName { get; }
+
+        /// <summary>变更规约器类型完整限定名；为 null 表示使用旧 Reducer 模式。</summary>
+        public string? MutationReducerTypeName { get; }
+
+        /// <summary>是否使用 Mutation + IntentHandler 模式。</summary>
+        public bool IsMutationBased { get; }
     }
 
     private sealed class ViewInfo

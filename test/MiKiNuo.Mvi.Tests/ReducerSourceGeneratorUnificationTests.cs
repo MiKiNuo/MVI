@@ -5,8 +5,8 @@ namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
 /// 表示规约器源生成器单/复数统一回归测试。
-/// 框架只保留基于 <see cref="MiKiNuo.Mvi.Application.MVI.Reducer.MviReducerBase{TState, TIntent, TEffect}"/> 的
-/// 实例化规约器（单数 Reducer）模式；旧的静态 <c>*Reducers</c> 工具类 + <c>IMviReducerDispatcher</c> 分发器
+/// 框架只保留基于 <see cref="MiKiNuo.Mvi.Application.MVI.Reducer.MviMutationReducerBase{TState, TMutation, TEffect}"/> 的
+/// 变更规约器模式；旧的静态 <c>*Reducers</c> 工具类 + <c>IMviReducerDispatcher</c> 分发器
 /// 路径已废弃，相关类型和生成器必须全部清出框架与示例代码。
 /// </summary>
 public sealed class ReducerSourceGeneratorUnificationTests

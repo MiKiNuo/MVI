@@ -1,13 +1,11 @@
 using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
-using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
-using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
 using MiKiNuo.Mvi.Presentation.Events;
@@ -64,58 +62,6 @@ public abstract partial record EventBindingDetailEffect : IMviEffect
     /// <param name="ActionKey">动作键。</param>
     /// <param name="ContextText">上下文文本。</param>
     public sealed partial record NotifyDetailEvent(string ActionKey, string ContextText) : EventBindingDetailEffect;
-}
-
-/// <summary>
-/// 表示事件绑定详情面板规约器。
-/// </summary>
-public sealed partial class EventBindingDetailReducer
-    : MviReducerBase<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect>
-{
-    /// <summary>
-    /// 处理详情指针按下意图。
-    /// </summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> Reduce(
-        EventBindingDetailState state,
-        EventBindingDetailIntent.PressDetail intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        string pointerText = $"Pointer {intent.Payload.Button} @ {intent.Payload.PositionX:0},{intent.Payload.PositionY:0}";
-        EventBindingDetailState nextState = state with
-        {
-            LastPointerText = pointerText,
-            StatusText = "详情区域收到 PointerPressed。"
-        };
-
-        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
-            nextState,
-            new EventBindingDetailEffect.NotifyDetailEvent("PointerPressed", pointerText));
-    }
-
-    /// <summary>
-    /// 处理刷新动作意图。
-    /// </summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> Reduce(
-        EventBindingDetailState state,
-        EventBindingDetailIntent.Refresh intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        EventBindingDetailState nextState = state with
-        {
-            RefreshCount = state.RefreshCount + 1,
-            StatusText = $"刷新动作：{intent.Payload.SourceName}"
-        };
-
-        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
-            nextState,
-            new EventBindingDetailEffect.NotifyDetailEvent("Action", intent.Payload.SourceName ?? "Unknown"));
-    }
 }
 
 /// <summary>

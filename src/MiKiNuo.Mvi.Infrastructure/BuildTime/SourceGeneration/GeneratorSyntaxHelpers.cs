@@ -7,7 +7,7 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 
 /// <summary>
 /// 表示 MVI 源生成器共用的语法/符号工具集。
-/// 消除 MviViewModelGenerator、MviReducerGeneratorBase、MviDiContainerGenerator 中重复的
+/// 消除 MviViewModelGenerator、MviMutationReducerGenerator、MviDiContainerGenerator 中重复的
 /// "扫描语法树 → 提取类型符号" 模板代码。
 /// </summary>
 internal static class GeneratorSyntaxHelpers

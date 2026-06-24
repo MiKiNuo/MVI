@@ -5,13 +5,11 @@ using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
-using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
-using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Presentation.Events;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
@@ -127,28 +125,6 @@ public sealed record EventBindingSearchState(
     public static EventBindingSearchState Initial { get; } = new(string.Empty, 0, "等待 LineEdit.TextChanged。");
 }
 
-/// <summary>表示 Godot 搜索面板规约器。</summary>
-public sealed partial class EventBindingSearchReducer
-    : MviReducerBase<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect>
-{
-    /// <summary>处理查询文本变化意图。</summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingSearchState, EventBindingSearchEffect> Reduce(
-        EventBindingSearchState state,
-        EventBindingSearchIntent.ChangeQuery intent)
-    {
-        EventBindingSearchState nextState = state with
-        {
-            QueryText = intent.Payload.Text,
-            EventCount = state.EventCount + 1,
-            StatusText = $"搜索文本变化：{intent.Payload.Text}"
-        };
-        return MviReduceResult.StateAndEffect<EventBindingSearchState, EventBindingSearchEffect>(
-            nextState,
-            new EventBindingSearchEffect.NotifyQueryChanged(intent.Payload.Text));
-    }
-}
-
 /// <summary>表示 Godot 搜索面板副作用分发器。</summary>
 public sealed class EventBindingSearchEffectDispatcher : IMviEffectDispatcher<EventBindingSearchEffect>
 {
@@ -228,30 +204,6 @@ public abstract partial record EventBindingSelectionEffect : IMviEffect
     public sealed partial record NotifySelectionChanged(string MissionId) : EventBindingSelectionEffect;
 }
 
-/// <summary>表示 Godot 选择面板规约器。</summary>
-public sealed partial class EventBindingSelectionReducer
-    : MviReducerBase<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect>
-{
-    /// <summary>处理选择变化意图。</summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> Reduce(
-        EventBindingSelectionState state,
-        EventBindingSelectionIntent.ChangeSelection intent)
-    {
-        string missionId = intent.Payload.SelectedValue?.ToString() ?? "-";
-        EventBindingSelectionState nextState = state with
-        {
-            SelectedMissionId = missionId,
-            SelectedIndex = intent.Payload.SelectedIndex ?? -1,
-            EventCount = state.EventCount + 1,
-            StatusText = $"选择任务：{missionId}"
-        };
-        return MviReduceResult.StateAndEffect<EventBindingSelectionState, EventBindingSelectionEffect>(
-            nextState,
-            new EventBindingSelectionEffect.NotifySelectionChanged(missionId));
-    }
-}
-
 /// <summary>表示 Godot 选择面板副作用分发器。</summary>
 public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher<EventBindingSelectionEffect>
 {
@@ -325,28 +277,6 @@ public abstract partial record EventBindingDetailEffect : IMviEffect
     public sealed partial record NotifyPrepare(string SourceName) : EventBindingDetailEffect;
 }
 
-/// <summary>表示 Godot 详情面板规约器。</summary>
-public sealed partial class EventBindingDetailReducer
-    : MviReducerBase<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect>
-{
-    /// <summary>处理准备动作意图。</summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> Reduce(
-        EventBindingDetailState state,
-        EventBindingDetailIntent.Prepare intent)
-    {
-        string sourceName = intent.Payload.SourceName ?? "Unknown";
-        EventBindingDetailState nextState = state with
-        {
-            PrepareCount = state.PrepareCount + 1,
-            StatusText = $"准备动作：{sourceName}"
-        };
-        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
-            nextState,
-            new EventBindingDetailEffect.NotifyPrepare(sourceName));
-    }
-}
-
 /// <summary>表示 Godot 详情面板副作用分发器。</summary>
 public sealed class EventBindingDetailEffectDispatcher : IMviEffectDispatcher<EventBindingDetailEffect>
 {
@@ -402,10 +332,10 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
 
     private EventBindingWorkbenchComposition(
         EventBindingRecordingMediator mediator,
-        MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> searchStore,
-        MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> selectionStore,
-        MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> detailStore,
-        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore,
+        MviMutationStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchMutation, EventBindingSearchEffect> searchStore,
+        MviMutationStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionMutation, EventBindingSelectionEffect> selectionStore,
+        MviMutationStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailMutation, EventBindingDetailEffect> detailStore,
+        MviMutationStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchMutation, EventBindingWorkbenchEffect> workbenchStore,
         EventBindingSearchViewModel searchViewModel,
         EventBindingSelectionViewModel selectionViewModel,
         EventBindingDetailViewModel detailViewModel,
@@ -426,16 +356,16 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
     public EventBindingRecordingMediator Mediator { get; }
 
     /// <summary>获取搜索面板 Store。</summary>
-    public MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> SearchStore { get; }
+    public MviMutationStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchMutation, EventBindingSearchEffect> SearchStore { get; }
 
     /// <summary>获取选择面板 Store。</summary>
-    public MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> SelectionStore { get; }
+    public MviMutationStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionMutation, EventBindingSelectionEffect> SelectionStore { get; }
 
     /// <summary>获取详情面板 Store。</summary>
-    public MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> DetailStore { get; }
+    public MviMutationStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailMutation, EventBindingDetailEffect> DetailStore { get; }
 
     /// <summary>获取组合根 Store。</summary>
-    public MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> WorkbenchStore { get; }
+    public MviMutationStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchMutation, EventBindingWorkbenchEffect> WorkbenchStore { get; }
 
     /// <summary>获取搜索面板 ViewModel。</summary>
     public EventBindingSearchViewModel SearchViewModel { get; }
@@ -453,27 +383,31 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
     public static EventBindingWorkbenchComposition Create()
     {
         EventBindingRecordingMediator mediator = new();
-        MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> searchStore = new(
+        MviMutationStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchMutation, EventBindingSearchEffect> searchStore = new(
             EventBindingSearchState.Initial,
-            new EventBindingSearchReducer(),
+            new EventBindingSearchIntentHandler(),
+            new EventBindingSearchMutationReducer(),
             new EventBindingSearchEffectDispatcher(mediator));
-        MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> selectionStore = new(
+        MviMutationStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionMutation, EventBindingSelectionEffect> selectionStore = new(
             EventBindingSelectionState.Initial,
-            new EventBindingSelectionReducer(),
+            new EventBindingSelectionIntentHandler(),
+            new EventBindingSelectionMutationReducer(),
             new EventBindingSelectionEffectDispatcher(mediator));
-        MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> detailStore = new(
+        MviMutationStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailMutation, EventBindingDetailEffect> detailStore = new(
             EventBindingDetailState.Initial,
-            new EventBindingDetailReducer(),
+            new EventBindingDetailIntentHandler(),
+            new EventBindingDetailMutationReducer(),
             new EventBindingDetailEffectDispatcher(mediator));
 
         EventBindingSearchViewModel searchViewModel = new(searchStore);
         EventBindingSelectionViewModel selectionViewModel = new(selectionStore);
         EventBindingDetailViewModel detailViewModel = new(detailStore);
-        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore = new(
+        MviMutationStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchMutation, EventBindingWorkbenchEffect> workbenchStore = new(
             new EventBindingWorkbenchState(
                 "等待 Godot 子组件事件。",
                 0),
-            new EventBindingWorkbenchReducer(),
+            new EventBindingWorkbenchIntentHandler(),
+            new EventBindingWorkbenchMutationReducer(),
             new EventBindingWorkbenchEffectDispatcher());
         mediator.SetWorkbenchStore(workbenchStore);
         // 父 VM 不再直接持有 3 个子 VM 引用；改用 IEventBindingPanelFactory 工厂封装 3 个子 VM，

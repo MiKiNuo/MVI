@@ -1,0 +1,59 @@
+using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Reducer;
+
+namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
+
+/// <summary>
+/// 表示事件绑定详情面板变更规约器。
+/// </summary>
+public sealed partial class EventBindingDetailMutationReducer
+    : MviMutationReducerBase<EventBindingDetailState, EventBindingDetailMutation, EventBindingDetailEffect>
+{
+    /// <summary>
+    /// 应用设置最后指针文本变更。
+    /// </summary>
+    /// <param name="state">当前状态。</param>
+    /// <param name="mutation">变更数据。</param>
+    /// <returns>规约结果。</returns>
+    [MviReduceMutation]
+    public MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleSetLastPointerText(
+        EventBindingDetailState state,
+        EventBindingDetailMutation.SetLastPointerText mutation)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(mutation);
+        return MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(state.Apply(mutation));
+    }
+
+    /// <summary>
+    /// 应用设置刷新次数变更。
+    /// </summary>
+    /// <param name="state">当前状态。</param>
+    /// <param name="mutation">变更数据。</param>
+    /// <returns>规约结果。</returns>
+    [MviReduceMutation]
+    public MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleSetRefreshCount(
+        EventBindingDetailState state,
+        EventBindingDetailMutation.SetRefreshCount mutation)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(mutation);
+        return MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(state.Apply(mutation));
+    }
+
+    /// <summary>
+    /// 应用设置状态文本变更。
+    /// </summary>
+    /// <param name="state">当前状态。</param>
+    /// <param name="mutation">变更数据。</param>
+    /// <returns>规约结果。</returns>
+    [MviReduceMutation]
+    public MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleSetStatusText(
+        EventBindingDetailState state,
+        EventBindingDetailMutation.SetStatusText mutation)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(mutation);
+        return MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(state.Apply(mutation));
+    }
+}

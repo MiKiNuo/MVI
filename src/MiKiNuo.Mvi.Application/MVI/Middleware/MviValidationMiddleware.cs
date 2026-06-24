@@ -50,7 +50,7 @@ public sealed class MviValidationMiddleware<TState, TIntent, TEffect> : IMviMidd
     /// <param name="nextMiddleware">下一个中间件。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>规约结果。</returns>
-    public ValueTask<MviReduceResult<TState, TEffect>> InvokeAsync(
+    public async ValueTask<MviReduceResult<TState, TEffect>> InvokeAsync(
         MviMiddlewareContext<TState, TIntent, TEffect> context,
         MviMiddlewareStep<TState, TIntent, TEffect> nextMiddleware,
         CancellationToken cancellationToken)
@@ -68,7 +68,7 @@ public sealed class MviValidationMiddleware<TState, TIntent, TEffect> : IMviMidd
                 "Validation",
                 $"阻断 {typeof(TIntent).Name}：{reason}",
                 0));
-            return ValueTask.FromResult(MviReduceResult.State<TState, TEffect>(context.State));
+            return await ValueTask.FromResult(MviReduceResult.State<TState, TEffect>(context.State));
         }
 
         _diagnosticSink.Record(new MviDiagnosticEntry(
@@ -77,6 +77,6 @@ public sealed class MviValidationMiddleware<TState, TIntent, TEffect> : IMviMidd
             "Validation",
             $"通过 {typeof(TIntent).Name}",
             0));
-        return nextMiddleware(context, cancellationToken);
+        return await nextMiddleware(context, cancellationToken).ConfigureAwait(false);
     }
 }

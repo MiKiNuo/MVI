@@ -39,31 +39,6 @@ public abstract partial record EventBindingWorkbenchIntent : IMviIntent
 public abstract partial record EventBindingWorkbenchEffect : IMviEffect;
 
 /// <summary>
-/// 表示事件绑定组合根规约器。
-/// </summary>
-public sealed partial class EventBindingWorkbenchReducer
-    : MviReducerBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
-{
-    /// <summary>
-    /// 处理记录子组件交互意图。
-    /// </summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingWorkbenchState, EventBindingWorkbenchEffect> Reduce(
-        EventBindingWorkbenchState state,
-        EventBindingWorkbenchIntent.RecordInteraction intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return MviReduceResult.State<EventBindingWorkbenchState, EventBindingWorkbenchEffect>(state with
-        {
-            LastInteractionText = $"{intent.SourceComponent}/{intent.ActionKey}: {intent.ContextText}",
-            InteractionCount = state.InteractionCount + 1
-        });
-    }
-}
-
-/// <summary>
 /// 表示事件绑定组合根空副作用分发器。
 /// </summary>
 public sealed class EventBindingWorkbenchEffectDispatcher : IMviEffectDispatcher<EventBindingWorkbenchEffect>

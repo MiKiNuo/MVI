@@ -26,7 +26,7 @@ public sealed class MviMiddlewarePipeline<TState, TIntent, TEffect>(
     /// <param name="terminalMiddleware">最终规约委托。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>规约结果。</returns>
-    public ValueTask<MviReduceResult<TState, TEffect>> InvokeAsync(
+    public async ValueTask<MviReduceResult<TState, TEffect>> InvokeAsync(
         MviMiddlewareContext<TState, TIntent, TEffect> context,
         MviMiddlewareStep<TState, TIntent, TEffect> terminalMiddleware,
         CancellationToken cancellationToken)
@@ -41,10 +41,10 @@ public sealed class MviMiddlewarePipeline<TState, TIntent, TEffect>(
             IMviMiddleware<TState, TIntent, TEffect> middleware = _middlewares[index];
             MviMiddlewareStep<TState, TIntent, TEffect> nextMiddleware = currentMiddleware;
 
-            currentMiddleware = (pipelineContext, token) =>
-                middleware.InvokeAsync(pipelineContext, nextMiddleware, token);
+            currentMiddleware = async (pipelineContext, token) =>
+                await  middleware.InvokeAsync(pipelineContext, nextMiddleware, token);
         }
 
-        return currentMiddleware(context, cancellationToken);
+        return await currentMiddleware(context, cancellationToken).ConfigureAwait(false);
     }
 }

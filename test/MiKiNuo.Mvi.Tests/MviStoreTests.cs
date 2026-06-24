@@ -16,9 +16,10 @@ public sealed class MviStoreTests
     [Test]
     public async Task DispatchAsync_Should_UpdateCurrentStateAsync()
     {
-        using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
+        using MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginReducer(),
+            new LoginIntentHandler(new FakeAuthService()),
+            new LoginMutationReducer(),
             new EmptyLoginEffectDispatcher());
 
         await store.DispatchAsync(new LoginIntent.ChangeUserName("admin"));

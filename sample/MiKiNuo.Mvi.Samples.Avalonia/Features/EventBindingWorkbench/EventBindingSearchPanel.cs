@@ -1,11 +1,9 @@
 using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
-using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
-using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
@@ -32,37 +30,6 @@ public sealed record EventBindingSearchState(
         string.Empty,
         0,
         "等待 TextChanged 事件。");
-}
-
-/// <summary>
-/// 表示事件绑定搜索面板规约器。
-/// </summary>
-public sealed partial class EventBindingSearchReducer
-    : MviReducerBase<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect>
-{
-    /// <summary>
-    /// 处理文本变化意图。
-    /// </summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingSearchState, EventBindingSearchEffect> Reduce(
-        EventBindingSearchState state,
-        EventBindingSearchIntent.ChangeQuery intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        EventBindingSearchState nextState = state with
-        {
-            QueryText = intent.Payload.Text,
-            PreviousQueryText = intent.Payload.PreviousText ?? string.Empty,
-            EventCount = state.EventCount + 1,
-            StatusText = $"搜索文本变化：{intent.Payload.Text}"
-        };
-
-        return MviReduceResult.StateAndEffect<EventBindingSearchState, EventBindingSearchEffect>(
-            nextState,
-            new EventBindingSearchEffect.NotifyQueryChanged(intent.Payload.Text));
-    }
 }
 
 /// <summary>

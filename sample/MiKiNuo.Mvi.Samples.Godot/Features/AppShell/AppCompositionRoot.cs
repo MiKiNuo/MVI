@@ -30,9 +30,9 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 /// </summary>
 public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI.IMviResolver
 {
-    private readonly MviStore<AppShellState, AppShellIntent, AppShellEffect> _appShellStore;
-    private readonly MviStore<LoginState, LoginIntent, LoginEffect> _loginStore;
-    private readonly MviStore<LobbyState, LobbyIntent, LobbyEffect> _lobbyStore;
+    private readonly MviMutationStore<AppShellState, AppShellIntent, AppShellMutation, AppShellEffect> _appShellStore;
+    private readonly MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect> _loginStore;
+    private readonly MviMutationStore<LobbyState, LobbyIntent, LobbyMutation, LobbyEffect> _lobbyStore;
     private readonly LoginViewModel _loginViewModel;
     private readonly LobbyViewModel _lobbyViewModel;
     private readonly GodotSampleGeneratedViewRegistry _godotViewRegistry;
@@ -48,30 +48,36 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
         ArgumentNullException.ThrowIfNull(uiDispatcher);
 
         GameLogicService gameLogicService = new();
-        AppShellReducer appShellReducer = new();
+        AppShellIntentHandler appShellIntentHandler = new();
+        AppShellMutationReducer appShellMutationReducer = new();
         AppShellEffectDispatcher appShellEffectDispatcher = new();
-        _appShellStore = new MviStore<AppShellState, AppShellIntent, AppShellEffect>(
+        _appShellStore = new MviMutationStore<AppShellState, AppShellIntent, AppShellMutation, AppShellEffect>(
             AppShellState.Initial,
-            appShellReducer,
+            appShellIntentHandler,
+            appShellMutationReducer,
             appShellEffectDispatcher,
             Array.Empty<IMviMiddleware<AppShellState, AppShellIntent, AppShellEffect>>());
 
-        LobbyReducer lobbyReducer = new(gameLogicService);
+        LobbyMutationReducer lobbyMutationReducer = new();
+        LobbyIntentHandler lobbyIntentHandler = new(new FakeLobbyApiService(gameLogicService));
         LobbyEffectDispatcher lobbyEffectDispatcher = new();
         IReadOnlyList<IMviMiddleware<LobbyState, LobbyIntent, LobbyEffect>> lobbyMiddlewares = [new LobbyMiddleware()];
-        _lobbyStore = new MviStore<LobbyState, LobbyIntent, LobbyEffect>(
+        _lobbyStore = new MviMutationStore<LobbyState, LobbyIntent, LobbyMutation, LobbyEffect>(
             LobbyState.Initial,
-            lobbyReducer,
+            lobbyIntentHandler,
+            lobbyMutationReducer,
             lobbyEffectDispatcher,
             lobbyMiddlewares);
 
         GameShellNavigator navigator = new(_appShellStore, _lobbyStore);
         lobbyEffectDispatcher.SetNavigator(navigator);
-        LoginReducer loginReducer = new(gameLogicService);
+        LoginIntentHandler loginIntentHandler = new(new FakeAuthService());
+        LoginMutationReducer loginMutationReducer = new();
         IReadOnlyList<IMviMiddleware<LoginState, LoginIntent, LoginEffect>> loginMiddlewares = [new LoginMiddleware()];
-        _loginStore = new MviStore<LoginState, LoginIntent, LoginEffect>(
+        _loginStore = new MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect>(
             LoginState.Initial,
-            loginReducer,
+            loginIntentHandler,
+            loginMutationReducer,
             new LoginEffectDispatcher(navigator),
             loginMiddlewares);
 

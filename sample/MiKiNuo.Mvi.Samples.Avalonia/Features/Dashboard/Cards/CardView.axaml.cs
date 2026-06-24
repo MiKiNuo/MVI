@@ -24,7 +24,7 @@ public sealed partial class CardView : MviAvaloniaView<CardViewModel>
     /// <summary>
     /// BedOverview 卡片上 ComboBox 选中项变更回调。
     /// 通过 <see cref="CardViewModel.SetBedFilterAsync"/> 派发 <see cref="CardIntent.SetBedFilter"/> 意图，
-    /// 由 <see cref="CardReducer"/> 统一处理；reducer 对非 BedOverview 卡片短路忽略。
+    /// 由 <see cref="CardIntentHandler"/> 统一处理；处理器对非 BedOverview 卡片短路忽略。
     /// </summary>
     /// <param name="sender">触发事件的 ComboBox。</param>
     /// <param name="e">事件参数。</param>

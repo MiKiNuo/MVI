@@ -235,7 +235,7 @@ public sealed class MviMutationApplyGenerator : IIncrementalGenerator
 
     private static string BuildWithExpression(string root, string property, string op, string mutationSource)
     {
-        return BuildWithExpression(root, property, op, mutationSource, root);
+        return BuildWithExpression(root, property, op, mutationSource, $"{root}.{property}");
     }
 
     private static string BuildWithExpression(
@@ -247,8 +247,8 @@ public sealed class MviMutationApplyGenerator : IIncrementalGenerator
     {
         string value = op switch
         {
-            "Add" => $"{stateAccess}.{property} + {mutationSource}",
-            "Append" => $"{stateAccess}.{property} + {mutationSource}",
+            "Add" => $"{stateAccess} + {mutationSource}",
+            "Append" => $"{stateAccess} + {mutationSource}",
             _ => mutationSource,
         };
 

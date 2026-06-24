@@ -14,6 +14,6 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-    <NoWarn>$(NoWarn);NU1603</NoWarn>
+    <NoWarn>$(NoWarn);NU1603;NU1900</NoWarn>
   </PropertyGroup>
 </Project>

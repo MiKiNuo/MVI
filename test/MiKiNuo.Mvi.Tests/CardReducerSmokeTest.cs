@@ -1,5 +1,6 @@
+using MiKiNuo.Mvi.Application.MVI.Effect;
+using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
@@ -11,7 +12,7 @@ using ZLinq;
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示 CardReducer 端到端冒烟测试。
+/// 表示 CardIntentHandler 端到端冒烟测试。
 /// </summary>
 public sealed class CardReducerSmokeTest
 {
@@ -68,7 +69,6 @@ public sealed class CardReducerSmokeTest
     [Test]
     public async Task CardViewModel_FormFieldsList_Should_BeReferenceStableAcrossRebuildsAsync()
     {
-        CardReducer reducer = new();
         IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> siblingStores =
             new Dictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>>();
 #pragma warning disable CA2000
@@ -102,9 +102,10 @@ public sealed class CardReducerSmokeTest
             FilteredBedCount: 0,
             SelectedBedTypes: new HashSet<BedType>(),
             SelectedBedStatuses: new HashSet<BedStatus>());
-        IMviStore<CardState, CardIntent, CardEffect> store = new MviStore<CardState, CardIntent, CardEffect>(
+        IMviStore<CardState, CardIntent, CardEffect> store = new MviMutationStore<CardState, CardIntent, CardMutation, CardEffect>(
             initial,
-            reducer,
+            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardMutationReducer(),
             dispatcher);
         using IDisposable __ = store;
 #pragma warning disable CA2000
@@ -143,31 +144,32 @@ public sealed class CardReducerSmokeTest
     }
 
     /// <summary>
-    /// 验证 CardReducer 的 SetFormField 归约在 Form Card 上更新对应键的值。
+    /// 验证 SetFormField 意图在 Form Card 上更新对应键的值。
     /// </summary>
     [Test]
     public async Task CardReducerSetFormFieldShouldUpdateValueAsync()
     {
-        CardReducer reducer = new();
         CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.AdmissionCoordinator)!;
-        CardState state = CardState.FromDefinition(definition);
+        CardState initial = CardState.FromDefinition(definition);
         string firstKey = definition.FormFields![0].Key;
-        string firstInitial = state.FormValues[0].Value;
+        string firstInitial = initial.FormValues[0].Value;
+        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+            initial,
+            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardMutationReducer(),
+            new NoopCardEffectDispatcher());
 
-        MviReduceResult<CardState, CardEffect> result = reducer.Reduce(
-            state,
-            new CardIntent.SetFormField(firstKey, "TEST-VALUE"));
-        CardState nextState = result.State;
+        await store.DispatchAsync(new CardIntent.SetFormField(firstKey, "TEST-VALUE"));
 
-        await Assert.That(nextState.FormValues[0].Key).IsEqualTo(firstKey);
-        await Assert.That(nextState.FormValues[0].Value).IsEqualTo("TEST-VALUE");
+        await Assert.That(store.CurrentState.FormValues[0].Key).IsEqualTo(firstKey);
+        await Assert.That(store.CurrentState.FormValues[0].Value).IsEqualTo("TEST-VALUE");
         await Assert.That(firstInitial).IsNotEqualTo("TEST-VALUE");
     }
 
     /// <summary>
-    /// 验证 CardReducer 的有参构造函数支持外部注入卡片定义字典，
-    /// reducer 不再直接依赖 DashboardCardRegistry 全局静态，
-    /// 切断 "CardReducer 是纯函数" 的破窗。
+    /// 验证 CardIntentHandler 的有参构造函数支持外部注入卡片定义字典，
+    /// 处理器不再直接依赖 DashboardCardRegistry 全局静态，
+    /// 切断 "处理器是纯函数" 的破窗。
     /// </summary>
     [Test]
     public async Task CardReducer_ConstructorInjection_Should_NotTouchGlobalRegistryAsync()
@@ -197,19 +199,35 @@ public sealed class CardReducerSmokeTest
             [probeKey] = probeDefinition,
         };
 
-        CardReducer reducer = new(isolated);
         CardState state = CardState.FromDefinition(probeDefinition);
-
-        MviReduceResult<CardState, CardEffect> result = reducer.Reduce(
+        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
             state,
-            new CardIntent.SetFormField("ProbeKey", "Hello"));
+            new CardIntentHandler(isolated),
+            new CardMutationReducer(),
+            new NoopCardEffectDispatcher());
 
-        await Assert.That(result.State.FormValues[0].Value).IsEqualTo("Hello");
-        await Assert.That(result.State.StatusText).IsEqualTo("Probe 资料已完整，可以提交");
+        await store.DispatchAsync(new CardIntent.SetFormField("ProbeKey", "Hello"));
+
+        await Assert.That(store.CurrentState.FormValues[0].Value).IsEqualTo("Hello");
+        await Assert.That(store.CurrentState.StatusText).IsEqualTo("Probe 资料已完整，可以提交");
     }
 
     private static Func<IReadOnlyList<CardFormValueEntry>, (bool CanSubmit, string StatusText, string ActionLog)> BuildAlwaysValidProbeValidator()
     {
         return values => (true, "Probe 资料已完整，可以提交", "Probe 提交 -> 探测流程。");
+    }
+
+    private sealed class NoopCardEffectDispatcher : IMviEffectDispatcher<CardEffect>
+    {
+        /// <summary>
+        /// 分发副作用。
+        /// </summary>
+        /// <param name="effect">副作用。</param>
+        /// <param name="cancellationToken">取消标记。</param>
+        /// <returns>表示异步分发过程的任务。</returns>
+        public ValueTask DispatchAsync(CardEffect effect, CancellationToken cancellationToken = default)
+        {
+            return ValueTask.CompletedTask;
+        }
     }
 }

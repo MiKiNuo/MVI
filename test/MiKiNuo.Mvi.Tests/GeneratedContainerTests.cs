@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
+﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -224,7 +224,6 @@ public sealed class GeneratedContainerTests
         SampleGeneratedContainer container = new();
         IMviViewRegistry viewRegistry = container.Resolve<IMviViewRegistry>();
         IMviMediator mediator = container.Resolve<IMviMediator>();
-        CardReducer reducer = new();
         IReadOnlyDictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>> siblingStores =
             new Dictionary<PageKey, IMviStore<CardState, CardIntent, CardEffect>>();
 #pragma warning disable CA2000
@@ -253,9 +252,10 @@ public sealed class GeneratedContainerTests
             FilteredBedCount: BedCatalog.TotalCount,
             SelectedBedTypes: new HashSet<BedType>(),
             SelectedBedStatuses: new HashSet<BedStatus>());
-        using MviStore<CardState, CardIntent, CardEffect> store = new(
+        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
             initialState,
-            reducer,
+            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardMutationReducer(),
             dispatcher);
 #pragma warning disable CA2000
         CardViewModel cardViewModel = new(store);

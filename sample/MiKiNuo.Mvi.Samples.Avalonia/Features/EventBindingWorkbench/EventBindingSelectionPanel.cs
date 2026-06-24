@@ -1,13 +1,11 @@
 using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
-using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
-using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
 using MiKiNuo.Mvi.Presentation.Events;
@@ -63,38 +61,6 @@ public abstract partial record EventBindingSelectionEffect : IMviEffect
     /// </summary>
     /// <param name="PatientId">患者编号。</param>
     public sealed partial record NotifySelectionChanged(string PatientId) : EventBindingSelectionEffect;
-}
-
-/// <summary>
-/// 表示事件绑定选择面板规约器。
-/// </summary>
-public sealed partial class EventBindingSelectionReducer
-    : MviReducerBase<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect>
-{
-    /// <summary>
-    /// 处理选择变化意图。
-    /// </summary>
-    [MviReduce]
-    private MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> Reduce(
-        EventBindingSelectionState state,
-        EventBindingSelectionIntent.ChangeSelection intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        string patientId = intent.Payload.SelectedValue?.ToString() ?? "-";
-        EventBindingSelectionState nextState = state with
-        {
-            SelectedPatientId = patientId,
-            SelectedIndex = intent.Payload.SelectedIndex ?? -1,
-            EventCount = state.EventCount + 1,
-            StatusText = $"选择患者：{patientId}"
-        };
-
-        return MviReduceResult.StateAndEffect<EventBindingSelectionState, EventBindingSelectionEffect>(
-            nextState,
-            new EventBindingSelectionEffect.NotifySelectionChanged(patientId));
-    }
 }
 
 /// <summary>
