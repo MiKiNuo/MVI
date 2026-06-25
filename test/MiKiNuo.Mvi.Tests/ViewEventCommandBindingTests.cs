@@ -483,28 +483,22 @@ public sealed class EventCommandIntentHandler
 /// <summary>
 /// 表示事件命令测试规约器。
 /// </summary>
-public sealed class EventCommandReducer
+public sealed partial class EventCommandReducer
     : MviReducerBase<EventCommandState, EventCommandIntent, EventCommandEffect>
 {
     /// <summary>
-    /// 规约意图产生新状态。
+    /// 处理捕获文本意图产生新状态。
     /// </summary>
     /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
+    /// <param name="intent">捕获文本意图。</param>
     /// <returns>规约结果。</returns>
-    public override MviReduceResult<EventCommandState, EventCommandEffect> Reduce(
+    [MviReduce(typeof(EventCommandIntent.CaptureText))]
+    private static MviReduceResult<EventCommandState, EventCommandEffect> HandleCaptureText(
         EventCommandState state,
-        EventCommandIntent intent)
+        EventCommandIntent.CaptureText intent)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            EventCommandIntent.CaptureText captureText => MviReduceResult.State<EventCommandState, EventCommandEffect>(
-                state with { Text = captureText.Payload.Text, WasUserInitiated = captureText.Payload.IsUserInitiated }),
-            _ => MviReduceResult.State<EventCommandState, EventCommandEffect>(state),
-        };
+        return MviReduceResult.State<EventCommandState, EventCommandEffect>(
+            state with { Text = intent.Payload.Text, WasUserInitiated = intent.Payload.IsUserInitiated });
     }
 }
 

@@ -9,60 +9,16 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示游戏大厅规约器。
 /// </summary>
-public sealed class LobbyReducer
+public sealed partial class LobbyReducer
     : MviReducerBase<LobbyState, LobbyIntent, LobbyEffect>
 {
-    /// <summary>
-    /// 将意图规约为新状态与副作用。
-    /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<LobbyState, LobbyEffect> Reduce(
+    /// <summary>处理设置玩家资料意图。</summary>
+    [MviReduce(typeof(LobbyIntent.SetPlayer))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleSetPlayer(
         LobbyState state,
-        LobbyIntent intent)
+        LobbyIntent.SetPlayer intent)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            LobbyIntent.SetPlayer setPlayer => HandleSetPlayer(state, setPlayer.Profile),
-            LobbyIntent.SelectMissionBoard => SelectPanel(state, LobbyPanelKeys.MissionBoard, "任务大厅", "切换到任务大厅。不同子 MVI 会收到父状态变化。 "),
-            LobbyIntent.SelectHeroRoster => SelectPanel(state, LobbyPanelKeys.HeroRoster, "英雄队伍", "切换到英雄队伍，训练会影响战斗准备页。 "),
-            LobbyIntent.SelectInventory => SelectPanel(state, LobbyPanelKeys.Inventory, "背包仓库", "切换到背包仓库，药水会影响战斗准备页。 "),
-            LobbyIntent.SelectForgeLab => SelectPanel(state, LobbyPanelKeys.ForgeLab, "锻造工坊", "切换到锻造工坊，用同一个 GameLogicService 验证逻辑复用。 "),
-            LobbyIntent.SelectBattlePrep => SelectPanel(state, LobbyPanelKeys.BattlePrep, "战斗准备", "切换到战斗准备，汇总任务、英雄、背包等子 MVI 数据。 "),
-            LobbyIntent.PlayerSet playerSet => MviReduceResult.State<LobbyState, LobbyEffect>(
-                state with { BattleReadyText = playerSet.BattleReadyText }),
-            LobbyIntent.MissionAccepted accepted => HandleMissionAccepted(state, accepted),
-            LobbyIntent.MissionAcceptFailed failed => MviReduceResult.State<LobbyState, LobbyEffect>(
-                AppendActivityLog(state, failed.ErrorMessage ?? "接受任务失败。")),
-            LobbyIntent.MissionCompleted completed => HandleMissionCompleted(state, completed),
-            LobbyIntent.HeroTrained trained => HandleHeroTrained(state, trained),
-            LobbyIntent.HeroTrainFailed failed => MviReduceResult.State<LobbyState, LobbyEffect>(
-                AppendActivityLog(state, failed.ErrorMessage ?? "训练失败。")),
-            LobbyIntent.PotionUsed used => HandlePotionUsed(state, used),
-            LobbyIntent.PotionUseFailed failed => MviReduceResult.State<LobbyState, LobbyEffect>(
-                AppendActivityLog(state, failed.ErrorMessage ?? "使用药水失败。")),
-            LobbyIntent.GoldBoxOpened opened => HandleGoldBoxOpened(state, opened),
-            LobbyIntent.Forged forged => HandleForged(state, forged),
-            LobbyIntent.ForgeFailed failed => MviReduceResult.State<LobbyState, LobbyEffect>(
-                AppendActivityLog(state, failed.ErrorMessage ?? "锻造失败。")),
-            LobbyIntent.BattlePrepared prepared => MviReduceResult.State<LobbyState, LobbyEffect>(
-                state with
-                {
-                    BattleReadyText = prepared.BattleReadyText,
-                    ActivityLog = AppendLogEntry(state.ActivityLog, "战斗准备子 MVI 汇总任务、英雄、背包数据。"),
-                }),
-            LobbyIntent.Logout => MviReduceResult.State<LobbyState, LobbyEffect>(
-                AppendActivityLog(state, "大厅请求退出到登录页。")),
-            _ => MviReduceResult.State<LobbyState, LobbyEffect>(state),
-        };
-    }
-
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleSetPlayer(LobbyState state, PlayerProfile profile)
-    {
+        PlayerProfile profile = intent.Profile;
         LobbyPlayer newPlayer = new(profile.PlayerName, profile.Level, profile.Gold, profile.Stamina);
         LobbyNavigation newNavigation = new(LobbyPanelKeys.MissionBoard, "任务大厅");
         LobbyMission newMission = state.Mission with
@@ -79,6 +35,315 @@ public sealed class LobbyReducer
         return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
     }
 
+    /// <summary>处理选择任务大厅意图。</summary>
+    [MviReduce(typeof(LobbyIntent.SelectMissionBoard))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectMissionBoard(
+        LobbyState state,
+        LobbyIntent.SelectMissionBoard intent)
+    {
+        return SelectPanel(state, LobbyPanelKeys.MissionBoard, "任务大厅", "切换到任务大厅。不同子 MVI 会收到父状态变化。 ");
+    }
+
+    /// <summary>处理选择英雄队伍意图。</summary>
+    [MviReduce(typeof(LobbyIntent.SelectHeroRoster))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectHeroRoster(
+        LobbyState state,
+        LobbyIntent.SelectHeroRoster intent)
+    {
+        return SelectPanel(state, LobbyPanelKeys.HeroRoster, "英雄队伍", "切换到英雄队伍，训练会影响战斗准备页。 ");
+    }
+
+    /// <summary>处理选择背包仓库意图。</summary>
+    [MviReduce(typeof(LobbyIntent.SelectInventory))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectInventory(
+        LobbyState state,
+        LobbyIntent.SelectInventory intent)
+    {
+        return SelectPanel(state, LobbyPanelKeys.Inventory, "背包仓库", "切换到背包仓库，药水会影响战斗准备页。 ");
+    }
+
+    /// <summary>处理选择锻造工坊意图。</summary>
+    [MviReduce(typeof(LobbyIntent.SelectForgeLab))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectForgeLab(
+        LobbyState state,
+        LobbyIntent.SelectForgeLab intent)
+    {
+        return SelectPanel(state, LobbyPanelKeys.ForgeLab, "锻造工坊", "切换到锻造工坊，用同一个 GameLogicService 验证逻辑复用。 ");
+    }
+
+    /// <summary>处理选择战斗准备意图。</summary>
+    [MviReduce(typeof(LobbyIntent.SelectBattlePrep))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectBattlePrep(
+        LobbyState state,
+        LobbyIntent.SelectBattlePrep intent)
+    {
+        return SelectPanel(state, LobbyPanelKeys.BattlePrep, "战斗准备", "切换到战斗准备，汇总任务、英雄、背包等子 MVI 数据。 ");
+    }
+
+    /// <summary>处理玩家资料已设意图。</summary>
+    [MviReduce(typeof(LobbyIntent.PlayerSet))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandlePlayerSet(
+        LobbyState state,
+        LobbyIntent.PlayerSet intent)
+    {
+        return MviReduceResult.State<LobbyState, LobbyEffect>(
+            state with { BattleReadyText = intent.BattleReadyText });
+    }
+
+    /// <summary>处理任务已接受意图。</summary>
+    [MviReduce(typeof(LobbyIntent.MissionAccepted))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionAccepted(
+        LobbyState state,
+        LobbyIntent.MissionAccepted intent)
+    {
+        LobbyMission newMission = new(
+            intent.MissionName,
+            $"已接受 {intent.MissionName}，消耗体力 {intent.StaminaCost}，预计奖励 {intent.Reward}。");
+        LobbyState nextState = state with
+        {
+            Player = state.Player with { Stamina = intent.NewStamina },
+            Mission = newMission,
+            BattleReadyText = intent.BattleReadyText,
+            ActivityLog = AppendLogEntry(state.ActivityLog, $"任务子 MVI 接受 {intent.MissionName}，父 Lobby 状态同步体力和任务。"),
+        };
+        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
+    }
+
+    /// <summary>处理任务接受失败意图。</summary>
+    [MviReduce(typeof(LobbyIntent.MissionAcceptFailed))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionAcceptFailed(
+        LobbyState state,
+        LobbyIntent.MissionAcceptFailed intent)
+    {
+        return MviReduceResult.State<LobbyState, LobbyEffect>(
+            AppendActivityLog(state, intent.ErrorMessage ?? "接受任务失败。"));
+    }
+
+    /// <summary>处理任务已完成意图。</summary>
+    [MviReduce(typeof(LobbyIntent.MissionCompleted))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionCompleted(
+        LobbyState state,
+        LobbyIntent.MissionCompleted intent)
+    {
+        LobbyMission newMission = state.Mission with
+        {
+            MissionProgress = $"{state.Mission.SelectedMission} 已完成，获得金币 {intent.Reward}。奖励由 GameLogicService 计算。",
+        };
+        LobbyState nextState = state with
+        {
+            Player = state.Player with { Gold = state.Player.Gold + intent.Reward },
+            Mission = newMission,
+            BattleReadyText = intent.BattleReadyText,
+            ActivityLog = AppendLogEntry(state.ActivityLog, $"任务完成：{state.Mission.SelectedMission}，奖励 {intent.Reward}。"),
+        };
+        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
+    }
+
+    /// <summary>处理英雄训练成功意图。</summary>
+    [MviReduce(typeof(LobbyIntent.HeroTrained))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleHeroTrained(
+        LobbyState state,
+        LobbyIntent.HeroTrained intent)
+    {
+        LobbyHeroRoster leveledRoster = ApplyHeroLevel(state.HeroRoster, intent.Kind, intent.NewLevel);
+        int nextPower = CalculateHeroPower(leveledRoster.WarriorLevel, leveledRoster.MageLevel, leveledRoster.ArcherLevel);
+        LobbyHeroRoster newRoster = leveledRoster with { HeroTeamPower = nextPower };
+        LobbyState nextState = state with
+        {
+            Player = state.Player with { Gold = state.Player.Gold - intent.Cost },
+            HeroRoster = newRoster,
+            BattleReadyText = intent.BattleReadyText,
+            ActivityLog = AppendLogEntry(state.ActivityLog, $"英雄子 MVI 训练{intent.HeroName}，消耗 {intent.Cost} 金币，战力变为 {nextPower}。"),
+        };
+        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
+    }
+
+    /// <summary>处理英雄训练失败意图。</summary>
+    [MviReduce(typeof(LobbyIntent.HeroTrainFailed))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleHeroTrainFailed(
+        LobbyState state,
+        LobbyIntent.HeroTrainFailed intent)
+    {
+        return MviReduceResult.State<LobbyState, LobbyEffect>(
+            AppendActivityLog(state, intent.ErrorMessage ?? "训练失败。"));
+    }
+
+    /// <summary>处理药水使用成功意图。</summary>
+    [MviReduce(typeof(LobbyIntent.PotionUsed))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandlePotionUsed(
+        LobbyState state,
+        LobbyIntent.PotionUsed intent)
+    {
+        LobbyInventory newInventory = state.Inventory with { PotionCount = intent.NewPotionCount };
+        LobbyState nextState = state with
+        {
+            Inventory = newInventory,
+            Player = state.Player with { Stamina = intent.NewStamina },
+            BattleReadyText = intent.BattleReadyText,
+            ActivityLog = AppendLogEntry(state.ActivityLog, "背包子 MVI 使用药水，体力恢复 20。"),
+        };
+        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
+    }
+
+    /// <summary>处理药水使用失败意图。</summary>
+    [MviReduce(typeof(LobbyIntent.PotionUseFailed))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandlePotionUseFailed(
+        LobbyState state,
+        LobbyIntent.PotionUseFailed intent)
+    {
+        return MviReduceResult.State<LobbyState, LobbyEffect>(
+            AppendActivityLog(state, intent.ErrorMessage ?? "使用药水失败。"));
+    }
+
+    /// <summary>处理金币箱已打开意图。</summary>
+    [MviReduce(typeof(LobbyIntent.GoldBoxOpened))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleGoldBoxOpened(
+        LobbyState state,
+        LobbyIntent.GoldBoxOpened intent)
+    {
+        LobbyState nextState = state with
+        {
+            Player = state.Player with { Gold = state.Player.Gold + intent.Gold },
+            ActivityLog = AppendLogEntry(state.ActivityLog, $"背包子 MVI 打开金币箱，金币增加 {intent.Gold}。"),
+        };
+        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
+    }
+
+    /// <summary>处理锻造成功意图。</summary>
+    [MviReduce(typeof(LobbyIntent.Forged))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleForged(
+        LobbyState state,
+        LobbyIntent.Forged intent)
+    {
+        LobbyInventory newInventory = state.Inventory with
+        {
+            OreCount = state.Inventory.OreCount - intent.OreCost,
+            CrystalCount = state.Inventory.CrystalCount - intent.CrystalCost,
+            ForgeScore = intent.ForgeScore,
+        };
+        int newPower = state.HeroRoster.HeroTeamPower + intent.PowerBonus;
+        LobbyHeroRoster newRoster = state.HeroRoster with { HeroTeamPower = newPower };
+        LobbyState nextState = state with
+        {
+            Inventory = newInventory,
+            HeroRoster = newRoster,
+            BattleReadyText = intent.BattleReadyText,
+            ActivityLog = AppendLogEntry(state.ActivityLog, $"锻造工坊复用 GameLogicService，锻造{intent.ItemName}评分 {intent.ForgeScore}，战力增加 {intent.PowerBonus}。"),
+        };
+        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
+    }
+
+    /// <summary>处理锻造失败意图。</summary>
+    [MviReduce(typeof(LobbyIntent.ForgeFailed))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleForgeFailed(
+        LobbyState state,
+        LobbyIntent.ForgeFailed intent)
+    {
+        return MviReduceResult.State<LobbyState, LobbyEffect>(
+            AppendActivityLog(state, intent.ErrorMessage ?? "锻造失败。"));
+    }
+
+    /// <summary>处理战斗准备完成意图。</summary>
+    [MviReduce(typeof(LobbyIntent.BattlePrepared))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleBattlePrepared(
+        LobbyState state,
+        LobbyIntent.BattlePrepared intent)
+    {
+        return MviReduceResult.State<LobbyState, LobbyEffect>(
+            state with
+            {
+                BattleReadyText = intent.BattleReadyText,
+                ActivityLog = AppendLogEntry(state.ActivityLog, "战斗准备子 MVI 汇总任务、英雄、背包数据。"),
+            });
+    }
+
+    /// <summary>处理退出登录意图。</summary>
+    [MviReduce(typeof(LobbyIntent.Logout))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleLogout(
+        LobbyState state,
+        LobbyIntent.Logout intent)
+    {
+        return MviReduceResult.State<LobbyState, LobbyEffect>(
+            AppendActivityLog(state, "大厅请求退出到登录页。"));
+    }
+
+    /// <summary>处理接受森林任务请求。</summary>
+    [MviReduce(typeof(LobbyIntent.AcceptForestMission))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleAcceptForestMission(
+        LobbyState state,
+        LobbyIntent.AcceptForestMission intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理接受矿洞任务请求。</summary>
+    [MviReduce(typeof(LobbyIntent.AcceptMineMission))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleAcceptMineMission(
+        LobbyState state,
+        LobbyIntent.AcceptMineMission intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理完成任务请求。</summary>
+    [MviReduce(typeof(LobbyIntent.CompleteMission))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleCompleteMission(
+        LobbyState state,
+        LobbyIntent.CompleteMission intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理训练战士请求。</summary>
+    [MviReduce(typeof(LobbyIntent.TrainWarrior))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleTrainWarrior(
+        LobbyState state,
+        LobbyIntent.TrainWarrior intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理训练法师请求。</summary>
+    [MviReduce(typeof(LobbyIntent.TrainMage))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleTrainMage(
+        LobbyState state,
+        LobbyIntent.TrainMage intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理训练弓箭手请求。</summary>
+    [MviReduce(typeof(LobbyIntent.TrainArcher))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleTrainArcher(
+        LobbyState state,
+        LobbyIntent.TrainArcher intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理使用药水请求。</summary>
+    [MviReduce(typeof(LobbyIntent.UsePotion))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleUsePotion(
+        LobbyState state,
+        LobbyIntent.UsePotion intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理打开金币箱请求。</summary>
+    [MviReduce(typeof(LobbyIntent.OpenGoldBox))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleOpenGoldBox(
+        LobbyState state,
+        LobbyIntent.OpenGoldBox intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理锻造武器请求。</summary>
+    [MviReduce(typeof(LobbyIntent.ForgeWeapon))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleForgeWeapon(
+        LobbyState state,
+        LobbyIntent.ForgeWeapon intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理锻造护甲请求。</summary>
+    [MviReduce(typeof(LobbyIntent.ForgeArmor))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandleForgeArmor(
+        LobbyState state,
+        LobbyIntent.ForgeArmor intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
+    /// <summary>处理战斗准备请求。</summary>
+    [MviReduce(typeof(LobbyIntent.PrepareBattle))]
+    private static MviReduceResult<LobbyState, LobbyEffect> HandlePrepareBattle(
+        LobbyState state,
+        LobbyIntent.PrepareBattle intent)
+        => MviReduceResult.State<LobbyState, LobbyEffect>(state);
+
     private static MviReduceResult<LobbyState, LobbyEffect> SelectPanel(
         LobbyState state,
         string panel,
@@ -90,107 +355,6 @@ public sealed class LobbyReducer
         {
             Navigation = newNavigation,
             ActivityLog = AppendLogEntry(state.ActivityLog, log),
-        };
-        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
-    }
-
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionAccepted(
-        LobbyState state,
-        LobbyIntent.MissionAccepted accepted)
-    {
-        LobbyMission newMission = new(
-            accepted.MissionName,
-            $"已接受 {accepted.MissionName}，消耗体力 {accepted.StaminaCost}，预计奖励 {accepted.Reward}。");
-        LobbyState nextState = state with
-        {
-            Player = state.Player with { Stamina = accepted.NewStamina },
-            Mission = newMission,
-            BattleReadyText = accepted.BattleReadyText,
-            ActivityLog = AppendLogEntry(state.ActivityLog, $"任务子 MVI 接受 {accepted.MissionName}，父 Lobby 状态同步体力和任务。"),
-        };
-        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
-    }
-
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionCompleted(
-        LobbyState state,
-        LobbyIntent.MissionCompleted completed)
-    {
-        LobbyMission newMission = state.Mission with
-        {
-            MissionProgress = $"{state.Mission.SelectedMission} 已完成，获得金币 {completed.Reward}。奖励由 GameLogicService 计算。",
-        };
-        LobbyState nextState = state with
-        {
-            Player = state.Player with { Gold = state.Player.Gold + completed.Reward },
-            Mission = newMission,
-            BattleReadyText = completed.BattleReadyText,
-            ActivityLog = AppendLogEntry(state.ActivityLog, $"任务完成：{state.Mission.SelectedMission}，奖励 {completed.Reward}。"),
-        };
-        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
-    }
-
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleHeroTrained(
-        LobbyState state,
-        LobbyIntent.HeroTrained trained)
-    {
-        LobbyHeroRoster leveledRoster = ApplyHeroLevel(state.HeroRoster, trained.Kind, trained.NewLevel);
-        int nextPower = CalculateHeroPower(leveledRoster.WarriorLevel, leveledRoster.MageLevel, leveledRoster.ArcherLevel);
-        LobbyHeroRoster newRoster = leveledRoster with { HeroTeamPower = nextPower };
-        LobbyState nextState = state with
-        {
-            Player = state.Player with { Gold = state.Player.Gold - trained.Cost },
-            HeroRoster = newRoster,
-            BattleReadyText = trained.BattleReadyText,
-            ActivityLog = AppendLogEntry(state.ActivityLog, $"英雄子 MVI 训练{trained.HeroName}，消耗 {trained.Cost} 金币，战力变为 {nextPower}。"),
-        };
-        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
-    }
-
-    private static MviReduceResult<LobbyState, LobbyEffect> HandlePotionUsed(
-        LobbyState state,
-        LobbyIntent.PotionUsed used)
-    {
-        LobbyInventory newInventory = state.Inventory with { PotionCount = used.NewPotionCount };
-        LobbyState nextState = state with
-        {
-            Inventory = newInventory,
-            Player = state.Player with { Stamina = used.NewStamina },
-            BattleReadyText = used.BattleReadyText,
-            ActivityLog = AppendLogEntry(state.ActivityLog, "背包子 MVI 使用药水，体力恢复 20。"),
-        };
-        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
-    }
-
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleGoldBoxOpened(
-        LobbyState state,
-        LobbyIntent.GoldBoxOpened opened)
-    {
-        LobbyState nextState = state with
-        {
-            Player = state.Player with { Gold = state.Player.Gold + opened.Gold },
-            ActivityLog = AppendLogEntry(state.ActivityLog, $"背包子 MVI 打开金币箱，金币增加 {opened.Gold}。"),
-        };
-        return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
-    }
-
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleForged(
-        LobbyState state,
-        LobbyIntent.Forged forged)
-    {
-        LobbyInventory newInventory = state.Inventory with
-        {
-            OreCount = state.Inventory.OreCount - forged.OreCost,
-            CrystalCount = state.Inventory.CrystalCount - forged.CrystalCost,
-            ForgeScore = forged.ForgeScore,
-        };
-        int newPower = state.HeroRoster.HeroTeamPower + forged.PowerBonus;
-        LobbyHeroRoster newRoster = state.HeroRoster with { HeroTeamPower = newPower };
-        LobbyState nextState = state with
-        {
-            Inventory = newInventory,
-            HeroRoster = newRoster,
-            BattleReadyText = forged.BattleReadyText,
-            ActivityLog = AppendLogEntry(state.ActivityLog, $"锻造工坊复用 GameLogicService，锻造{forged.ItemName}评分 {forged.ForgeScore}，战力增加 {forged.PowerBonus}。"),
         };
         return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
     }

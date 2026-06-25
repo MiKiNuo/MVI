@@ -7,31 +7,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEdi
 /// <summary>
 /// 表示门诊病历编辑规约器。
 /// </summary>
-public sealed class ClinicalEditorReducer
+public sealed partial class ClinicalEditorReducer
     : MviReducerBase<ClinicalEditorState, ClinicalEditorIntent, ClinicalEditorEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理加载患者意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> Reduce(
-        ClinicalEditorState state,
-        ClinicalEditorIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            ClinicalEditorIntent.LoadPatient loadPatient => HandleLoadPatient(state, loadPatient),
-            ClinicalEditorIntent.ChangeDiagnosis changeDiagnosis => HandleChangeDiagnosis(state, changeDiagnosis),
-            ClinicalEditorIntent.SaveDraft => HandleSaveDraft(state),
-            _ => MviReduceResult.State<ClinicalEditorState, ClinicalEditorEffect>(state),
-        };
-    }
-
+    [MviReduce(typeof(ClinicalEditorIntent.LoadPatient))]
     private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleLoadPatient(
         ClinicalEditorState state,
         ClinicalEditorIntent.LoadPatient intent)
@@ -50,6 +32,10 @@ public sealed class ClinicalEditorReducer
         return MviReduceResult.State<ClinicalEditorState, ClinicalEditorEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理修改诊断意图。
+    /// </summary>
+    [MviReduce(typeof(ClinicalEditorIntent.ChangeDiagnosis))]
     private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleChangeDiagnosis(
         ClinicalEditorState state,
         ClinicalEditorIntent.ChangeDiagnosis intent)
@@ -66,8 +52,13 @@ public sealed class ClinicalEditorReducer
         return MviReduceResult.State<ClinicalEditorState, ClinicalEditorEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理保存草稿意图。
+    /// </summary>
+    [MviReduce(typeof(ClinicalEditorIntent.SaveDraft))]
     private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleSaveDraft(
-        ClinicalEditorState state)
+        ClinicalEditorState state,
+        ClinicalEditorIntent.SaveDraft intent)
     {
         string message = $"{DateTime.Now:HH:mm:ss} 已保存 {state.PatientName} 的门诊病历草稿。";
 

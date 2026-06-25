@@ -7,31 +7,16 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.PatientQueu
 /// <summary>
 /// 表示门诊队列规约器。
 /// </summary>
-public sealed class PatientQueueReducer
+public sealed partial class PatientQueueReducer
     : MviReducerBase<PatientQueueState, PatientQueueIntent, PatientQueueEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理接诊下一位患者意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<PatientQueueState, PatientQueueEffect> Reduce(
-        PatientQueueState state,
-        PatientQueueIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            PatientQueueIntent.CallNext => HandleCallNext(state),
-            _ => MviReduceResult.State<PatientQueueState, PatientQueueEffect>(state),
-        };
-    }
-
+    [MviReduce(typeof(PatientQueueIntent.CallNext))]
     private static MviReduceResult<PatientQueueState, PatientQueueEffect> HandleCallNext(
-        PatientQueueState state)
+        PatientQueueState state,
+        PatientQueueIntent.CallNext intent)
     {
         int nextIndex = Math.Min(state.CurrentIndex + 1, state.Patients.Count - 1);
         string patientName = state.Patients[nextIndex];

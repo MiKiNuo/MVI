@@ -84,6 +84,21 @@ public static class DiagnosticIdCatalog
     /// <summary>命令 Intent 缺少可用构造函数。</summary>
     public const string MviMissingIntentConstructor = "MVI0003";
 
+    /// <summary>规约器类未标记 partial 修饰符。</summary>
+    public const string MviReducerNotPartial = "MVI0004";
+
+    /// <summary>意图子类型缺少对应的规约方法。</summary>
+    public const string MviReduceHandlerMissing = "MVI0005";
+
+    /// <summary>多个规约方法标记同一意图子类型。</summary>
+    public const string MviReduceHandlerDuplicate = "MVI0006";
+
+    /// <summary>规约方法签名不符合约定。</summary>
+    public const string MviReduceHandlerSignatureInvalid = "MVI0007";
+
+    /// <summary>守卫谓词方法不存在或签名不匹配。</summary>
+    public const string MviReduceGuardInvalid = "MVI0008";
+
     /// <summary>
     /// 获取全部已发布的诊断 ID 列表。
     /// 列表顺序与诊断类别（ARCH → DOC → CODE → MVI）保持一致，便于人工审查。
@@ -112,5 +127,10 @@ public static class DiagnosticIdCatalog
         MviAmbiguousPayloadConstructor,
         MviMissingPayloadConstructor,
         MviMissingIntentConstructor,
+        MviReducerNotPartial,
+        MviReduceHandlerMissing,
+        MviReduceHandlerDuplicate,
+        MviReduceHandlerSignatureInvalid,
+        MviReduceGuardInvalid,
     ];
 }

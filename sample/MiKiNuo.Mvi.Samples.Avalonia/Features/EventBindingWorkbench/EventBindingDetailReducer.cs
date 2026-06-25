@@ -1,4 +1,3 @@
-using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -7,30 +6,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 /// <summary>
 /// 表示事件绑定详情面板规约器。
 /// </summary>
-public sealed class EventBindingDetailReducer
+public sealed partial class EventBindingDetailReducer
     : MviReducerBase<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理详情按下意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> Reduce(
-        EventBindingDetailState state,
-        EventBindingDetailIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            EventBindingDetailIntent.PressDetail pressDetail => HandlePressDetail(state, pressDetail),
-            EventBindingDetailIntent.Refresh refresh => HandleRefresh(state, refresh),
-            _ => MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(state),
-        };
-    }
-
+    [MviReduce(typeof(EventBindingDetailIntent.PressDetail))]
     private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePressDetail(
         EventBindingDetailState state,
         EventBindingDetailIntent.PressDetail intent)
@@ -44,6 +26,10 @@ public sealed class EventBindingDetailReducer
         return MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理刷新意图。
+    /// </summary>
+    [MviReduce(typeof(EventBindingDetailIntent.Refresh))]
     private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleRefresh(
         EventBindingDetailState state,
         EventBindingDetailIntent.Refresh intent)

@@ -8,32 +8,14 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalRem
 /// <summary>
 /// 表示临床提醒规约器。
 /// </summary>
-public sealed class ClinicalReminderReducer
+public sealed partial class ClinicalReminderReducer
     : MviReducerBase<ClinicalReminderState, ClinicalReminderIntent, ClinicalReminderEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理加载患者提醒意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> Reduce(
-        ClinicalReminderState state,
-        ClinicalReminderIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            ClinicalReminderIntent.LoadPatient loadPatient => ReduceLoadPatient(state, loadPatient),
-            ClinicalReminderIntent.ResolvePrimaryAlert => MviReduceResult.State<ClinicalReminderState, ClinicalReminderEffect>(
-                state with { PrimaryAlert = "首要提醒已处理。", HasAlert = false }),
-            _ => MviReduceResult.State<ClinicalReminderState, ClinicalReminderEffect>(state),
-        };
-    }
-
-    private static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> ReduceLoadPatient(
+    [MviReduce(typeof(ClinicalReminderIntent.LoadPatient))]
+    private static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleLoadPatient(
         ClinicalReminderState state,
         ClinicalReminderIntent.LoadPatient intent)
     {
@@ -49,5 +31,17 @@ public sealed class ClinicalReminderReducer
                 PrimaryAlert = alerts[0],
                 HasAlert = true,
             });
+    }
+
+    /// <summary>
+    /// 处理首要提醒意图。
+    /// </summary>
+    [MviReduce(typeof(ClinicalReminderIntent.ResolvePrimaryAlert))]
+    private static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleResolvePrimaryAlert(
+        ClinicalReminderState state,
+        ClinicalReminderIntent.ResolvePrimaryAlert intent)
+    {
+        return MviReduceResult.State<ClinicalReminderState, ClinicalReminderEffect>(
+            state with { PrimaryAlert = "首要提醒已处理。", HasAlert = false });
     }
 }

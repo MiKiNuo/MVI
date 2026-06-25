@@ -1,4 +1,3 @@
-using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -7,30 +6,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.Audit
 /// <summary>
 /// 表示审计时间线规约器。
 /// </summary>
-public sealed class AuditTimelineReducer
+public sealed partial class AuditTimelineReducer
     : MviReducerBase<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理追加条目意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<AuditTimelineState, AuditTimelineEffect> Reduce(
-        AuditTimelineState state,
-        AuditTimelineIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            AuditTimelineIntent.AppendEntry appendEntry => HandleAppendEntry(state, appendEntry),
-            AuditTimelineIntent.ClearEntries => HandleClearEntries(state),
-            _ => MviReduceResult.State<AuditTimelineState, AuditTimelineEffect>(state),
-        };
-    }
-
+    [MviReduce(typeof(AuditTimelineIntent.AppendEntry))]
     private static MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleAppendEntry(
         AuditTimelineState state,
         AuditTimelineIntent.AppendEntry intent)
@@ -50,8 +32,13 @@ public sealed class AuditTimelineReducer
         return MviReduceResult.State<AuditTimelineState, AuditTimelineEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理清空条目意图。
+    /// </summary>
+    [MviReduce(typeof(AuditTimelineIntent.ClearEntries))]
     private static MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleClearEntries(
-        AuditTimelineState state)
+        AuditTimelineState state,
+        AuditTimelineIntent.ClearEntries intent)
     {
         AuditTimelineState newState = state with
         {

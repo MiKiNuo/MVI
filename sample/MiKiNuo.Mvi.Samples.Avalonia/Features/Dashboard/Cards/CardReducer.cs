@@ -10,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 /// <summary>
 /// 表示仪表板卡片规约器。
 /// </summary>
-public sealed class CardReducer
+public sealed partial class CardReducer
     : MviReducerBase<CardState, CardIntent, CardEffect>
 {
     private readonly IReadOnlyDictionary<PageKey, CardDefinition> _definitions;
@@ -25,34 +25,12 @@ public sealed class CardReducer
     }
 
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理主操作意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<CardState, CardEffect> Reduce(
+    [MviReduce(typeof(CardIntent.ExecutePrimaryAction))]
+    private static MviReduceResult<CardState, CardEffect> HandleExecutePrimaryAction(
         CardState state,
-        CardIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            CardIntent.ExecutePrimaryAction => HandleExecutePrimaryAction(state),
-            CardIntent.ExecuteSecondaryAction => HandleExecuteSecondaryAction(state),
-            CardIntent.ApplyExternalUpdate applyExternalUpdate => HandleApplyExternalUpdate(state, applyExternalUpdate),
-            CardIntent.ApplyPatientAdmitted applyPatientAdmitted => HandleApplyPatientAdmitted(state, applyPatientAdmitted),
-            CardIntent.SetFormField setFormField => HandleSetFormField(state, setFormField),
-            CardIntent.SubmitForm => HandleSubmitForm(state),
-            CardIntent.SetBedFilter setBedFilter => HandleSetBedFilter(state, setBedFilter),
-            CardIntent.ToggleBedType toggleBedType => HandleToggleBedType(state, toggleBedType),
-            CardIntent.ToggleBedStatus toggleBedStatus => HandleToggleBedStatus(state, toggleBedStatus),
-            _ => MviReduceResult.State<CardState, CardEffect>(state),
-        };
-    }
-
-    private static MviReduceResult<CardState, CardEffect> HandleExecutePrimaryAction(CardState state)
+        CardIntent.ExecutePrimaryAction intent)
     {
         CardState newState = state with
         {
@@ -62,7 +40,13 @@ public sealed class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(newState);
     }
 
-    private static MviReduceResult<CardState, CardEffect> HandleExecuteSecondaryAction(CardState state)
+    /// <summary>
+    /// 处理次操作意图。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.ExecuteSecondaryAction))]
+    private static MviReduceResult<CardState, CardEffect> HandleExecuteSecondaryAction(
+        CardState state,
+        CardIntent.ExecuteSecondaryAction intent)
     {
         CardState newState = state with
         {
@@ -72,6 +56,10 @@ public sealed class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理外部更新意图。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.ApplyExternalUpdate))]
     private static MviReduceResult<CardState, CardEffect> HandleApplyExternalUpdate(
         CardState state,
         CardIntent.ApplyExternalUpdate intent)
@@ -84,6 +72,10 @@ public sealed class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理入院通知意图。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.ApplyPatientAdmitted))]
     private static MviReduceResult<CardState, CardEffect> HandleApplyPatientAdmitted(
         CardState state,
         CardIntent.ApplyPatientAdmitted intent)
@@ -106,6 +98,10 @@ public sealed class CardReducer
         return $"{patient.Name}（{ageFragment}，{patient.Diagnosis}）于 {patient.AdmittedAt.LocalDateTime:HH:mm} 入院，目标床位 {patient.BedNo}。{noteFragment}".TrimEnd();
     }
 
+    /// <summary>
+    /// 处理表单字段变更。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.SetFormField))]
     private MviReduceResult<CardState, CardEffect> HandleSetFormField(
         CardState state,
         CardIntent.SetFormField intent)
@@ -133,7 +129,13 @@ public sealed class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(newStateWithValidation);
     }
 
-    private MviReduceResult<CardState, CardEffect> HandleSubmitForm(CardState state)
+    /// <summary>
+    /// 处理表单提交意图。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.SubmitForm))]
+    private MviReduceResult<CardState, CardEffect> HandleSubmitForm(
+        CardState state,
+        CardIntent.SubmitForm intent)
     {
         CardDefinition? definition = ResolveDefinition(state);
         if (definition is null || !definition.IsFormCard || definition.Validator is null)
@@ -164,6 +166,10 @@ public sealed class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(submittedState);
     }
 
+    /// <summary>
+    /// 处理床位筛选变更。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.SetBedFilter))]
     private static MviReduceResult<CardState, CardEffect> HandleSetBedFilter(
         CardState state,
         CardIntent.SetBedFilter intent)
@@ -188,6 +194,10 @@ public sealed class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理床位类型切换。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.ToggleBedType))]
     private static MviReduceResult<CardState, CardEffect> HandleToggleBedType(
         CardState state,
         CardIntent.ToggleBedType intent)
@@ -223,6 +233,10 @@ public sealed class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(newState);
     }
 
+    /// <summary>
+    /// 处理床位状态切换。
+    /// </summary>
+    [MviReduce(typeof(CardIntent.ToggleBedStatus))]
     private static MviReduceResult<CardState, CardEffect> HandleToggleBedStatus(
         CardState state,
         CardIntent.ToggleBedStatus intent)

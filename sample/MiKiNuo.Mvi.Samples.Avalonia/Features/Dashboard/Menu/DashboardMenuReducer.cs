@@ -7,34 +7,28 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
 /// <summary>
 /// 表示 Dashboard 菜单规约器。
 /// </summary>
-public sealed class DashboardMenuReducer
+public sealed partial class DashboardMenuReducer
     : MviReducerBase<DashboardMenuState, DashboardMenuIntent, DashboardMenuEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理选择菜单项意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<DashboardMenuState, DashboardMenuEffect> Reduce(
+    [MviReduce(typeof(DashboardMenuIntent.SelectMenuKey))]
+    private static MviReduceResult<DashboardMenuState, DashboardMenuEffect> HandleSelectMenuKey(
         DashboardMenuState state,
-        DashboardMenuIntent intent)
+        DashboardMenuIntent.SelectMenuKey intent)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
+        if (string.Equals(state.SelectedMenuKey, intent.SelectedMenuKey, StringComparison.Ordinal))
         {
-            DashboardMenuIntent.SelectMenuKey selectMenuKey
-                when !string.Equals(state.SelectedMenuKey, selectMenuKey.SelectedMenuKey, StringComparison.Ordinal)
-                => MviReduceResult.StateAndEffect<DashboardMenuState, DashboardMenuEffect>(
-                    state with
-                    {
-                        SelectedMenuKey = selectMenuKey.SelectedMenuKey,
-                        StatusText = $"正在通过 Mediator 切换到：{selectMenuKey.SelectedMenuKey}。",
-                    },
-                    new DashboardMenuEffect.RequestNavigation(selectMenuKey.SelectedMenuKey)),
-            _ => MviReduceResult.State<DashboardMenuState, DashboardMenuEffect>(state),
-        };
+            return MviReduceResult.State<DashboardMenuState, DashboardMenuEffect>(state);
+        }
+
+        return MviReduceResult.StateAndEffect<DashboardMenuState, DashboardMenuEffect>(
+            state with
+            {
+                SelectedMenuKey = intent.SelectedMenuKey,
+                StatusText = $"正在通过 Mediator 切换到：{intent.SelectedMenuKey}。",
+            },
+            new DashboardMenuEffect.RequestNavigation(intent.SelectedMenuKey));
     }
 }

@@ -1,4 +1,3 @@
-using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -7,29 +6,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 /// <summary>
 /// 表示事件绑定选择面板规约器。
 /// </summary>
-public sealed class EventBindingSelectionReducer
+public sealed partial class EventBindingSelectionReducer
     : MviReducerBase<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理选择变更意图。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> Reduce(
-        EventBindingSelectionState state,
-        EventBindingSelectionIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            EventBindingSelectionIntent.ChangeSelection changeSelection => HandleChangeSelection(state, changeSelection),
-            _ => MviReduceResult.State<EventBindingSelectionState, EventBindingSelectionEffect>(state),
-        };
-    }
-
+    [MviReduce(typeof(EventBindingSelectionIntent.ChangeSelection))]
     private static MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
         EventBindingSelectionState state,
         EventBindingSelectionIntent.ChangeSelection intent)

@@ -1,4 +1,3 @@
-using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -7,33 +6,14 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.Patie
 /// <summary>
 /// 表示可复用患者检索规约器。
 /// </summary>
-public sealed class PatientSearchReducer
+public sealed partial class PatientSearchReducer
     : MviReducerBase<PatientSearchState, PatientSearchIntent, PatientSearchEffect>
 {
     /// <summary>
-    /// 将意图规约为新状态与副作用。
+    /// 处理查询文本变更。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <returns>规约结果。</returns>
-    public override MviReduceResult<PatientSearchState, PatientSearchEffect> Reduce(
-        PatientSearchState state,
-        PatientSearchIntent intent)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return intent switch
-        {
-            PatientSearchIntent.ChangeQueryText changeQueryText => ReduceChangeQueryText(state, changeQueryText),
-            PatientSearchIntent.SearchPatient => ReduceSearchPatient(state),
-            PatientSearchIntent.SelectFirstPatient => ReduceSelectFirstPatient(state),
-            PatientSearchIntent.ApplyExternalUpdate applyExternalUpdate => ReduceApplyExternalUpdate(state, applyExternalUpdate),
-            _ => MviReduceResult.State<PatientSearchState, PatientSearchEffect>(state),
-        };
-    }
-
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> ReduceChangeQueryText(
+    [MviReduce(typeof(PatientSearchIntent.ChangeQueryText))]
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleChangeQueryText(
         PatientSearchState state,
         PatientSearchIntent.ChangeQueryText intent)
     {
@@ -49,8 +29,13 @@ public sealed class PatientSearchReducer
             });
     }
 
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> ReduceSearchPatient(
-        PatientSearchState state)
+    /// <summary>
+    /// 处理检索患者意图。
+    /// </summary>
+    [MviReduce(typeof(PatientSearchIntent.SearchPatient))]
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSearchPatient(
+        PatientSearchState state,
+        PatientSearchIntent.SearchPatient intent)
     {
         if (!state.CanSearch)
         {
@@ -70,8 +55,13 @@ public sealed class PatientSearchReducer
             });
     }
 
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> ReduceSelectFirstPatient(
-        PatientSearchState state)
+    /// <summary>
+    /// 处理选择首位患者。
+    /// </summary>
+    [MviReduce(typeof(PatientSearchIntent.SelectFirstPatient))]
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSelectFirstPatient(
+        PatientSearchState state,
+        PatientSearchIntent.SelectFirstPatient intent)
     {
         string statusText = state.CanSelectPatient
             ? $"已选择患者 {state.SelectedPatientName}，正在请求父页面协调兄弟 MVI。"
@@ -80,7 +70,11 @@ public sealed class PatientSearchReducer
             state with { StatusText = statusText });
     }
 
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> ReduceApplyExternalUpdate(
+    /// <summary>
+    /// 处理外部更新意图。
+    /// </summary>
+    [MviReduce(typeof(PatientSearchIntent.ApplyExternalUpdate))]
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleApplyExternalUpdate(
         PatientSearchState state,
         PatientSearchIntent.ApplyExternalUpdate intent)
     {
