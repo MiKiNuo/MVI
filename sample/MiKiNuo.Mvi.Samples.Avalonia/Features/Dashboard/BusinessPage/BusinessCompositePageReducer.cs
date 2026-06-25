@@ -13,7 +13,7 @@ public sealed partial class BusinessCompositePageReducer
     /// 处理刷新页面布局意图。
     /// </summary>
     [MviReduce(typeof(BusinessCompositePageIntent.RefreshPage))]
-    private static MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> HandleRefreshPage(
+    private MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> HandleRefreshPage(
         BusinessCompositePageState state,
         BusinessCompositePageIntent.RefreshPage intent)
     {
@@ -24,7 +24,7 @@ public sealed partial class BusinessCompositePageReducer
     /// 处理更新上下文意图。
     /// </summary>
     [MviReduce(typeof(BusinessCompositePageIntent.UpdateContext))]
-    private static MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> HandleUpdateContext(
+    private MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> HandleUpdateContext(
         BusinessCompositePageState state,
         BusinessCompositePageIntent.UpdateContext intent)
     {
@@ -36,7 +36,7 @@ public sealed partial class BusinessCompositePageReducer
     /// 处理追加交互日志意图。
     /// </summary>
     [MviReduce(typeof(BusinessCompositePageIntent.AppendInteractionLog))]
-    private static MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> HandleAppendInteractionLog(
+    private MviReduceResult<BusinessCompositePageState, BusinessCompositePageEffect> HandleAppendInteractionLog(
         BusinessCompositePageState state,
         BusinessCompositePageIntent.AppendInteractionLog intent)
     {
@@ -44,7 +44,7 @@ public sealed partial class BusinessCompositePageReducer
             state with { InteractionLog = ComputeNextLog(state.InteractionLog, intent.Message) });
     }
 
-    private static string ComputeNextLog(string currentLog, string message)
+    private string ComputeNextLog(string currentLog, string message)
     {
         return string.IsNullOrWhiteSpace(currentLog)
             ? message

@@ -14,7 +14,7 @@ public sealed partial class ClinicalEditorReducer
     /// 处理加载患者意图。
     /// </summary>
     [MviReduce(typeof(ClinicalEditorIntent.LoadPatient))]
-    private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleLoadPatient(
+    private MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleLoadPatient(
         ClinicalEditorState state,
         ClinicalEditorIntent.LoadPatient intent)
     {
@@ -36,7 +36,7 @@ public sealed partial class ClinicalEditorReducer
     /// 处理修改诊断意图。
     /// </summary>
     [MviReduce(typeof(ClinicalEditorIntent.ChangeDiagnosis))]
-    private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleChangeDiagnosis(
+    private MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleChangeDiagnosis(
         ClinicalEditorState state,
         ClinicalEditorIntent.ChangeDiagnosis intent)
     {
@@ -56,7 +56,7 @@ public sealed partial class ClinicalEditorReducer
     /// 处理保存草稿意图。
     /// </summary>
     [MviReduce(typeof(ClinicalEditorIntent.SaveDraft))]
-    private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleSaveDraft(
+    private MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleSaveDraft(
         ClinicalEditorState state,
         ClinicalEditorIntent.SaveDraft intent)
     {

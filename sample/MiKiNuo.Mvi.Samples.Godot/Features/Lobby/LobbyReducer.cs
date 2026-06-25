@@ -14,7 +14,7 @@ public sealed partial class LobbyReducer
 {
     /// <summary>处理设置玩家资料意图。</summary>
     [MviReduce(typeof(LobbyIntent.SetPlayer))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleSetPlayer(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleSetPlayer(
         LobbyState state,
         LobbyIntent.SetPlayer intent)
     {
@@ -37,7 +37,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理选择任务大厅意图。</summary>
     [MviReduce(typeof(LobbyIntent.SelectMissionBoard))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectMissionBoard(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleSelectMissionBoard(
         LobbyState state,
         LobbyIntent.SelectMissionBoard intent)
     {
@@ -46,7 +46,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理选择英雄队伍意图。</summary>
     [MviReduce(typeof(LobbyIntent.SelectHeroRoster))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectHeroRoster(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleSelectHeroRoster(
         LobbyState state,
         LobbyIntent.SelectHeroRoster intent)
     {
@@ -55,7 +55,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理选择背包仓库意图。</summary>
     [MviReduce(typeof(LobbyIntent.SelectInventory))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectInventory(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleSelectInventory(
         LobbyState state,
         LobbyIntent.SelectInventory intent)
     {
@@ -64,7 +64,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理选择锻造工坊意图。</summary>
     [MviReduce(typeof(LobbyIntent.SelectForgeLab))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectForgeLab(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleSelectForgeLab(
         LobbyState state,
         LobbyIntent.SelectForgeLab intent)
     {
@@ -73,7 +73,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理选择战斗准备意图。</summary>
     [MviReduce(typeof(LobbyIntent.SelectBattlePrep))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleSelectBattlePrep(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleSelectBattlePrep(
         LobbyState state,
         LobbyIntent.SelectBattlePrep intent)
     {
@@ -82,7 +82,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理玩家资料已设意图。</summary>
     [MviReduce(typeof(LobbyIntent.PlayerSet))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandlePlayerSet(
+    private MviReduceResult<LobbyState, LobbyEffect> HandlePlayerSet(
         LobbyState state,
         LobbyIntent.PlayerSet intent)
     {
@@ -92,7 +92,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理任务已接受意图。</summary>
     [MviReduce(typeof(LobbyIntent.MissionAccepted))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionAccepted(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleMissionAccepted(
         LobbyState state,
         LobbyIntent.MissionAccepted intent)
     {
@@ -111,7 +111,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理任务接受失败意图。</summary>
     [MviReduce(typeof(LobbyIntent.MissionAcceptFailed))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionAcceptFailed(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleMissionAcceptFailed(
         LobbyState state,
         LobbyIntent.MissionAcceptFailed intent)
     {
@@ -121,7 +121,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理任务已完成意图。</summary>
     [MviReduce(typeof(LobbyIntent.MissionCompleted))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleMissionCompleted(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleMissionCompleted(
         LobbyState state,
         LobbyIntent.MissionCompleted intent)
     {
@@ -141,7 +141,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理英雄训练成功意图。</summary>
     [MviReduce(typeof(LobbyIntent.HeroTrained))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleHeroTrained(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleHeroTrained(
         LobbyState state,
         LobbyIntent.HeroTrained intent)
     {
@@ -160,7 +160,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理英雄训练失败意图。</summary>
     [MviReduce(typeof(LobbyIntent.HeroTrainFailed))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleHeroTrainFailed(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleHeroTrainFailed(
         LobbyState state,
         LobbyIntent.HeroTrainFailed intent)
     {
@@ -170,7 +170,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理药水使用成功意图。</summary>
     [MviReduce(typeof(LobbyIntent.PotionUsed))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandlePotionUsed(
+    private MviReduceResult<LobbyState, LobbyEffect> HandlePotionUsed(
         LobbyState state,
         LobbyIntent.PotionUsed intent)
     {
@@ -187,7 +187,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理药水使用失败意图。</summary>
     [MviReduce(typeof(LobbyIntent.PotionUseFailed))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandlePotionUseFailed(
+    private MviReduceResult<LobbyState, LobbyEffect> HandlePotionUseFailed(
         LobbyState state,
         LobbyIntent.PotionUseFailed intent)
     {
@@ -197,7 +197,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理金币箱已打开意图。</summary>
     [MviReduce(typeof(LobbyIntent.GoldBoxOpened))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleGoldBoxOpened(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleGoldBoxOpened(
         LobbyState state,
         LobbyIntent.GoldBoxOpened intent)
     {
@@ -211,7 +211,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理锻造成功意图。</summary>
     [MviReduce(typeof(LobbyIntent.Forged))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleForged(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleForged(
         LobbyState state,
         LobbyIntent.Forged intent)
     {
@@ -235,7 +235,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理锻造失败意图。</summary>
     [MviReduce(typeof(LobbyIntent.ForgeFailed))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleForgeFailed(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleForgeFailed(
         LobbyState state,
         LobbyIntent.ForgeFailed intent)
     {
@@ -245,7 +245,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理战斗准备完成意图。</summary>
     [MviReduce(typeof(LobbyIntent.BattlePrepared))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleBattlePrepared(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleBattlePrepared(
         LobbyState state,
         LobbyIntent.BattlePrepared intent)
     {
@@ -259,7 +259,7 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理退出登录意图。</summary>
     [MviReduce(typeof(LobbyIntent.Logout))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleLogout(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleLogout(
         LobbyState state,
         LobbyIntent.Logout intent)
     {
@@ -269,82 +269,82 @@ public sealed partial class LobbyReducer
 
     /// <summary>处理接受森林任务请求。</summary>
     [MviReduce(typeof(LobbyIntent.AcceptForestMission))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleAcceptForestMission(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleAcceptForestMission(
         LobbyState state,
         LobbyIntent.AcceptForestMission intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理接受矿洞任务请求。</summary>
     [MviReduce(typeof(LobbyIntent.AcceptMineMission))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleAcceptMineMission(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleAcceptMineMission(
         LobbyState state,
         LobbyIntent.AcceptMineMission intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理完成任务请求。</summary>
     [MviReduce(typeof(LobbyIntent.CompleteMission))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleCompleteMission(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleCompleteMission(
         LobbyState state,
         LobbyIntent.CompleteMission intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理训练战士请求。</summary>
     [MviReduce(typeof(LobbyIntent.TrainWarrior))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleTrainWarrior(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleTrainWarrior(
         LobbyState state,
         LobbyIntent.TrainWarrior intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理训练法师请求。</summary>
     [MviReduce(typeof(LobbyIntent.TrainMage))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleTrainMage(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleTrainMage(
         LobbyState state,
         LobbyIntent.TrainMage intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理训练弓箭手请求。</summary>
     [MviReduce(typeof(LobbyIntent.TrainArcher))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleTrainArcher(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleTrainArcher(
         LobbyState state,
         LobbyIntent.TrainArcher intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理使用药水请求。</summary>
     [MviReduce(typeof(LobbyIntent.UsePotion))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleUsePotion(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleUsePotion(
         LobbyState state,
         LobbyIntent.UsePotion intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理打开金币箱请求。</summary>
     [MviReduce(typeof(LobbyIntent.OpenGoldBox))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleOpenGoldBox(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleOpenGoldBox(
         LobbyState state,
         LobbyIntent.OpenGoldBox intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理锻造武器请求。</summary>
     [MviReduce(typeof(LobbyIntent.ForgeWeapon))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleForgeWeapon(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleForgeWeapon(
         LobbyState state,
         LobbyIntent.ForgeWeapon intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理锻造护甲请求。</summary>
     [MviReduce(typeof(LobbyIntent.ForgeArmor))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandleForgeArmor(
+    private MviReduceResult<LobbyState, LobbyEffect> HandleForgeArmor(
         LobbyState state,
         LobbyIntent.ForgeArmor intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
     /// <summary>处理战斗准备请求。</summary>
     [MviReduce(typeof(LobbyIntent.PrepareBattle))]
-    private static MviReduceResult<LobbyState, LobbyEffect> HandlePrepareBattle(
+    private MviReduceResult<LobbyState, LobbyEffect> HandlePrepareBattle(
         LobbyState state,
         LobbyIntent.PrepareBattle intent)
         => MviReduceResult.State<LobbyState, LobbyEffect>(state);
 
-    private static MviReduceResult<LobbyState, LobbyEffect> SelectPanel(
+    private MviReduceResult<LobbyState, LobbyEffect> SelectPanel(
         LobbyState state,
         string panel,
         string title,
@@ -359,7 +359,7 @@ public sealed partial class LobbyReducer
         return MviReduceResult.State<LobbyState, LobbyEffect>(nextState);
     }
 
-    private static LobbyHeroRoster ApplyHeroLevel(LobbyHeroRoster roster, HeroKind kind, int newLevel)
+    private LobbyHeroRoster ApplyHeroLevel(LobbyHeroRoster roster, HeroKind kind, int newLevel)
     {
         return kind switch
         {
@@ -370,17 +370,17 @@ public sealed partial class LobbyReducer
         };
     }
 
-    private static int CalculateHeroPower(int warriorLevel, int mageLevel, int archerLevel)
+    private int CalculateHeroPower(int warriorLevel, int mageLevel, int archerLevel)
     {
         return warriorLevel * 12 + mageLevel * 15 + archerLevel * 10;
     }
 
-    private static LobbyState AppendActivityLog(LobbyState state, string message)
+    private LobbyState AppendActivityLog(LobbyState state, string message)
     {
         return state with { ActivityLog = AppendLogEntry(state.ActivityLog, message) };
     }
 
-    private static string AppendLogEntry(string activityLog, string message)
+    private string AppendLogEntry(string activityLog, string message)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
         string timestamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);

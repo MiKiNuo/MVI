@@ -13,7 +13,7 @@ public sealed partial class DashboardReducer
     /// 处理显示业务页面意图。
     /// </summary>
     [MviReduce(typeof(DashboardIntent.ShowPage))]
-    private static MviReduceResult<DashboardState, DashboardEffect> HandleShowPage(
+    private MviReduceResult<DashboardState, DashboardEffect> HandleShowPage(
         DashboardState state,
         DashboardIntent.ShowPage intent)
     {

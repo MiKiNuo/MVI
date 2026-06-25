@@ -28,7 +28,7 @@ public sealed partial class CardReducer
     /// 处理主操作意图。
     /// </summary>
     [MviReduce(typeof(CardIntent.ExecutePrimaryAction))]
-    private static MviReduceResult<CardState, CardEffect> HandleExecutePrimaryAction(
+    private MviReduceResult<CardState, CardEffect> HandleExecutePrimaryAction(
         CardState state,
         CardIntent.ExecutePrimaryAction intent)
     {
@@ -44,7 +44,7 @@ public sealed partial class CardReducer
     /// 处理次操作意图。
     /// </summary>
     [MviReduce(typeof(CardIntent.ExecuteSecondaryAction))]
-    private static MviReduceResult<CardState, CardEffect> HandleExecuteSecondaryAction(
+    private MviReduceResult<CardState, CardEffect> HandleExecuteSecondaryAction(
         CardState state,
         CardIntent.ExecuteSecondaryAction intent)
     {
@@ -60,7 +60,7 @@ public sealed partial class CardReducer
     /// 处理外部更新意图。
     /// </summary>
     [MviReduce(typeof(CardIntent.ApplyExternalUpdate))]
-    private static MviReduceResult<CardState, CardEffect> HandleApplyExternalUpdate(
+    private MviReduceResult<CardState, CardEffect> HandleApplyExternalUpdate(
         CardState state,
         CardIntent.ApplyExternalUpdate intent)
     {
@@ -76,7 +76,7 @@ public sealed partial class CardReducer
     /// 处理入院通知意图。
     /// </summary>
     [MviReduce(typeof(CardIntent.ApplyPatientAdmitted))]
-    private static MviReduceResult<CardState, CardEffect> HandleApplyPatientAdmitted(
+    private MviReduceResult<CardState, CardEffect> HandleApplyPatientAdmitted(
         CardState state,
         CardIntent.ApplyPatientAdmitted intent)
     {
@@ -91,7 +91,7 @@ public sealed partial class CardReducer
         return MviReduceResult.State<CardState, CardEffect>(newState);
     }
 
-    private static string BuildPatientDetailLine(Patient patient)
+    private string BuildPatientDetailLine(Patient patient)
     {
         string ageFragment = patient.Age.HasValue ? $"{patient.Age}岁" : "年龄未填";
         string noteFragment = string.IsNullOrEmpty(patient.NurseNote) ? string.Empty : $" 备注：{patient.NurseNote}";
@@ -170,7 +170,7 @@ public sealed partial class CardReducer
     /// 处理床位筛选变更。
     /// </summary>
     [MviReduce(typeof(CardIntent.SetBedFilter))]
-    private static MviReduceResult<CardState, CardEffect> HandleSetBedFilter(
+    private MviReduceResult<CardState, CardEffect> HandleSetBedFilter(
         CardState state,
         CardIntent.SetBedFilter intent)
     {
@@ -198,7 +198,7 @@ public sealed partial class CardReducer
     /// 处理床位类型切换。
     /// </summary>
     [MviReduce(typeof(CardIntent.ToggleBedType))]
-    private static MviReduceResult<CardState, CardEffect> HandleToggleBedType(
+    private MviReduceResult<CardState, CardEffect> HandleToggleBedType(
         CardState state,
         CardIntent.ToggleBedType intent)
     {
@@ -237,7 +237,7 @@ public sealed partial class CardReducer
     /// 处理床位状态切换。
     /// </summary>
     [MviReduce(typeof(CardIntent.ToggleBedStatus))]
-    private static MviReduceResult<CardState, CardEffect> HandleToggleBedStatus(
+    private MviReduceResult<CardState, CardEffect> HandleToggleBedStatus(
         CardState state,
         CardIntent.ToggleBedStatus intent)
     {

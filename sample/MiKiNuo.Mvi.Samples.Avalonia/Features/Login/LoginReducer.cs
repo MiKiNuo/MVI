@@ -13,7 +13,7 @@ public sealed partial class LoginReducer
     /// 处理用户名变更意图。
     /// </summary>
     [MviReduce(typeof(LoginIntent.ChangeUserName))]
-    private static MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
+    private MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
         LoginState state,
         LoginIntent.ChangeUserName intent)
     {
@@ -30,7 +30,7 @@ public sealed partial class LoginReducer
     /// 处理密码变更意图。
     /// </summary>
     [MviReduce(typeof(LoginIntent.ChangePassword))]
-    private static MviReduceResult<LoginState, LoginEffect> HandleChangePassword(
+    private MviReduceResult<LoginState, LoginEffect> HandleChangePassword(
         LoginState state,
         LoginIntent.ChangePassword intent)
     {
@@ -47,7 +47,7 @@ public sealed partial class LoginReducer
     /// 处理提交登录意图。
     /// </summary>
     [MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmitState))]
-    private static MviReduceResult<LoginState, LoginEffect> HandleSubmit(
+    private MviReduceResult<LoginState, LoginEffect> HandleSubmit(
         LoginState state,
         LoginIntent.Submit intent)
     {
@@ -59,7 +59,7 @@ public sealed partial class LoginReducer
     /// 处理登录成功意图。
     /// </summary>
     [MviReduce(typeof(LoginIntent.LoginSucceeded))]
-    private static MviReduceResult<LoginState, LoginEffect> HandleLoginSucceeded(
+    private MviReduceResult<LoginState, LoginEffect> HandleLoginSucceeded(
         LoginState state,
         LoginIntent.LoginSucceeded intent)
     {
@@ -71,7 +71,7 @@ public sealed partial class LoginReducer
     /// 处理登录失败意图。
     /// </summary>
     [MviReduce(typeof(LoginIntent.LoginFailed))]
-    private static MviReduceResult<LoginState, LoginEffect> HandleLoginFailed(
+    private MviReduceResult<LoginState, LoginEffect> HandleLoginFailed(
         LoginState state,
         LoginIntent.LoginFailed intent)
     {
@@ -84,9 +84,9 @@ public sealed partial class LoginReducer
             });
     }
 
-    private static bool CanSubmitState(LoginState state) => state.CanSubmit;
+    private bool CanSubmitState(LoginState state) => state.CanSubmit;
 
-    private static bool CanSubmit(string userName, string password)
+    private bool CanSubmit(string userName, string password)
     {
         return !string.IsNullOrWhiteSpace(userName)
             && !string.IsNullOrWhiteSpace(password);

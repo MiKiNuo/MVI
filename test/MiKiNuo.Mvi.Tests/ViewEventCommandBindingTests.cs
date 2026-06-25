@@ -493,7 +493,7 @@ public sealed partial class EventCommandReducer
     /// <param name="intent">捕获文本意图。</param>
     /// <returns>规约结果。</returns>
     [MviReduce(typeof(EventCommandIntent.CaptureText))]
-    private static MviReduceResult<EventCommandState, EventCommandEffect> HandleCaptureText(
+    private MviReduceResult<EventCommandState, EventCommandEffect> HandleCaptureText(
         EventCommandState state,
         EventCommandIntent.CaptureText intent)
     {

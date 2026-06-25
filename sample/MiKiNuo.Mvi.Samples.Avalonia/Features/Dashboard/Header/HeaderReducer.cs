@@ -13,7 +13,7 @@ public sealed partial class HeaderReducer
     /// 处理更新标题意图。
     /// </summary>
     [MviReduce(typeof(HeaderIntent.UpdateTitle))]
-    private static MviReduceResult<HeaderState, HeaderEffect> HandleUpdateTitle(
+    private MviReduceResult<HeaderState, HeaderEffect> HandleUpdateTitle(
         HeaderState state,
         HeaderIntent.UpdateTitle intent)
     {

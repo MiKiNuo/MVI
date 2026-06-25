@@ -13,7 +13,7 @@ public sealed partial class EventBindingDetailReducer
     /// 处理详情按下意图。
     /// </summary>
     [MviReduce(typeof(EventBindingDetailIntent.PressDetail))]
-    private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePressDetail(
+    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePressDetail(
         EventBindingDetailState state,
         EventBindingDetailIntent.PressDetail intent)
     {
@@ -30,7 +30,7 @@ public sealed partial class EventBindingDetailReducer
     /// 处理刷新意图。
     /// </summary>
     [MviReduce(typeof(EventBindingDetailIntent.Refresh))]
-    private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleRefresh(
+    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleRefresh(
         EventBindingDetailState state,
         EventBindingDetailIntent.Refresh intent)
     {

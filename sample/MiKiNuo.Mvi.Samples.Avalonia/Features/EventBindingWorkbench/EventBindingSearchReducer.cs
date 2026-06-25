@@ -14,7 +14,7 @@ public sealed partial class EventBindingSearchReducer
     /// 处理查询变更意图。
     /// </summary>
     [MviReduce(typeof(EventBindingSearchIntent.ChangeQuery))]
-    private static MviReduceResult<EventBindingSearchState, EventBindingSearchEffect> HandleChangeQuery(
+    private MviReduceResult<EventBindingSearchState, EventBindingSearchEffect> HandleChangeQuery(
         EventBindingSearchState state,
         EventBindingSearchIntent.ChangeQuery intent)
     {

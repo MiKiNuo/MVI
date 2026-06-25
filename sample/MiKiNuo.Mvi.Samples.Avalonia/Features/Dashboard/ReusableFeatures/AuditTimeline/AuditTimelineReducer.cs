@@ -13,7 +13,7 @@ public sealed partial class AuditTimelineReducer
     /// 处理追加条目意图。
     /// </summary>
     [MviReduce(typeof(AuditTimelineIntent.AppendEntry))]
-    private static MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleAppendEntry(
+    private MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleAppendEntry(
         AuditTimelineState state,
         AuditTimelineIntent.AppendEntry intent)
     {
@@ -36,7 +36,7 @@ public sealed partial class AuditTimelineReducer
     /// 处理清空条目意图。
     /// </summary>
     [MviReduce(typeof(AuditTimelineIntent.ClearEntries))]
-    private static MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleClearEntries(
+    private MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleClearEntries(
         AuditTimelineState state,
         AuditTimelineIntent.ClearEntries intent)
     {

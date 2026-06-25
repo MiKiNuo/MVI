@@ -11,7 +11,7 @@ public sealed partial class EventBindingSelectionReducer
 {
     /// <summary>处理选择变化意图。</summary>
     [MviReduce(typeof(EventBindingSelectionIntent.ChangeSelection))]
-    private static MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
+    private MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
         EventBindingSelectionState state,
         EventBindingSelectionIntent.ChangeSelection intent)
     {

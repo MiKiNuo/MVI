@@ -11,7 +11,7 @@ public sealed partial class EventBindingDetailReducer
 {
     /// <summary>处理准备动作意图。</summary>
     [MviReduce(typeof(EventBindingDetailIntent.Prepare))]
-    private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePrepare(
+    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePrepare(
         EventBindingDetailState state,
         EventBindingDetailIntent.Prepare intent)
     {
