@@ -21,7 +21,7 @@ public sealed class CardReducerApplyPatientAdmittedTests
     [Test]
     public async Task ApplyPatientAdmitted_StoresPatientInRecentAdmittedPatientAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore();
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore();
         Patient patient = new(
             Id: Guid.NewGuid(),
             Name: "张三",
@@ -45,7 +45,7 @@ public sealed class CardReducerApplyPatientAdmittedTests
     [Test]
     public async Task ApplyPatientAdmitted_RefreshesStatusDetailActionLogAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore();
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore();
         Patient patient = new(
             Id: Guid.NewGuid(),
             Name: "李四",
@@ -69,7 +69,7 @@ public sealed class CardReducerApplyPatientAdmittedTests
     [Test]
     public async Task ApplyPatientAdmitted_ProducesNoEffectAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore();
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore();
         List<CardEffect> effects = [];
         IDisposable subscription = store.Effects.Subscribe(e => effects.Add(e));
         Patient patient = new(
@@ -87,14 +87,14 @@ public sealed class CardReducerApplyPatientAdmittedTests
         subscription.Dispose();
     }
 
-    private static MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> CreateStore()
+    private static MviStore<CardState, CardIntent, CardEffect> CreateStore()
     {
         CardDefinition definition = DashboardCardRegistry.GetDefinition(PageKey.BedOverview)!;
         CardState initial = CardState.FromDefinition(definition);
-        return new MviMutationStore<CardState, CardIntent, CardMutation, CardEffect>(
+        return new MviStore<CardState, CardIntent, CardEffect>(
             initial,
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             new NoopCardEffectDispatcher());
     }
 

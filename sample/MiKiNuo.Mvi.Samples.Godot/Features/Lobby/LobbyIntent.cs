@@ -79,4 +79,111 @@ public abstract partial record LobbyIntent : IMviIntent
 
     /// <summary>表示退出到登录页的意图。</summary>
     public sealed partial record Logout : LobbyIntent;
+
+    /// <summary>
+    /// 表示玩家资料已设置的意图。
+    /// </summary>
+    /// <param name="BattleReadyText">战斗准备摘要。</param>
+    public sealed partial record PlayerSet(string BattleReadyText) : LobbyIntent;
+
+    /// <summary>
+    /// 表示任务已接受的意图。
+    /// </summary>
+    /// <param name="MissionName">任务名称。</param>
+    /// <param name="StaminaCost">体力消耗。</param>
+    /// <param name="Reward">预计奖励。</param>
+    /// <param name="NewStamina">剩余体力。</param>
+    /// <param name="BattleReadyText">战斗准备摘要。</param>
+    public sealed partial record MissionAccepted(
+        string MissionName,
+        int StaminaCost,
+        int Reward,
+        int NewStamina,
+        string BattleReadyText) : LobbyIntent;
+
+    /// <summary>
+    /// 表示任务接受失败的意图。
+    /// </summary>
+    /// <param name="ErrorMessage">错误消息。</param>
+    public sealed partial record MissionAcceptFailed(string ErrorMessage) : LobbyIntent;
+
+    /// <summary>
+    /// 表示任务已完成的意图。
+    /// </summary>
+    /// <param name="Reward">奖励金币。</param>
+    /// <param name="BattleReadyText">战斗准备摘要。</param>
+    public sealed partial record MissionCompleted(int Reward, string BattleReadyText) : LobbyIntent;
+
+    /// <summary>
+    /// 表示英雄训练成功的意图。
+    /// </summary>
+    /// <param name="Kind">英雄种类。</param>
+    /// <param name="HeroName">英雄名称。</param>
+    /// <param name="NewLevel">新等级。</param>
+    /// <param name="Cost">消耗金币。</param>
+    /// <param name="BattleReadyText">战斗准备摘要。</param>
+    public sealed partial record HeroTrained(
+        HeroKind Kind,
+        string HeroName,
+        int NewLevel,
+        int Cost,
+        string BattleReadyText) : LobbyIntent;
+
+    /// <summary>
+    /// 表示英雄训练失败的意图。
+    /// </summary>
+    /// <param name="ErrorMessage">错误消息。</param>
+    public sealed partial record HeroTrainFailed(string ErrorMessage) : LobbyIntent;
+
+    /// <summary>
+    /// 表示药水使用成功的意图。
+    /// </summary>
+    /// <param name="NewPotionCount">剩余药水。</param>
+    /// <param name="NewStamina">恢复后体力。</param>
+    /// <param name="BattleReadyText">战斗准备摘要。</param>
+    public sealed partial record PotionUsed(
+        int NewPotionCount,
+        int NewStamina,
+        string BattleReadyText) : LobbyIntent;
+
+    /// <summary>
+    /// 表示药水使用失败的意图。
+    /// </summary>
+    /// <param name="ErrorMessage">错误消息。</param>
+    public sealed partial record PotionUseFailed(string ErrorMessage) : LobbyIntent;
+
+    /// <summary>
+    /// 表示金币箱已打开的意图。
+    /// </summary>
+    /// <param name="Gold">获得金币。</param>
+    public sealed partial record GoldBoxOpened(int Gold) : LobbyIntent;
+
+    /// <summary>
+    /// 表示锻造成功的意图。
+    /// </summary>
+    /// <param name="ItemName">装备名称。</param>
+    /// <param name="OreCost">矿石消耗。</param>
+    /// <param name="CrystalCost">水晶消耗。</param>
+    /// <param name="PowerBonus">战力加成。</param>
+    /// <param name="ForgeScore">锻造评分。</param>
+    /// <param name="BattleReadyText">战斗准备摘要。</param>
+    public sealed partial record Forged(
+        string ItemName,
+        int OreCost,
+        int CrystalCost,
+        int PowerBonus,
+        int ForgeScore,
+        string BattleReadyText) : LobbyIntent;
+
+    /// <summary>
+    /// 表示锻造失败的意图。
+    /// </summary>
+    /// <param name="ErrorMessage">错误消息。</param>
+    public sealed partial record ForgeFailed(string ErrorMessage) : LobbyIntent;
+
+    /// <summary>
+    /// 表示战斗准备完成的意图。
+    /// </summary>
+    /// <param name="BattleReadyText">战斗准备摘要。</param>
+    public sealed partial record BattlePrepared(string BattleReadyText) : LobbyIntent;
 }

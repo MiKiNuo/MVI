@@ -332,10 +332,10 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
 
     private EventBindingWorkbenchComposition(
         EventBindingRecordingMediator mediator,
-        MviMutationStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchMutation, EventBindingSearchEffect> searchStore,
-        MviMutationStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionMutation, EventBindingSelectionEffect> selectionStore,
-        MviMutationStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailMutation, EventBindingDetailEffect> detailStore,
-        MviMutationStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchMutation, EventBindingWorkbenchEffect> workbenchStore,
+        MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> searchStore,
+        MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> selectionStore,
+        MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> detailStore,
+        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore,
         EventBindingSearchViewModel searchViewModel,
         EventBindingSelectionViewModel selectionViewModel,
         EventBindingDetailViewModel detailViewModel,
@@ -356,16 +356,16 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
     public EventBindingRecordingMediator Mediator { get; }
 
     /// <summary>获取搜索面板 Store。</summary>
-    public MviMutationStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchMutation, EventBindingSearchEffect> SearchStore { get; }
+    public MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> SearchStore { get; }
 
     /// <summary>获取选择面板 Store。</summary>
-    public MviMutationStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionMutation, EventBindingSelectionEffect> SelectionStore { get; }
+    public MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> SelectionStore { get; }
 
     /// <summary>获取详情面板 Store。</summary>
-    public MviMutationStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailMutation, EventBindingDetailEffect> DetailStore { get; }
+    public MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> DetailStore { get; }
 
     /// <summary>获取组合根 Store。</summary>
-    public MviMutationStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchMutation, EventBindingWorkbenchEffect> WorkbenchStore { get; }
+    public MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> WorkbenchStore { get; }
 
     /// <summary>获取搜索面板 ViewModel。</summary>
     public EventBindingSearchViewModel SearchViewModel { get; }
@@ -383,31 +383,31 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
     public static EventBindingWorkbenchComposition Create()
     {
         EventBindingRecordingMediator mediator = new();
-        MviMutationStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchMutation, EventBindingSearchEffect> searchStore = new(
+        MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> searchStore = new(
             EventBindingSearchState.Initial,
             new EventBindingSearchIntentHandler(),
-            new EventBindingSearchMutationReducer(),
+            new EventBindingSearchReducer(),
             new EventBindingSearchEffectDispatcher(mediator));
-        MviMutationStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionMutation, EventBindingSelectionEffect> selectionStore = new(
+        MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> selectionStore = new(
             EventBindingSelectionState.Initial,
             new EventBindingSelectionIntentHandler(),
-            new EventBindingSelectionMutationReducer(),
+            new EventBindingSelectionReducer(),
             new EventBindingSelectionEffectDispatcher(mediator));
-        MviMutationStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailMutation, EventBindingDetailEffect> detailStore = new(
+        MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> detailStore = new(
             EventBindingDetailState.Initial,
             new EventBindingDetailIntentHandler(),
-            new EventBindingDetailMutationReducer(),
+            new EventBindingDetailReducer(),
             new EventBindingDetailEffectDispatcher(mediator));
 
         EventBindingSearchViewModel searchViewModel = new(searchStore);
         EventBindingSelectionViewModel selectionViewModel = new(selectionStore);
         EventBindingDetailViewModel detailViewModel = new(detailStore);
-        MviMutationStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchMutation, EventBindingWorkbenchEffect> workbenchStore = new(
+        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore = new(
             new EventBindingWorkbenchState(
                 "等待 Godot 子组件事件。",
                 0),
             new EventBindingWorkbenchIntentHandler(),
-            new EventBindingWorkbenchMutationReducer(),
+            new EventBindingWorkbenchReducer(),
             new EventBindingWorkbenchEffectDispatcher());
         mediator.SetWorkbenchStore(workbenchStore);
         // 父 VM 不再直接持有 3 个子 VM 引用；改用 IEventBindingPanelFactory 工厂封装 3 个子 VM，

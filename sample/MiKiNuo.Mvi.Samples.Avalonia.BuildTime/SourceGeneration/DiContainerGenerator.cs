@@ -94,7 +94,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             SyntaxNode root = tree.GetRoot(cancellationToken);
             SemanticModel semanticModel = compilation.GetSemanticModel(tree);
 
-            // 同时查找 class 和 record 声明，record 用于 Mutation 类型定义。
+            // 同时查找 class 和 record 声明，record 用于 State/Intent/Effect 等类型定义。
             foreach (TypeDeclarationSyntax typeDeclaration in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -129,16 +129,9 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             INamedTypeSymbol intentType = (INamedTypeSymbol)viewModelBase.TypeArguments[1];
             INamedTypeSymbol effectType = (INamedTypeSymbol)viewModelBase.TypeArguments[2];
 
-            INamedTypeSymbol? mutationType = FindByMetadataName(
-                classesByFullName,
-                containingNamespace + "." + baseName + "Mutation");
             INamedTypeSymbol? intentHandlerType = FindByMetadataName(
                 classesByFullName,
                 containingNamespace + "." + baseName + "IntentHandler");
-            INamedTypeSymbol? mutationReducerType = FindByMetadataName(
-                classesByFullName,
-                containingNamespace + "." + baseName + "MutationReducer");
-
             INamedTypeSymbol? reducerType = FindByMetadataName(
                 classesByFullName,
                 containingNamespace + "." + baseName + "Reducer");
@@ -146,15 +139,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 classesByFullName,
                 containingNamespace + "." + baseName + "EffectDispatcher");
 
-            // 优先使用 Mutation + IntentHandler 模式；
-            // 若存在 Mutation 三件套则用 MutationReducer 替代旧 Reducer，
-            // 否则回退到旧 Reducer + EffectDispatcher 模式。
-            bool isMutationBased = mutationType is not null
-                && intentHandlerType is not null
-                && mutationReducerType is not null;
-
-            INamedTypeSymbol? effectiveReducerType = isMutationBased ? mutationReducerType : reducerType;
-            if (effectiveReducerType is null || dispatcherType is null)
+            if (reducerType is null || dispatcherType is null)
             {
                 continue;
             }
@@ -165,14 +150,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 stateType,
                 intentType,
                 effectType,
-                effectiveReducerType,
+                reducerType,
                 dispatcherType,
                 GetDispatcherConstructorKind(dispatcherType),
                 HasStaticInitial(stateType),
                 HasStringCreateInitial(stateType),
-                isMutationBased ? mutationType : null,
-                isMutationBased ? intentHandlerType : null,
-                isMutationBased ? mutationReducerType : null));
+                intentHandlerType));
         }
 
         return features
@@ -691,8 +674,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         AppendDescriptor(builder, "global::MiKiNuo.Mvi.Presentation.ViewRegistry.IMviViewRegistry", containerName, "Singleton");
         AppendDescriptor(builder, shell.ViewModelTypeName, shell.ViewModelTypeName, "Singleton");
         AppendDescriptor(builder, login.ViewModelTypeName, login.ViewModelTypeName, "Scoped");
-        AppendDescriptor(builder, StoreType(login), "global::MiKiNuo.Mvi.Application.MVI.Store.MviMutationStore<" + login.StateTypeName + ", " + login.IntentTypeName + ", " + login.MutationTypeName + ", " + login.EffectTypeName + ">", "Scoped");
-        AppendDescriptor(builder, MutationReducerInterfaceType(login), login.ReducerTypeName, "Scoped");
+        AppendDescriptor(builder, StoreType(login), "global::MiKiNuo.Mvi.Application.MVI.Store.MviStore<" + login.StateTypeName + ", " + login.IntentTypeName + ", " + login.EffectTypeName + ">", "Scoped");
+        AppendDescriptor(builder, ReducerInterfaceType(login), login.ReducerTypeName, "Scoped");
         if (dashboard is not null)
         {
             AppendDescriptor(builder, dashboard.ViewModelTypeName, dashboard.ViewModelTypeName, "Singleton");
@@ -1202,24 +1185,17 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             .Append(StoreType(login)).AppendLine("> storeFactory)");
         builder.Append(indent).AppendLine("{");
         string authNamespace = "global::" + login.ViewModelType.ContainingNamespace.ToDisplayString();
-        if (login.IsMutationBased)
-        {
-            // Mutation 模式：IntentHandler 直接调用 AuthService，EffectDispatcher 只处理导航。
-            builder.Append(indent).Append("    ").Append(login.DispatcherTypeName).Append(" dispatcher = new(");
-            builder.Append("Resolve<").Append(authNamespace).Append(".ILoginNavigationService>());").AppendLine();
-            builder.Append(indent).Append("    return new MviMutationStore<").Append(login.StateTypeName).Append(", ")
-                .Append(login.IntentTypeName).Append(", ").Append(login.MutationTypeName).Append(", ")
-                .Append(login.EffectTypeName).AppendLine(">(");
-            builder.Append(indent).Append("        ").Append(login.StateTypeName).AppendLine(".Initial,");
-            builder.Append(indent).Append("        new ").Append(login.IntentHandlerTypeName)
-                .Append("(Resolve<").Append(authNamespace).AppendLine(".IAuthService>()),");
-            builder.Append(indent).Append("        new ").Append(login.ReducerTypeName).AppendLine("(),");
-            builder.Append(indent).AppendLine("        dispatcher);");
-        }
-        else
-        {
-            throw new System.InvalidOperationException("Login 特性必须使用 Mutation 模式。");
-        }
+        // 经典 MVI 模式：IntentHandler 无依赖，EffectDispatcher 持有 AuthService 与 Store 工厂。
+        builder.Append(indent).Append("    ").Append(login.DispatcherTypeName).Append(" dispatcher = new(");
+        builder.Append("Resolve<").Append(authNamespace).Append(".IAuthService>(), ");
+        builder.Append("Resolve<").Append(authNamespace).Append(".ILoginNavigationService>(), ");
+        builder.Append("storeFactory);").AppendLine();
+        builder.Append(indent).Append("    return new MviStore<").Append(login.StateTypeName).Append(", ")
+            .Append(login.IntentTypeName).Append(", ").Append(login.EffectTypeName).AppendLine(">(");
+        builder.Append(indent).Append("        ").Append(login.StateTypeName).AppendLine(".Initial,");
+        builder.Append(indent).Append("        new ").Append(login.IntentHandlerTypeName).AppendLine("(),");
+        builder.Append(indent).Append("        new ").Append(login.ReducerTypeName).AppendLine("(),");
+        builder.Append(indent).AppendLine("        dispatcher);");
         builder.Append(indent).AppendLine("}");
         builder.AppendLine();
     }
@@ -1901,30 +1877,24 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         }
     }
 
-    private static string MutationReducerInterfaceType(FeatureInfo feature)
+    private static string ReducerInterfaceType(FeatureInfo feature)
     {
-        return "global::MiKiNuo.Mvi.Application.MVI.Reducer.IMviMutationReducer<"
+        return "global::MiKiNuo.Mvi.Application.MVI.Reducer.IMviReducer<"
             + feature.StateTypeName + ", "
-            + feature.MutationTypeName + ", "
+            + feature.IntentTypeName + ", "
             + feature.EffectTypeName + ">";
     }
 
     /// <summary>发射 Store 构造头部（类型名与左括号）。</summary>
     private static void EmitStoreConstructionHeader(StringBuilder builder, FeatureInfo feature)
     {
-        if (!feature.IsMutationBased)
-        {
-            throw new System.InvalidOperationException(feature.BaseName + " 特性必须使用 Mutation 模式。");
-        }
-
-        builder.Append("new MviMutationStore<")
+        builder.Append("new MviStore<")
             .Append(feature.StateTypeName).Append(", ")
             .Append(feature.IntentTypeName).Append(", ")
-            .Append(feature.MutationTypeName).Append(", ")
             .Append(feature.EffectTypeName).AppendLine(">(");
     }
 
-    /// <summary>发射 Store 规约器实参（变更模式额外发射意图处理器）。</summary>
+    /// <summary>发射 Store 意图处理器与规约器实参。</summary>
     private static void EmitStoreReducerArgs(StringBuilder builder, FeatureInfo feature)
     {
         builder.Append("            new ").Append(feature.IntentHandlerTypeName).AppendLine("(),");
@@ -2074,9 +2044,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             DispatcherConstructorKind dispatcherConstructorKind,
             bool hasInitial,
             bool hasStringCreateInitial,
-            INamedTypeSymbol? mutationType = null,
-            INamedTypeSymbol? intentHandlerType = null,
-            INamedTypeSymbol? mutationReducerType = null)
+            INamedTypeSymbol? intentHandlerType = null)
         {
             BaseName = baseName;
             ViewModelType = viewModelType;
@@ -2089,10 +2057,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             DispatcherConstructorKind = dispatcherConstructorKind;
             HasInitial = hasInitial;
             HasStringCreateInitial = hasStringCreateInitial;
-            MutationTypeName = mutationType is not null ? Format(mutationType) : null;
             IntentHandlerTypeName = intentHandlerType is not null ? Format(intentHandlerType) : null;
-            MutationReducerTypeName = mutationReducerType is not null ? Format(mutationReducerType) : null;
-            IsMutationBased = mutationType is not null && intentHandlerType is not null && mutationReducerType is not null;
         }
 
         public string BaseName { get; }
@@ -2117,17 +2082,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         public bool HasStringCreateInitial { get; }
 
-        /// <summary>变更类型完整限定名；为 null 表示使用旧 Reducer 模式。</summary>
-        public string? MutationTypeName { get; }
-
-        /// <summary>意图处理器类型完整限定名；为 null 表示使用旧 Reducer 模式。</summary>
+        /// <summary>意图处理器类型完整限定名；为 null 表示无意图处理器。</summary>
         public string? IntentHandlerTypeName { get; }
-
-        /// <summary>变更规约器类型完整限定名；为 null 表示使用旧 Reducer 模式。</summary>
-        public string? MutationReducerTypeName { get; }
-
-        /// <summary>是否使用 Mutation + IntentHandler 模式。</summary>
-        public bool IsMutationBased { get; }
     }
 
     private sealed class ViewInfo

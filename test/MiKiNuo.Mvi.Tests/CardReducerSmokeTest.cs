@@ -102,10 +102,10 @@ public sealed class CardReducerSmokeTest
             FilteredBedCount: 0,
             SelectedBedTypes: new HashSet<BedType>(),
             SelectedBedStatuses: new HashSet<BedStatus>());
-        IMviStore<CardState, CardIntent, CardEffect> store = new MviMutationStore<CardState, CardIntent, CardMutation, CardEffect>(
+        IMviStore<CardState, CardIntent, CardEffect> store = new MviStore<CardState, CardIntent, CardEffect>(
             initial,
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             dispatcher);
         using IDisposable __ = store;
 #pragma warning disable CA2000
@@ -153,10 +153,10 @@ public sealed class CardReducerSmokeTest
         CardState initial = CardState.FromDefinition(definition);
         string firstKey = definition.FormFields![0].Key;
         string firstInitial = initial.FormValues[0].Value;
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+        using MviStore<CardState, CardIntent, CardEffect> store = new(
             initial,
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             new NoopCardEffectDispatcher());
 
         await store.DispatchAsync(new CardIntent.SetFormField(firstKey, "TEST-VALUE"));
@@ -200,10 +200,10 @@ public sealed class CardReducerSmokeTest
         };
 
         CardState state = CardState.FromDefinition(probeDefinition);
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+        using MviStore<CardState, CardIntent, CardEffect> store = new(
             state,
             new CardIntentHandler(isolated),
-            new CardMutationReducer(),
+            new CardReducer(isolated),
             new NoopCardEffectDispatcher());
 
         await store.DispatchAsync(new CardIntent.SetFormField("ProbeKey", "Hello"));

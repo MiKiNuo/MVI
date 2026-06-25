@@ -252,10 +252,10 @@ public sealed class GeneratedContainerTests
             FilteredBedCount: BedCatalog.TotalCount,
             SelectedBedTypes: new HashSet<BedType>(),
             SelectedBedStatuses: new HashSet<BedStatus>());
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+        using MviStore<CardState, CardIntent, CardEffect> store = new(
             initialState,
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             dispatcher);
 #pragma warning disable CA2000
         CardViewModel cardViewModel = new(store);

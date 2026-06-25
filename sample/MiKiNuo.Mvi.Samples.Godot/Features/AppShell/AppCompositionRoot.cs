@@ -30,9 +30,9 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 /// </summary>
 public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI.IMviResolver
 {
-    private readonly MviMutationStore<AppShellState, AppShellIntent, AppShellMutation, AppShellEffect> _appShellStore;
-    private readonly MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect> _loginStore;
-    private readonly MviMutationStore<LobbyState, LobbyIntent, LobbyMutation, LobbyEffect> _lobbyStore;
+    private readonly MviStore<AppShellState, AppShellIntent, AppShellEffect> _appShellStore;
+    private readonly MviStore<LoginState, LoginIntent, LoginEffect> _loginStore;
+    private readonly MviStore<LobbyState, LobbyIntent, LobbyEffect> _lobbyStore;
     private readonly LoginViewModel _loginViewModel;
     private readonly LobbyViewModel _lobbyViewModel;
     private readonly GodotSampleGeneratedViewRegistry _godotViewRegistry;
@@ -49,37 +49,47 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
 
         GameLogicService gameLogicService = new();
         AppShellIntentHandler appShellIntentHandler = new();
-        AppShellMutationReducer appShellMutationReducer = new();
+        AppShellReducer appShellReducer = new();
         AppShellEffectDispatcher appShellEffectDispatcher = new();
-        _appShellStore = new MviMutationStore<AppShellState, AppShellIntent, AppShellMutation, AppShellEffect>(
+        _appShellStore = new MviStore<AppShellState, AppShellIntent, AppShellEffect>(
             AppShellState.Initial,
             appShellIntentHandler,
-            appShellMutationReducer,
+            appShellReducer,
             appShellEffectDispatcher,
             Array.Empty<IMviMiddleware<AppShellState, AppShellIntent, AppShellEffect>>());
 
-        LobbyMutationReducer lobbyMutationReducer = new();
-        LobbyIntentHandler lobbyIntentHandler = new(new FakeLobbyApiService(gameLogicService));
-        LobbyEffectDispatcher lobbyEffectDispatcher = new();
+        LobbyReducer lobbyReducer = new();
+        LobbyIntentHandler lobbyIntentHandler = new();
+        MviStore<LobbyState, LobbyIntent, LobbyEffect>? lobbyStoreRef = null;
+        LobbyEffectDispatcher lobbyEffectDispatcher = new(
+            new FakeLobbyApiService(gameLogicService),
+            () => lobbyStoreRef ?? throw new InvalidOperationException("大厅 Store 尚未初始化。"));
         IReadOnlyList<IMviMiddleware<LobbyState, LobbyIntent, LobbyEffect>> lobbyMiddlewares = [new LobbyMiddleware()];
-        _lobbyStore = new MviMutationStore<LobbyState, LobbyIntent, LobbyMutation, LobbyEffect>(
+        _lobbyStore = new MviStore<LobbyState, LobbyIntent, LobbyEffect>(
             LobbyState.Initial,
             lobbyIntentHandler,
-            lobbyMutationReducer,
+            lobbyReducer,
             lobbyEffectDispatcher,
             lobbyMiddlewares);
+        lobbyStoreRef = _lobbyStore;
 
         GameShellNavigator navigator = new(_appShellStore, _lobbyStore);
         lobbyEffectDispatcher.SetNavigator(navigator);
-        LoginIntentHandler loginIntentHandler = new(new FakeAuthService());
-        LoginMutationReducer loginMutationReducer = new();
+        LoginIntentHandler loginIntentHandler = new();
+        LoginReducer loginReducer = new();
         IReadOnlyList<IMviMiddleware<LoginState, LoginIntent, LoginEffect>> loginMiddlewares = [new LoginMiddleware()];
-        _loginStore = new MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect>(
+        MviStore<LoginState, LoginIntent, LoginEffect>? loginStoreRef = null;
+        LoginEffectDispatcher loginEffectDispatcher = new(
+            new FakeAuthService(),
+            navigator,
+            () => loginStoreRef ?? throw new InvalidOperationException("登录 Store 尚未初始化。"));
+        _loginStore = new MviStore<LoginState, LoginIntent, LoginEffect>(
             LoginState.Initial,
             loginIntentHandler,
-            loginMutationReducer,
-            new LoginEffectDispatcher(navigator),
+            loginReducer,
+            loginEffectDispatcher,
             loginMiddlewares);
+        loginStoreRef = _loginStore;
 
         _loginViewModel = new LoginViewModel(_loginStore, uiDispatcher);
 

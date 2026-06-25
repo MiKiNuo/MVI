@@ -8,7 +8,7 @@ using TUnit.Core;
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示床位筛选意图与变更规约器的回归测试。
+/// 表示床位筛选意图与规约器的回归测试。
 /// 验证 SetBedFilter 仅 BedOverview 卡片生效；其他卡片被处理器静默忽略。
 /// </summary>
 public sealed class CardBedFilterTests
@@ -19,7 +19,7 @@ public sealed class CardBedFilterTests
     [Test]
     public async Task SetBedFilter_Open_OnBedOverview_UpdatesFilterAndCountAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(PageKey.BedOverview);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(PageKey.BedOverview);
 
         // sanity: 初始是 All
         await Assert.That(store.CurrentState.CurrentBedFilter).IsEqualTo(BedFilter.All);
@@ -40,7 +40,7 @@ public sealed class CardBedFilterTests
     public async Task SetBedFilter_IgnoredOnNonBedOverviewCardAsync()
     {
         CardState initial = NewState(PageKey.NursingTaskBoard);
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(initial);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(initial);
 
         await store.DispatchAsync(new CardIntent.SetBedFilter(BedFilter.Occupied));
 
@@ -54,7 +54,7 @@ public sealed class CardBedFilterTests
     [Test]
     public async Task SetBedFilter_SameValue_IsNoopAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(PageKey.BedOverview);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(PageKey.BedOverview);
         CardState initial = store.CurrentState;
         // initial.CurrentBedFilter = All
 
@@ -69,7 +69,7 @@ public sealed class CardBedFilterTests
     [Test]
     public async Task SetBedFilter_Occupied_CountMatchesCatalogAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(PageKey.BedOverview);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(PageKey.BedOverview);
 
         await store.DispatchAsync(new CardIntent.SetBedFilter(BedFilter.Occupied));
 
@@ -85,18 +85,18 @@ public sealed class CardBedFilterTests
         return CardState.FromDefinition(definition);
     }
 
-    private static MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> CreateStore(PageKey key)
+    private static MviStore<CardState, CardIntent, CardEffect> CreateStore(PageKey key)
     {
         CardState initial = NewState(key);
         return CreateStore(initial);
     }
 
-    private static MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> CreateStore(CardState initial)
+    private static MviStore<CardState, CardIntent, CardEffect> CreateStore(CardState initial)
     {
-        return new MviMutationStore<CardState, CardIntent, CardMutation, CardEffect>(
+        return new MviStore<CardState, CardIntent, CardEffect>(
             initial,
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             new NoopCardEffectDispatcher());
     }
 

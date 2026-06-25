@@ -8,7 +8,7 @@ using TUnit.Core;
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示 CheckBox 多选意图（ToggleBedType / ToggleBedStatus）的变更规约器回归测试。
+/// 表示 CheckBox 多选意图（ToggleBedType / ToggleBedStatus）的规约器回归测试。
 /// 验证处理器：
 /// 1. 仅 BedOverview 卡片生效（其他卡片短路忽略）。
 /// 2. IsSelected=true 添加、false 移除集合项。
@@ -23,7 +23,7 @@ public sealed class CardBedMultiFilterReducerTests
     [Test]
     public async Task ToggleBedType_True_AddsTypeAndRecomputesCountAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(PageKey.BedOverview);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(PageKey.BedOverview);
 
         await store.DispatchAsync(new CardIntent.ToggleBedType(BedType.IntensiveCare, true));
 
@@ -44,7 +44,7 @@ public sealed class CardBedMultiFilterReducerTests
         {
             SelectedBedTypes = new HashSet<BedType> { BedType.IntensiveCare, BedType.General },
         };
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(initial);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(initial);
 
         await store.DispatchAsync(new CardIntent.ToggleBedType(BedType.IntensiveCare, false));
 
@@ -59,7 +59,7 @@ public sealed class CardBedMultiFilterReducerTests
     [Test]
     public async Task ToggleBedStatus_True_AddsStatusAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(PageKey.BedOverview);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(PageKey.BedOverview);
 
         await store.DispatchAsync(new CardIntent.ToggleBedStatus(BedStatus.Occupied, true));
 
@@ -74,7 +74,7 @@ public sealed class CardBedMultiFilterReducerTests
     public async Task ToggleBedType_IgnoredOnNonBedOverviewAsync()
     {
         CardState initial = NewState(PageKey.NursingTaskBoard);
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(initial);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(initial);
 
         await store.DispatchAsync(new CardIntent.ToggleBedType(BedType.IntensiveCare, true));
 
@@ -88,7 +88,7 @@ public sealed class CardBedMultiFilterReducerTests
     public async Task ToggleBedStatus_IgnoredOnNonBedOverviewAsync()
     {
         CardState initial = NewState(PageKey.NursingTaskBoard);
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(initial);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(initial);
 
         await store.DispatchAsync(new CardIntent.ToggleBedStatus(BedStatus.Locked, true));
 
@@ -102,7 +102,7 @@ public sealed class CardBedMultiFilterReducerTests
     [Test]
     public async Task ToggleBoth_IntersectsBothDimensionsAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(PageKey.BedOverview);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(PageKey.BedOverview);
 
         await store.DispatchAsync(new CardIntent.ToggleBedType(BedType.General, true));
         await store.DispatchAsync(new CardIntent.ToggleBedStatus(BedStatus.Occupied, true));
@@ -121,7 +121,7 @@ public sealed class CardBedMultiFilterReducerTests
     [Test]
     public async Task ToggleBedType_UpdatesActionLogAsync()
     {
-        using MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = CreateStore(PageKey.BedOverview);
+        using MviStore<CardState, CardIntent, CardEffect> store = CreateStore(PageKey.BedOverview);
 
         await store.DispatchAsync(new CardIntent.ToggleBedType(BedType.IntensiveCare, true));
 
@@ -135,17 +135,17 @@ public sealed class CardBedMultiFilterReducerTests
         return CardState.FromDefinition(definition);
     }
 
-    private static MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> CreateStore(PageKey key)
+    private static MviStore<CardState, CardIntent, CardEffect> CreateStore(PageKey key)
     {
         return CreateStore(NewState(key));
     }
 
-    private static MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> CreateStore(CardState initial)
+    private static MviStore<CardState, CardIntent, CardEffect> CreateStore(CardState initial)
     {
-        return new MviMutationStore<CardState, CardIntent, CardMutation, CardEffect>(
+        return new MviStore<CardState, CardIntent, CardEffect>(
             initial,
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             new NoopCardEffectDispatcher());
     }
 

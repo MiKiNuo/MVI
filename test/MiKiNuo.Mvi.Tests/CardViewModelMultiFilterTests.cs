@@ -128,10 +128,10 @@ public sealed class CardViewModelMultiFilterTests
             [key] = null!,
         };
         CardEffectDispatcher dispatcher = new(mediator, registry, key, stores);
-        MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+        MviStore<CardState, CardIntent, CardEffect> store = new(
             CardState.FromDefinition(definition),
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             dispatcher);
         stores[key] = store;
         return new CardViewModel(store);

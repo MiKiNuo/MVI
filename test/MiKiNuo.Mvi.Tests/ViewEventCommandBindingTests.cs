@@ -8,7 +8,6 @@ using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
-using MiKiNuo.Mvi.Domain.MVI.Mutation;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
@@ -32,10 +31,10 @@ public sealed class ViewEventCommandBindingTests
     [Test]
     public async Task PayloadCommand_Should_DispatchIntentConstructedFromPayloadAsync()
     {
-        using MviMutationStore<EventCommandState, EventCommandIntent, EventCommandMutation, EventCommandEffect> store = new(
+        using MviStore<EventCommandState, EventCommandIntent, EventCommandEffect> store = new(
             EventCommandState.Initial,
             new EventCommandIntentHandler(),
-            new EventCommandMutationReducer(),
+            new EventCommandReducer(),
             new EmptyEventCommandEffectDispatcher());
         using EventCommandViewModel viewModel = new(store);
 
@@ -453,39 +452,19 @@ public abstract partial record EventCommandIntent : IMviIntent
 public abstract partial record EventCommandEffect : IMviEffect;
 
 /// <summary>
-/// 表示事件命令测试变更。
-/// </summary>
-public abstract record EventCommandMutation : IMviMutation<EventCommandState>
-{
-    /// <summary>
-    /// 表示设置文本的变更。
-    /// </summary>
-    /// <param name="Value">文本值。</param>
-    [MviMutation(Path = "Text")]
-    public sealed record SetText(string Value) : EventCommandMutation;
-
-    /// <summary>
-    /// 表示设置是否用户发起的变更。
-    /// </summary>
-    /// <param name="Value">是否用户发起。</param>
-    [MviMutation(Path = "WasUserInitiated")]
-    public sealed record SetWasUserInitiated(bool Value) : EventCommandMutation;
-}
-
-/// <summary>
 /// 表示事件命令测试意图处理器。
 /// </summary>
 public sealed class EventCommandIntentHandler
-    : IMviIntentHandler<EventCommandState, EventCommandIntent, EventCommandMutation, EventCommandEffect>
+    : IMviIntentHandler<EventCommandState, EventCommandIntent, EventCommandEffect>
 {
     /// <summary>
-    /// 处理意图产生变更与副作用。
+    /// 处理意图产生副作用。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>处理结果。</returns>
-    public ValueTask<MviHandleResult<EventCommandMutation, EventCommandEffect>> HandleAsync(
+    /// <returns>副作用集合。</returns>
+    public ValueTask<IReadOnlyList<EventCommandEffect>> HandleAsync(
         EventCommandState state,
         EventCommandIntent intent,
         CancellationToken cancellationToken = default)
@@ -493,53 +472,39 @@ public sealed class EventCommandIntentHandler
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
 
-        MviHandleResult<EventCommandMutation, EventCommandEffect> result = intent switch
+        IReadOnlyList<EventCommandEffect> effects = intent switch
         {
-            EventCommandIntent.CaptureText captureText => MviHandleResult.Mutations<EventCommandMutation, EventCommandEffect>(
-                new EventCommandMutation.SetText(captureText.Payload.Text),
-                new EventCommandMutation.SetWasUserInitiated(captureText.Payload.IsUserInitiated)),
-            _ => MviHandleResult.Empty<EventCommandMutation, EventCommandEffect>(),
+            _ => Array.Empty<EventCommandEffect>(),
         };
-        return new ValueTask<MviHandleResult<EventCommandMutation, EventCommandEffect>>(result);
+        return new ValueTask<IReadOnlyList<EventCommandEffect>>(effects);
     }
 }
 
 /// <summary>
-/// 表示事件命令测试变更规约器。
+/// 表示事件命令测试规约器。
 /// </summary>
-public sealed partial class EventCommandMutationReducer
-    : MviMutationReducerBase<EventCommandState, EventCommandMutation, EventCommandEffect>
+public sealed class EventCommandReducer
+    : MviReducerBase<EventCommandState, EventCommandIntent, EventCommandEffect>
 {
     /// <summary>
-    /// 应用设置文本变更。
+    /// 规约意图产生新状态。
     /// </summary>
     /// <param name="state">当前状态。</param>
-    /// <param name="mutation">变更数据。</param>
+    /// <param name="intent">用户意图。</param>
     /// <returns>规约结果。</returns>
-    [MviReduceMutation]
-    public MviReduceResult<EventCommandState, EventCommandEffect> HandleSetText(
+    public override MviReduceResult<EventCommandState, EventCommandEffect> Reduce(
         EventCommandState state,
-        EventCommandMutation.SetText mutation)
+        EventCommandIntent intent)
     {
         ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(mutation);
-        return MviReduceResult.State<EventCommandState, EventCommandEffect>(state.Apply(mutation));
-    }
+        ArgumentNullException.ThrowIfNull(intent);
 
-    /// <summary>
-    /// 应用设置是否用户发起变更。
-    /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="mutation">变更数据。</param>
-    /// <returns>规约结果。</returns>
-    [MviReduceMutation]
-    public MviReduceResult<EventCommandState, EventCommandEffect> HandleSetWasUserInitiated(
-        EventCommandState state,
-        EventCommandMutation.SetWasUserInitiated mutation)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(mutation);
-        return MviReduceResult.State<EventCommandState, EventCommandEffect>(state.Apply(mutation));
+        return intent switch
+        {
+            EventCommandIntent.CaptureText captureText => MviReduceResult.State<EventCommandState, EventCommandEffect>(
+                state with { Text = captureText.Payload.Text, WasUserInitiated = captureText.Payload.IsUserInitiated }),
+            _ => MviReduceResult.State<EventCommandState, EventCommandEffect>(state),
+        };
     }
 }
 

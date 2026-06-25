@@ -133,10 +133,10 @@ file sealed class CardAdmissionHarness : IDisposable
         {
             CardDefinition definition = DashboardCardRegistry.GetDefinition(key)
                 ?? throw new InvalidOperationException($"未注册 {key}");
-            MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+            MviStore<CardState, CardIntent, CardEffect> store = new(
                 CardState.FromDefinition(definition),
                 new CardIntentHandler(DashboardCardRegistry.All),
-                new CardMutationReducer(),
+                new CardReducer(DashboardCardRegistry.All),
                 new CardEffectDispatcher(new NoopMediator(), registry, key, mutableStores));
             mutableStores[key] = store;
         }
@@ -160,10 +160,10 @@ file sealed class CardAdmissionHarness : IDisposable
         {
             [key] = null!,
         };
-        MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+        MviStore<CardState, CardIntent, CardEffect> store = new(
             CardState.FromDefinition(definition),
             new CardIntentHandler(DashboardCardRegistry.All),
-            new CardMutationReducer(),
+            new CardReducer(DashboardCardRegistry.All),
             new CardEffectDispatcher(new NoopMediator(), registry, key, isolatedStores));
         isolatedStores[key] = store;
         _attachedForAssertion.Add(store);

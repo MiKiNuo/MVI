@@ -17,10 +17,10 @@ public sealed class LoginReducerTests
     [Test]
     public async Task ChangeUserNameAndPassword_Should_EnableSubmitAsync()
     {
-        using MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect> store = new(
+        using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginIntentHandler(new FakeAuthService()),
-            new LoginMutationReducer(),
+            new LoginIntentHandler(),
+            new LoginReducer(),
             new EmptyLoginEffectDispatcher());
 
         await store.DispatchAsync(new LoginIntent.ChangeUserName("admin"));
@@ -30,10 +30,10 @@ public sealed class LoginReducerTests
     }
 
     /// <summary>
-    /// 验证提交登录成功时产生导航副作用。
+    /// 验证提交登录产生请求登录副作用并进入忙碌状态。
     /// </summary>
     [Test]
-    public async Task Submit_Should_EmitNavigateToDashboardEffectAsync()
+    public async Task Submit_Should_EmitRequestLoginEffectAndEnterBusyAsync()
     {
         LoginState initialState = LoginState.Initial with
         {
@@ -41,15 +41,44 @@ public sealed class LoginReducerTests
             Password = "123456",
             CanSubmit = true
         };
-        using MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect> store = new(
+        using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             initialState,
-            new LoginIntentHandler(new FakeAuthService()),
-            new LoginMutationReducer(),
+            new LoginIntentHandler(),
+            new LoginReducer(),
             new EmptyLoginEffectDispatcher());
         List<LoginEffect> effects = [];
         IDisposable subscription = store.Effects.Subscribe(e => effects.Add(e));
 
         await store.DispatchAsync(new LoginIntent.Submit());
+
+        await Assert.That(store.CurrentState.IsBusy).IsTrue();
+        await Assert.That(effects.Count).IsEqualTo(1);
+        await Assert.That(effects[0]).IsTypeOf<LoginEffect.RequestLogin>();
+        subscription.Dispose();
+    }
+
+    /// <summary>
+    /// 验证登录成功产生导航副作用并退出忙碌状态。
+    /// </summary>
+    [Test]
+    public async Task LoginSucceeded_Should_EmitNavigateToDashboardEffectAsync()
+    {
+        LoginState initialState = LoginState.Initial with
+        {
+            UserName = "admin",
+            Password = "123456",
+            IsBusy = true,
+            CanSubmit = false
+        };
+        using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
+            initialState,
+            new LoginIntentHandler(),
+            new LoginReducer(),
+            new EmptyLoginEffectDispatcher());
+        List<LoginEffect> effects = [];
+        IDisposable subscription = store.Effects.Subscribe(e => effects.Add(e));
+
+        await store.DispatchAsync(new LoginIntent.LoginSucceeded("管理员"));
 
         await Assert.That(store.CurrentState.IsBusy).IsFalse();
         await Assert.That(effects.Count).IsEqualTo(1);

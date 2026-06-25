@@ -16,10 +16,10 @@ public sealed class LoginViewModelBindingTests
     [Test]
     public async Task TwoWayBindingSetter_Should_DispatchIntentAsync()
     {
-        using MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect> store = new(
+        using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginIntentHandler(new FakeAuthService()),
-            new LoginMutationReducer(),
+            new LoginIntentHandler(),
+            new LoginReducer(),
             new EmptyLoginEffectDispatcher());
         using LoginViewModel viewModel = new(store);
 
@@ -35,10 +35,10 @@ public sealed class LoginViewModelBindingTests
     [Test]
     public async Task CommandCanExecute_Should_BeDrivenByStateStreamAsync()
     {
-        using MviMutationStore<LoginState, LoginIntent, LoginMutation, LoginEffect> store = new(
+        using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginIntentHandler(new FakeAuthService()),
-            new LoginMutationReducer(),
+            new LoginIntentHandler(),
+            new LoginReducer(),
             new EmptyLoginEffectDispatcher());
         using LoginViewModel viewModel = new(store);
 

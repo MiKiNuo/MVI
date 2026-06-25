@@ -61,16 +61,16 @@ public sealed class SourceGeneratorIntegrationTests
     }
 
     /// <summary>
-    /// 验证 Reducer Dispatcher 与源生成组合根类型在编译期可用。
+    /// 验证 Reducer 与源生成组合根类型在编译期可用。
     /// </summary>
     [Test]
     public async Task GeneratedTypes_Should_BeAvailableAtCompileTimeAsync()
     {
-        LoginMutationReducer dispatcher = new();
+        LoginReducer reducer = new();
         SampleGeneratedContainer container = new();
         LoginViewModel loginViewModel = container.Resolve<LoginViewModel>();
 
-        await Assert.That(dispatcher).IsNotNull();
+        await Assert.That(reducer).IsNotNull();
         await Assert.That(loginViewModel).IsNotNull();
     }
 

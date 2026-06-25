@@ -128,10 +128,10 @@ file sealed class CardCrossComponentHarness
             CardDefinition definition = DashboardCardRegistry.GetDefinition(key)
                 ?? throw new InvalidOperationException($"未注册 {key}");
             NoopCardEffectDispatcher storeDispatcher = new();
-            MviMutationStore<CardState, CardIntent, CardMutation, CardEffect> store = new(
+            MviStore<CardState, CardIntent, CardEffect> store = new(
                 CardState.FromDefinition(definition),
                 new CardIntentHandler(DashboardCardRegistry.All),
-                new CardMutationReducer(),
+                new CardReducer(DashboardCardRegistry.All),
                 storeDispatcher);
             stores[key] = store;
         }

@@ -33,10 +33,10 @@ public sealed class MiddlewarePipelineTests
             new MviPerformanceMiddleware<PatientSearchState, PatientSearchIntent, PatientSearchEffect>(diagnosticSink, "患者检索测试 MVI")
         ];
 
-        using MviMutationStore<PatientSearchState, PatientSearchIntent, PatientSearchMutation, PatientSearchEffect> store = new(
+        using MviStore<PatientSearchState, PatientSearchIntent, PatientSearchEffect> store = new(
             PatientSearchState.CreateInitial("住院床位"),
             new PatientSearchIntentHandler(),
-            new PatientSearchMutationReducer(),
+            new PatientSearchReducer(),
             new EmptyPatientSearchEffectDispatcher(),
             middlewares);
 
