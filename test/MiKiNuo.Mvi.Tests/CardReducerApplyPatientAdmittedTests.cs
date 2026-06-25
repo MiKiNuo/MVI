@@ -93,7 +93,7 @@ public sealed class CardReducerApplyPatientAdmittedTests
         CardState initial = CardState.FromDefinition(definition);
         return new MviStore<CardState, CardIntent, CardEffect>(
             initial,
-            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardIntentHandler(),
             new CardReducer(DashboardCardRegistry.All),
             new NoopCardEffectDispatcher());
     }

@@ -13,7 +13,7 @@ public sealed partial class EventBindingSelectionReducer
     /// 处理选择变更意图。
     /// </summary>
     [MviReduce(typeof(EventBindingSelectionIntent.ChangeSelection))]
-    private MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
+    private static MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
         EventBindingSelectionState state,
         EventBindingSelectionIntent.ChangeSelection intent)
     {
@@ -29,6 +29,8 @@ public sealed partial class EventBindingSelectionReducer
             EventCount = eventCount,
             StatusText = statusText,
         };
-        return MviReduceResult.State<EventBindingSelectionState, EventBindingSelectionEffect>(newState);
+        return MviReduceResult.StateAndEffect<EventBindingSelectionState, EventBindingSelectionEffect>(
+            newState,
+            new EventBindingSelectionEffect.NotifySelectionChanged(patientId));
     }
 }

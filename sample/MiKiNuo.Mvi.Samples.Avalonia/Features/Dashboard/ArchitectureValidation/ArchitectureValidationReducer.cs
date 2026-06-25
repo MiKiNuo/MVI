@@ -14,7 +14,7 @@ public sealed partial class ArchitectureValidationReducer
     /// 处理上下文更新意图。
     /// </summary>
     [MviReduce(typeof(ArchitectureValidationIntent.UpdateContext))]
-    private MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> HandleUpdateContext(
+    private static MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> HandleUpdateContext(
         ArchitectureValidationState state,
         ArchitectureValidationIntent.UpdateContext intent)
     {
@@ -26,7 +26,7 @@ public sealed partial class ArchitectureValidationReducer
     /// 处理追加日志意图。
     /// </summary>
     [MviReduce(typeof(ArchitectureValidationIntent.AppendInteractionLog))]
-    private MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> HandleAppendInteractionLog(
+    private static MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> HandleAppendInteractionLog(
         ArchitectureValidationState state,
         ArchitectureValidationIntent.AppendInteractionLog intent)
     {
@@ -34,7 +34,7 @@ public sealed partial class ArchitectureValidationReducer
             state with { InteractionLog = ComputeNextLog(state.InteractionLog, intent.Message) });
     }
 
-    private string ComputeNextLog(string currentLog, string message)
+    private static string ComputeNextLog(string currentLog, string message)
     {
         return string.IsNullOrWhiteSpace(currentLog)
             ? message

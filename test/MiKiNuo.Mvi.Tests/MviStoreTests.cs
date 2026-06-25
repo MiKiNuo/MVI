@@ -18,7 +18,7 @@ public sealed class MviStoreTests
     {
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginIntentHandler(),
+            new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
             new EmptyLoginEffectDispatcher());
 

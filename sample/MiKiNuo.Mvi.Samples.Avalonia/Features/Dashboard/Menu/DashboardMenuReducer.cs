@@ -14,7 +14,7 @@ public sealed partial class DashboardMenuReducer
     /// 处理选择菜单项意图。
     /// </summary>
     [MviReduce(typeof(DashboardMenuIntent.SelectMenuKey))]
-    private MviReduceResult<DashboardMenuState, DashboardMenuEffect> HandleSelectMenuKey(
+    private static MviReduceResult<DashboardMenuState, DashboardMenuEffect> HandleSelectMenuKey(
         DashboardMenuState state,
         DashboardMenuIntent.SelectMenuKey intent)
     {

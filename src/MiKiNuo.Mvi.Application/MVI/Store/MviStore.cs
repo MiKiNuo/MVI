@@ -14,7 +14,7 @@ namespace MiKiNuo.Mvi.Application.MVI.Store;
 /// 表示经典 MVI 状态存储。
 /// </summary>
 /// <remarks>
-/// 数据流：Intent → Middleware → IntentHandler(异步) → Reducer(纯函数) → 新 State + Effects → EffectDispatcher。
+/// 数据流：Intent → Middleware → IntentHandler(异步业务,产后续 Intent) → Reducer(纯函数) → 新 State + Effects → EffectDispatcher。
 /// </remarks>
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
@@ -78,7 +78,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     public Observable<TEffect> Effects => _effects;
 
     /// <summary>
-    /// 派发意图。
+    /// 派发意图,队列化处理后续意图。
     /// </summary>
     /// <param name="intent">意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
@@ -88,28 +88,17 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         ArgumentNullException.ThrowIfNull(intent);
 
-        IReadOnlyList<TEffect> effects;
+        Queue<TIntent> pending = new();
+        pending.Enqueue(intent);
 
-        await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        try
+        while (pending.Count > 0)
         {
-            MviMiddlewareContext<TState, TIntent, TEffect> context = new(CurrentState, intent);
-            MviReduceResult<TState, TEffect> result = await _pipeline.InvokeAsync(
-                context, HandleAndReduceCoreAsync, cancellationToken).ConfigureAwait(false);
-
-            _state.Value = result.State;
-            effects = result.Effects;
-        }
-        finally
-        {
-            _ = _dispatchGate.Release();
-        }
-
-        foreach (TEffect effect in effects)
-        {
-            _effects.OnNext(effect);
-            await _effectDispatcher.DispatchAsync(effect, cancellationToken).ConfigureAwait(false);
+            TIntent current = pending.Dequeue();
+            IReadOnlyList<TIntent> subsequentIntents = await DispatchOneAsync(current, cancellationToken);
+            foreach (TIntent subsequent in subsequentIntents)
+            {
+                pending.Enqueue(subsequent);
+            }
         }
     }
 
@@ -130,25 +119,49 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         GC.SuppressFinalize(this);
     }
 
-    private async ValueTask<MviReduceResult<TState, TEffect>> HandleAndReduceCoreAsync(
-        MviMiddlewareContext<TState, TIntent, TEffect> context,
+    /// <summary>
+    /// 派发单个意图并通过中间件管道执行。
+    /// </summary>
+    /// <param name="intent">当前意图。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>IntentHandler 产生的后续意图集合。</returns>
+    private async ValueTask<IReadOnlyList<TIntent>> DispatchOneAsync(
+        TIntent intent,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<TIntent> subsequentIntents = Array.Empty<TIntent>();
+        IReadOnlyList<TEffect> effects;
 
-        // IntentHandler：异步业务逻辑，产生动作副作用。
-        IReadOnlyList<TEffect> actionEffects = await _intentHandler
-            .HandleAsync(context.State, context.Intent, cancellationToken)
-            .ConfigureAwait(false);
+        await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            MviMiddlewareContext<TState, TIntent, TEffect> context = new(CurrentState, intent);
 
-        // Reducer：纯函数 (State, Intent) → (新 State, 派生副作用)。
-        MviReduceResult<TState, TEffect> reduceResult = _reducer.Reduce(context.State, context.Intent);
+            MviReduceResult<TState, TEffect> result = await _pipeline.InvokeAsync(
+                context,
+                async (ctx, ct) =>
+                {
+                    subsequentIntents = await _intentHandler
+                        .HandleAsync(ctx.State, ctx.Intent, ct)
+                        .ConfigureAwait(false);
+                    return _reducer.Reduce(ctx.State, ctx.Intent);
+                },
+                cancellationToken).ConfigureAwait(false);
 
-        // 合并动作副作用与派生副作用。
-        List<TEffect> allEffects = new(actionEffects.Count + reduceResult.Effects.Count);
-        allEffects.AddRange(actionEffects);
-        allEffects.AddRange(reduceResult.Effects);
+            _state.Value = result.State;
+            effects = result.Effects;
+        }
+        finally
+        {
+            _ = _dispatchGate.Release();
+        }
 
-        return new MviReduceResult<TState, TEffect>(reduceResult.State, allEffects);
+        foreach (TEffect effect in effects)
+        {
+            _effects.OnNext(effect);
+            await _effectDispatcher.DispatchAsync(effect, cancellationToken).ConfigureAwait(false);
+        }
+
+        return subsequentIntents;
     }
 }

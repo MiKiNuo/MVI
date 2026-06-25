@@ -18,7 +18,7 @@ public sealed class LoginViewModelBindingTests
     {
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginIntentHandler(),
+            new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
             new EmptyLoginEffectDispatcher());
         using LoginViewModel viewModel = new(store);
@@ -37,7 +37,7 @@ public sealed class LoginViewModelBindingTests
     {
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginIntentHandler(),
+            new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
             new EmptyLoginEffectDispatcher());
         using LoginViewModel viewModel = new(store);

@@ -1173,7 +1173,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("    private ").Append(StoreType(login)).AppendLine(" ResolveLoginStore()");
         builder.AppendLine("    {");
         builder.Append("        return (").Append(StoreType(login)).Append(")GetSingleton(typeof(")
-            .Append(StoreType(login)).AppendLine("), () => CreateLoginStore(ResolveLoginStore));");
+            .Append(StoreType(login)).AppendLine("), CreateLoginStore);");
         builder.AppendLine("    }");
         builder.AppendLine();
         AppendLoginStoreFactory(builder, login, "    ");
@@ -1181,19 +1181,17 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
     private static void AppendLoginStoreFactory(StringBuilder builder, FeatureInfo login, string indent)
     {
-        builder.Append(indent).Append("private ").Append(StoreType(login)).Append(" CreateLoginStore(Func<")
-            .Append(StoreType(login)).AppendLine("> storeFactory)");
+        builder.Append(indent).Append("private ").Append(StoreType(login)).Append(" CreateLoginStore()");
         builder.Append(indent).AppendLine("{");
         string authNamespace = "global::" + login.ViewModelType.ContainingNamespace.ToDisplayString();
-        // 经典 MVI 模式：IntentHandler 无依赖，EffectDispatcher 持有 AuthService 与 Store 工厂。
+        // 经典 MVI 模式：IntentHandler 持有 AuthService 执行异步登录，EffectDispatcher 仅持有导航服务。
         builder.Append(indent).Append("    ").Append(login.DispatcherTypeName).Append(" dispatcher = new(");
-        builder.Append("Resolve<").Append(authNamespace).Append(".IAuthService>(), ");
-        builder.Append("Resolve<").Append(authNamespace).Append(".ILoginNavigationService>(), ");
-        builder.Append("storeFactory);").AppendLine();
+        builder.Append("Resolve<").Append(authNamespace).Append(".ILoginNavigationService>());").AppendLine();
         builder.Append(indent).Append("    return new MviStore<").Append(login.StateTypeName).Append(", ")
             .Append(login.IntentTypeName).Append(", ").Append(login.EffectTypeName).AppendLine(">(");
         builder.Append(indent).Append("        ").Append(login.StateTypeName).AppendLine(".Initial,");
-        builder.Append(indent).Append("        new ").Append(login.IntentHandlerTypeName).AppendLine("(),");
+        builder.Append(indent).Append("        new ").Append(login.IntentHandlerTypeName).Append("(");
+        builder.Append("Resolve<").Append(authNamespace).Append(".IAuthService>()),");
         builder.Append(indent).Append("        new ").Append(login.ReducerTypeName).AppendLine("(),");
         builder.Append(indent).AppendLine("        dispatcher);");
         builder.Append(indent).AppendLine("}");
@@ -1832,7 +1830,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.Append("        private ").Append(StoreType(login)).AppendLine(" ResolveLoginStore()");
         builder.AppendLine("        {");
         builder.Append("            return (").Append(StoreType(login)).Append(")GetScoped(typeof(")
-            .Append(StoreType(login)).AppendLine("), () => _container.CreateLoginStore(ResolveLoginStore));");
+            .Append(StoreType(login)).AppendLine("), () => _container.CreateLoginStore());");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        private object GetScoped(Type serviceType, Func<object> factory)");

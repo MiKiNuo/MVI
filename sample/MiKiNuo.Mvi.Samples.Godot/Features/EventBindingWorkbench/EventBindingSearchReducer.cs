@@ -12,16 +12,18 @@ public sealed partial class EventBindingSearchReducer
 {
     /// <summary>处理查询文本变化意图。</summary>
     [MviReduce(typeof(EventBindingSearchIntent.ChangeQuery))]
-    private MviReduceResult<EventBindingSearchState, EventBindingSearchEffect> HandleChangeQuery(
+    private static MviReduceResult<EventBindingSearchState, EventBindingSearchEffect> HandleChangeQuery(
         EventBindingSearchState state,
         EventBindingSearchIntent.ChangeQuery intent)
     {
-        return MviReduceResult.State<EventBindingSearchState, EventBindingSearchEffect>(
-            state with
-            {
-                QueryText = intent.Payload.Text,
-                EventCount = state.EventCount + 1,
-                StatusText = $"搜索文本变化：{intent.Payload.Text}",
-            });
+        EventBindingSearchState newState = state with
+        {
+            QueryText = intent.Payload.Text,
+            EventCount = state.EventCount + 1,
+            StatusText = $"搜索文本变化：{intent.Payload.Text}",
+        };
+        return MviReduceResult.StateAndEffect<EventBindingSearchState, EventBindingSearchEffect>(
+            newState,
+            new EventBindingSearchEffect.NotifyQueryChanged(intent.Payload.Text));
     }
 }

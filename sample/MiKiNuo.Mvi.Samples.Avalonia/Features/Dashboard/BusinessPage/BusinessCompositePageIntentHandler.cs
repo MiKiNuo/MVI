@@ -12,19 +12,19 @@ public sealed class BusinessCompositePageIntentHandler
     : IMviIntentHandler<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>
 {
     /// <summary>
-    /// 处理意图并产生动作副作用。
+    /// 处理意图并产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>动作副作用集合。</returns>
-    public ValueTask<IReadOnlyList<BusinessCompositePageEffect>> HandleAsync(
+    /// <returns>后续意图集合,由 Store 递归派发。</returns>
+    public ValueTask<IReadOnlyList<BusinessCompositePageIntent>> HandleAsync(
         BusinessCompositePageState state,
         BusinessCompositePageIntent intent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        return new ValueTask<IReadOnlyList<BusinessCompositePageEffect>>(Array.Empty<BusinessCompositePageEffect>());
+        return new ValueTask<IReadOnlyList<BusinessCompositePageIntent>>(Array.Empty<BusinessCompositePageIntent>());
     }
 }

@@ -13,7 +13,7 @@ public sealed partial class UserProfileReducer
     /// 处理角色变更意图。
     /// </summary>
     [MviReduce(typeof(UserProfileIntent.ChangeRole))]
-    private MviReduceResult<UserProfileState, UserProfileEffect> HandleChangeRole(
+    private static MviReduceResult<UserProfileState, UserProfileEffect> HandleChangeRole(
         UserProfileState state,
         UserProfileIntent.ChangeRole intent)
     {

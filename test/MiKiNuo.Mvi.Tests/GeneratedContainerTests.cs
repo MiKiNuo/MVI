@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -254,7 +254,7 @@ public sealed class GeneratedContainerTests
             SelectedBedStatuses: new HashSet<BedStatus>());
         using MviStore<CardState, CardIntent, CardEffect> store = new(
             initialState,
-            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardIntentHandler(),
             new CardReducer(DashboardCardRegistry.All),
             dispatcher);
 #pragma warning disable CA2000

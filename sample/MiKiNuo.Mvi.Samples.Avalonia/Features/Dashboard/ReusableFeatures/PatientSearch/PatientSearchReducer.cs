@@ -13,7 +13,7 @@ public sealed partial class PatientSearchReducer
     /// 处理查询文本变更。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.ChangeQueryText))]
-    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleChangeQueryText(
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleChangeQueryText(
         PatientSearchState state,
         PatientSearchIntent.ChangeQueryText intent)
     {
@@ -33,7 +33,7 @@ public sealed partial class PatientSearchReducer
     /// 处理检索患者意图。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.SearchPatient))]
-    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSearchPatient(
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSearchPatient(
         PatientSearchState state,
         PatientSearchIntent.SearchPatient intent)
     {
@@ -59,22 +59,29 @@ public sealed partial class PatientSearchReducer
     /// 处理选择首位患者。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.SelectFirstPatient))]
-    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSelectFirstPatient(
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSelectFirstPatient(
         PatientSearchState state,
         PatientSearchIntent.SelectFirstPatient intent)
     {
         string statusText = state.CanSelectPatient
             ? $"已选择患者 {state.SelectedPatientName}，正在请求父页面协调兄弟 MVI。"
             : "请先检索患者，再选择患者上下文。";
-        return MviReduceResult.State<PatientSearchState, PatientSearchEffect>(
-            state with { StatusText = statusText });
+        PatientSearchState newState = state with { StatusText = statusText };
+        if (state.CanSelectPatient)
+        {
+            return MviReduceResult.StateAndEffect<PatientSearchState, PatientSearchEffect>(
+                newState,
+                new PatientSearchEffect.RequestPatientContext(state.PageKey, state.SelectedPatientName, state.SelectedPatientNo));
+        }
+
+        return MviReduceResult.State<PatientSearchState, PatientSearchEffect>(newState);
     }
 
     /// <summary>
     /// 处理外部更新意图。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.ApplyExternalUpdate))]
-    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleApplyExternalUpdate(
+    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleApplyExternalUpdate(
         PatientSearchState state,
         PatientSearchIntent.ApplyExternalUpdate intent)
     {

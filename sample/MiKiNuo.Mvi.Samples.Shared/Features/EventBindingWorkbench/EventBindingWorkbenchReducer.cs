@@ -11,7 +11,7 @@ public sealed partial class EventBindingWorkbenchReducer
 {
     /// <summary>处理记录交互意图。</summary>
     [MviReduce(typeof(EventBindingWorkbenchIntent.RecordInteraction))]
-    private MviReduceResult<EventBindingWorkbenchState, EventBindingWorkbenchEffect> HandleRecordInteraction(
+    private static MviReduceResult<EventBindingWorkbenchState, EventBindingWorkbenchEffect> HandleRecordInteraction(
         EventBindingWorkbenchState state,
         EventBindingWorkbenchIntent.RecordInteraction intent)
     {

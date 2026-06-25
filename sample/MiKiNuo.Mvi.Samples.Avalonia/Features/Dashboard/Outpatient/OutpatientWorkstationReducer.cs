@@ -13,7 +13,7 @@ public sealed partial class OutpatientWorkstationReducer
     /// 处理刷新页面布局意图。
     /// </summary>
     [MviReduce(typeof(OutpatientWorkstationIntent.RefreshPage))]
-    private MviReduceResult<OutpatientWorkstationState, OutpatientWorkstationEffect> HandleRefreshPage(
+    private static MviReduceResult<OutpatientWorkstationState, OutpatientWorkstationEffect> HandleRefreshPage(
         OutpatientWorkstationState state,
         OutpatientWorkstationIntent.RefreshPage intent)
     {

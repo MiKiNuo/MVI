@@ -5,11 +5,11 @@ using MiKiNuo.Mvi.Domain.MVI.State;
 namespace MiKiNuo.Mvi.Application.MVI.IntentHandler;
 
 /// <summary>
-/// 表示意图处理器，执行异步业务逻辑产生副作用。
+/// 表示意图处理器,执行异步业务产生后续意图。
 /// </summary>
 /// <remarks>
-/// IntentHandler 只负责异步副作用（如 API 调用），不直接修改状态。
-/// 状态转换由 <c>IMviReducer</c> 纯函数完成。
+/// IntentHandler 承担异步业务(API 调用、注册表写入等),
+/// 产生的后续意图由 Store 递归派发到 Reducer 完成状态转换。
 /// </remarks>
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
@@ -20,13 +20,13 @@ public interface IMviIntentHandler<TState, TIntent, TEffect>
     where TEffect : IMviEffect
 {
     /// <summary>
-    /// 处理意图并产生动作副作用。
+    /// 处理意图并产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>动作副作用集合。</returns>
-    public ValueTask<IReadOnlyList<TEffect>> HandleAsync(
+    /// <returns>后续意图集合,由 Store 递归派发。</returns>
+    public ValueTask<IReadOnlyList<TIntent>> HandleAsync(
         TState state,
         TIntent intent,
         CancellationToken cancellationToken = default);

@@ -12,7 +12,7 @@
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Presentation\MiKiNuo.Mvi.Presentation.csproj" />
     <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
-    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Infrastructure\MiKiNuo.Mvi.Infrastructure.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Godot\MiKiNuo.Mvi.Samples.Godot.csproj" />
     <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Shared\MiKiNuo.Mvi.Samples.Shared.csproj" />

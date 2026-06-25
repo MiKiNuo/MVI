@@ -13,7 +13,7 @@ public sealed partial class EventBindingDetailReducer
     /// 处理详情按下意图。
     /// </summary>
     [MviReduce(typeof(EventBindingDetailIntent.PressDetail))]
-    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePressDetail(
+    private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePressDetail(
         EventBindingDetailState state,
         EventBindingDetailIntent.PressDetail intent)
     {
@@ -23,23 +23,28 @@ public sealed partial class EventBindingDetailReducer
             LastPointerText = pointerText,
             StatusText = "详情区域收到 PointerPressed。",
         };
-        return MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(newState);
+        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
+            newState,
+            new EventBindingDetailEffect.NotifyDetailEvent("PointerPressed", pointerText));
     }
 
     /// <summary>
     /// 处理刷新意图。
     /// </summary>
     [MviReduce(typeof(EventBindingDetailIntent.Refresh))]
-    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleRefresh(
+    private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleRefresh(
         EventBindingDetailState state,
         EventBindingDetailIntent.Refresh intent)
     {
         int refreshCount = state.RefreshCount + 1;
+        string sourceName = intent.Payload.SourceName ?? "Unknown";
         EventBindingDetailState newState = state with
         {
             RefreshCount = refreshCount,
             StatusText = $"刷新动作：{intent.Payload.SourceName}",
         };
-        return MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(newState);
+        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
+            newState,
+            new EventBindingDetailEffect.NotifyDetailEvent("Action", sourceName));
     }
 }

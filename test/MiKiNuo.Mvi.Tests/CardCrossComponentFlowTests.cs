@@ -130,7 +130,7 @@ file sealed class CardCrossComponentHarness
             NoopCardEffectDispatcher storeDispatcher = new();
             MviStore<CardState, CardIntent, CardEffect> store = new(
                 CardState.FromDefinition(definition),
-                new CardIntentHandler(DashboardCardRegistry.All),
+                new CardIntentHandler(),
                 new CardReducer(DashboardCardRegistry.All),
                 storeDispatcher);
             stores[key] = store;

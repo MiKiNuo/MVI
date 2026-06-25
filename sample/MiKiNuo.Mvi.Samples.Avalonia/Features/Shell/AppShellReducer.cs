@@ -13,7 +13,7 @@ public sealed partial class AppShellReducer
     /// 处理显示页面意图。
     /// </summary>
     [MviReduce(typeof(AppShellIntent.ShowPage))]
-    private MviReduceResult<AppShellState, AppShellEffect> HandleShowPage(
+    private static MviReduceResult<AppShellState, AppShellEffect> HandleShowPage(
         AppShellState state,
         AppShellIntent.ShowPage intent)
     {

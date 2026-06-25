@@ -11,31 +11,35 @@ public sealed partial class AppShellReducer
 {
     /// <summary>处理显示登录界面意图。</summary>
     [MviReduce(typeof(AppShellIntent.ShowLogin))]
-    private MviReduceResult<AppShellState, AppShellEffect> HandleShowLogin(
+    private static MviReduceResult<AppShellState, AppShellEffect> HandleShowLogin(
         AppShellState state,
         AppShellIntent.ShowLogin intent)
     {
-        return MviReduceResult.State<AppShellState, AppShellEffect>(
-            state with
-            {
-                CurrentScreen = GameScreenKeys.Login,
-                CurrentTitle = "登录游戏",
-                ShellMessage = "已返回登录界面，等待重新进入大厅。",
-            });
+        AppShellState newState = state with
+        {
+            CurrentScreen = GameScreenKeys.Login,
+            CurrentTitle = "登录游戏",
+            ShellMessage = "已返回登录界面，等待重新进入大厅。",
+        };
+        return MviReduceResult.StateAndEffect<AppShellState, AppShellEffect>(
+            newState,
+            new AppShellEffect.Trace("Shell ShowLogin"));
     }
 
     /// <summary>处理显示游戏大厅意图。</summary>
     [MviReduce(typeof(AppShellIntent.ShowLobby))]
-    private MviReduceResult<AppShellState, AppShellEffect> HandleShowLobby(
+    private static MviReduceResult<AppShellState, AppShellEffect> HandleShowLobby(
         AppShellState state,
         AppShellIntent.ShowLobby intent)
     {
-        return MviReduceResult.State<AppShellState, AppShellEffect>(
-            state with
-            {
-                CurrentScreen = GameScreenKeys.Lobby,
-                CurrentTitle = "游戏大厅",
-                ShellMessage = "Login MVI 已通过 EffectDispatcher 把玩家资料交给 Lobby MVI。",
-            });
+        AppShellState newState = state with
+        {
+            CurrentScreen = GameScreenKeys.Lobby,
+            CurrentTitle = "游戏大厅",
+            ShellMessage = "Login MVI 已通过 EffectDispatcher 把玩家资料交给 Lobby MVI。",
+        };
+        return MviReduceResult.StateAndEffect<AppShellState, AppShellEffect>(
+            newState,
+            new AppShellEffect.Trace("Shell ShowLobby"));
     }
 }

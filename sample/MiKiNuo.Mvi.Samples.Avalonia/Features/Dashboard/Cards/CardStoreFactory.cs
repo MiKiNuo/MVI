@@ -76,7 +76,7 @@ public sealed class CardStoreFactory
     {
         return new MviStore<CardState, CardIntent, CardEffect>(
             initialState: CardState.FromDefinition(definition),
-            intentHandler: new CardIntentHandler(DashboardCardRegistry.All),
+            intentHandler: new CardIntentHandler(),
             reducer: new CardReducer(DashboardCardRegistry.All),
             effectDispatcher: new CardEffectDispatcher(mediator, patientRegistry, definition.Key, allStores),
             middlewares: null);

@@ -14,7 +14,7 @@ public sealed partial class PatientQueueReducer
     /// 处理接诊下一位患者意图。
     /// </summary>
     [MviReduce(typeof(PatientQueueIntent.CallNext))]
-    private MviReduceResult<PatientQueueState, PatientQueueEffect> HandleCallNext(
+    private static MviReduceResult<PatientQueueState, PatientQueueEffect> HandleCallNext(
         PatientQueueState state,
         PatientQueueIntent.CallNext intent)
     {

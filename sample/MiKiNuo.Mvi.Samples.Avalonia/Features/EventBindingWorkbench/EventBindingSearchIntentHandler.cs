@@ -13,32 +13,19 @@ public sealed class EventBindingSearchIntentHandler
     : IMviIntentHandler<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect>
 {
     /// <summary>
-    /// 处理意图并产生动作副作用。
+    /// 处理意图并产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>动作副作用集合。</returns>
-    public ValueTask<IReadOnlyList<EventBindingSearchEffect>> HandleAsync(
+    /// <returns>后续意图集合,由 Store 递归派发。</returns>
+    public ValueTask<IReadOnlyList<EventBindingSearchIntent>> HandleAsync(
         EventBindingSearchState state,
         EventBindingSearchIntent intent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-
-        IReadOnlyList<EventBindingSearchEffect> effects = intent switch
-        {
-            EventBindingSearchIntent.ChangeQuery changeQuery => HandleChangeQuery(changeQuery),
-            _ => Array.Empty<EventBindingSearchEffect>(),
-        };
-        return new ValueTask<IReadOnlyList<EventBindingSearchEffect>>(effects);
-    }
-
-    private static IReadOnlyList<EventBindingSearchEffect> HandleChangeQuery(
-        EventBindingSearchIntent.ChangeQuery intent)
-    {
-        string queryText = intent.Payload.Text;
-        return new EventBindingSearchEffect[] { new EventBindingSearchEffect.NotifyQueryChanged(queryText) };
+        return new ValueTask<IReadOnlyList<EventBindingSearchIntent>>(Array.Empty<EventBindingSearchIntent>());
     }
 }

@@ -12,19 +12,19 @@ public sealed class StatisticsIntentHandler
     : IMviIntentHandler<StatisticsState, StatisticsIntent, StatisticsEffect>
 {
     /// <summary>
-    /// 处理意图并产生动作副作用。
+    /// 处理意图并产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>动作副作用集合。</returns>
-    public ValueTask<IReadOnlyList<StatisticsEffect>> HandleAsync(
+    /// <returns>后续意图集合,由 Store 递归派发。</returns>
+    public ValueTask<IReadOnlyList<StatisticsIntent>> HandleAsync(
         StatisticsState state,
         StatisticsIntent intent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        return new ValueTask<IReadOnlyList<StatisticsEffect>>(Array.Empty<StatisticsEffect>());
+        return new ValueTask<IReadOnlyList<StatisticsIntent>>(Array.Empty<StatisticsIntent>());
     }
 }

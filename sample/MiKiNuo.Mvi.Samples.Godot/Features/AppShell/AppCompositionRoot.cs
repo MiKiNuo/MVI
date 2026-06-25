@@ -59,11 +59,8 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
             Array.Empty<IMviMiddleware<AppShellState, AppShellIntent, AppShellEffect>>());
 
         LobbyReducer lobbyReducer = new();
-        LobbyIntentHandler lobbyIntentHandler = new();
-        MviStore<LobbyState, LobbyIntent, LobbyEffect>? lobbyStoreRef = null;
-        LobbyEffectDispatcher lobbyEffectDispatcher = new(
-            new FakeLobbyApiService(gameLogicService),
-            () => lobbyStoreRef ?? throw new InvalidOperationException("大厅 Store 尚未初始化。"));
+        LobbyIntentHandler lobbyIntentHandler = new(new FakeLobbyApiService(gameLogicService));
+        LobbyEffectDispatcher lobbyEffectDispatcher = new();
         IReadOnlyList<IMviMiddleware<LobbyState, LobbyIntent, LobbyEffect>> lobbyMiddlewares = [new LobbyMiddleware()];
         _lobbyStore = new MviStore<LobbyState, LobbyIntent, LobbyEffect>(
             LobbyState.Initial,
@@ -71,25 +68,19 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
             lobbyReducer,
             lobbyEffectDispatcher,
             lobbyMiddlewares);
-        lobbyStoreRef = _lobbyStore;
 
         GameShellNavigator navigator = new(_appShellStore, _lobbyStore);
         lobbyEffectDispatcher.SetNavigator(navigator);
-        LoginIntentHandler loginIntentHandler = new();
+        LoginIntentHandler loginIntentHandler = new(new FakeAuthService());
         LoginReducer loginReducer = new();
         IReadOnlyList<IMviMiddleware<LoginState, LoginIntent, LoginEffect>> loginMiddlewares = [new LoginMiddleware()];
-        MviStore<LoginState, LoginIntent, LoginEffect>? loginStoreRef = null;
-        LoginEffectDispatcher loginEffectDispatcher = new(
-            new FakeAuthService(),
-            navigator,
-            () => loginStoreRef ?? throw new InvalidOperationException("登录 Store 尚未初始化。"));
+        LoginEffectDispatcher loginEffectDispatcher = new(navigator);
         _loginStore = new MviStore<LoginState, LoginIntent, LoginEffect>(
             LoginState.Initial,
             loginIntentHandler,
             loginReducer,
             loginEffectDispatcher,
             loginMiddlewares);
-        loginStoreRef = _loginStore;
 
         _loginViewModel = new LoginViewModel(_loginStore, uiDispatcher);
 

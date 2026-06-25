@@ -11,17 +11,19 @@ public sealed partial class EventBindingSelectionReducer
 {
     /// <summary>处理选择变化意图。</summary>
     [MviReduce(typeof(EventBindingSelectionIntent.ChangeSelection))]
-    private MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
+    private static MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
         EventBindingSelectionState state,
         EventBindingSelectionIntent.ChangeSelection intent)
     {
-        return MviReduceResult.State<EventBindingSelectionState, EventBindingSelectionEffect>(
-            state with
-            {
-                SelectedMissionId = intent.Payload.SelectedValue?.ToString() ?? "-",
-                SelectedIndex = intent.Payload.SelectedIndex ?? -1,
-                EventCount = state.EventCount + 1,
-                StatusText = $"选择任务：{intent.Payload.SelectedValue?.ToString() ?? "-"}",
-            });
+        EventBindingSelectionState newState = state with
+        {
+            SelectedMissionId = intent.Payload.SelectedValue?.ToString() ?? "-",
+            SelectedIndex = intent.Payload.SelectedIndex ?? -1,
+            EventCount = state.EventCount + 1,
+            StatusText = $"选择任务：{intent.Payload.SelectedValue?.ToString() ?? "-"}",
+        };
+        return MviReduceResult.StateAndEffect<EventBindingSelectionState, EventBindingSelectionEffect>(
+            newState,
+            new EventBindingSelectionEffect.NotifySelectionChanged(intent.Payload.SelectedValue?.ToString() ?? "-"));
     }
 }

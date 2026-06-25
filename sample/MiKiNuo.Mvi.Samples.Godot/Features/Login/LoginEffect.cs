@@ -10,35 +10,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Login;
 public abstract partial record LoginEffect : IMviEffect
 {
     /// <summary>
-    /// 表示请求登录副作用。
-    /// </summary>
-    public sealed partial record RequestLogin : LoginEffect
-    {
-        /// <summary>
-        /// 初始化请求登录副作用。
-        /// </summary>
-        /// <param name="userName">用户账号。</param>
-        /// <param name="password">用户密码。</param>
-        public RequestLogin(string userName, string password)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(userName);
-            ArgumentException.ThrowIfNullOrWhiteSpace(password);
-            UserName = userName;
-            Password = password;
-        }
-
-        /// <summary>
-        /// 获取用户账号。
-        /// </summary>
-        public string UserName { get; init; }
-
-        /// <summary>
-        /// 获取用户密码。
-        /// </summary>
-        public string Password { get; init; }
-    }
-
-    /// <summary>
     /// 表示登录成功并进入大厅的副作用。
     /// </summary>
     public sealed partial record LoginSucceeded : LoginEffect

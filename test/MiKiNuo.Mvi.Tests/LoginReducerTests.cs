@@ -19,7 +19,7 @@ public sealed class LoginReducerTests
     {
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             LoginState.Initial,
-            new LoginIntentHandler(),
+            new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
             new EmptyLoginEffectDispatcher());
 
@@ -30,10 +30,10 @@ public sealed class LoginReducerTests
     }
 
     /// <summary>
-    /// 验证提交登录产生请求登录副作用并进入忙碌状态。
+    /// 验证提交登录触发认证并产生导航副作用。
     /// </summary>
     [Test]
-    public async Task Submit_Should_EmitRequestLoginEffectAndEnterBusyAsync()
+    public async Task Submit_Should_CallAuthServiceAndDispatchLoginSucceededAsync()
     {
         LoginState initialState = LoginState.Initial with
         {
@@ -43,7 +43,7 @@ public sealed class LoginReducerTests
         };
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             initialState,
-            new LoginIntentHandler(),
+            new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
             new EmptyLoginEffectDispatcher());
         List<LoginEffect> effects = [];
@@ -51,9 +51,9 @@ public sealed class LoginReducerTests
 
         await store.DispatchAsync(new LoginIntent.Submit());
 
-        await Assert.That(store.CurrentState.IsBusy).IsTrue();
+        await Assert.That(store.CurrentState.IsBusy).IsFalse();
         await Assert.That(effects.Count).IsEqualTo(1);
-        await Assert.That(effects[0]).IsTypeOf<LoginEffect.RequestLogin>();
+        await Assert.That(effects[0]).IsTypeOf<LoginEffect.NavigateToDashboard>();
         subscription.Dispose();
     }
 
@@ -72,7 +72,7 @@ public sealed class LoginReducerTests
         };
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             initialState,
-            new LoginIntentHandler(),
+            new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
             new EmptyLoginEffectDispatcher());
         List<LoginEffect> effects = [];

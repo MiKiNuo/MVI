@@ -2,6 +2,7 @@ using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -144,7 +145,7 @@ public sealed class CardBedMultiFilterReducerTests
     {
         return new MviStore<CardState, CardIntent, CardEffect>(
             initial,
-            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardIntentHandler(),
             new CardReducer(DashboardCardRegistry.All),
             new NoopCardEffectDispatcher());
     }

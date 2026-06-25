@@ -15,7 +15,7 @@ public sealed partial class ClinicalReminderReducer
     /// 处理加载患者提醒意图。
     /// </summary>
     [MviReduce(typeof(ClinicalReminderIntent.LoadPatient))]
-    private MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleLoadPatient(
+    private static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleLoadPatient(
         ClinicalReminderState state,
         ClinicalReminderIntent.LoadPatient intent)
     {
@@ -37,7 +37,7 @@ public sealed partial class ClinicalReminderReducer
     /// 处理首要提醒意图。
     /// </summary>
     [MviReduce(typeof(ClinicalReminderIntent.ResolvePrimaryAlert))]
-    private MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleResolvePrimaryAlert(
+    private static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleResolvePrimaryAlert(
         ClinicalReminderState state,
         ClinicalReminderIntent.ResolvePrimaryAlert intent)
     {

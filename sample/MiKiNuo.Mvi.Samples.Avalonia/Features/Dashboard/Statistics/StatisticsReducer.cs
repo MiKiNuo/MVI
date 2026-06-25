@@ -13,7 +13,7 @@ public sealed partial class StatisticsReducer
     /// 处理刷新统计意图。
     /// </summary>
     [MviReduce(typeof(StatisticsIntent.Refresh))]
-    private MviReduceResult<StatisticsState, StatisticsEffect> HandleRefresh(
+    private static MviReduceResult<StatisticsState, StatisticsEffect> HandleRefresh(
         StatisticsState state,
         StatisticsIntent.Refresh intent)
     {

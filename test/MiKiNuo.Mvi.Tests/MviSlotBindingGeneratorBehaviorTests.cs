@@ -1,6 +1,5 @@
-using System.Reflection;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -18,9 +17,8 @@ public sealed class MviSlotBindingGeneratorBehaviorTests
     [Test]
     public async Task Generate_OnBindSlots_Should_ProduceSlotMountingCodeAsync()
     {
-        IIncrementalGenerator generator = CreateSlotBindingGenerator();
-        CSharpCompilation compilation = CreateTestCompilation(SlotSourceWithoutObserves);
-        GeneratorDriverRunResult result = RunGenerator(generator, compilation);
+        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviCompositeSlotBindingGenerator>(
+            StubDefinitions + "\n" + SlotSourceWithoutObserves);
 
         await Assert.That(result.GeneratedTrees.Length).IsGreaterThan(0);
 
@@ -36,116 +34,14 @@ public sealed class MviSlotBindingGeneratorBehaviorTests
     [Test]
     public async Task Generate_OnBindSlots_Should_SubscribePropertyChangedForObservedPropertiesAsync()
     {
-        IIncrementalGenerator generator = CreateSlotBindingGenerator();
-        CSharpCompilation compilation = CreateTestCompilation(SlotSourceWithObserves);
-        GeneratorDriverRunResult result = RunGenerator(generator, compilation);
+        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviCompositeSlotBindingGenerator>(
+            StubDefinitions + "\n" + SlotSourceWithObserves);
 
         await Assert.That(result.GeneratedTrees.Length).IsGreaterThan(0);
 
         string generatedCode = result.GeneratedTrees[0].ToString();
         await Assert.That(generatedCode).Contains("PropertyChanged");
         await Assert.That(generatedCode).Contains("SelectedTab");
-    }
-
-    /// <summary>
-    /// 驱动生成器并返回运行结果。
-    /// </summary>
-    /// <param name="generator">增量源生成器实例。</param>
-    /// <param name="compilation">测试用编译对象。</param>
-    /// <returns>生成器运行结果。</returns>
-    private static GeneratorDriverRunResult RunGenerator(IIncrementalGenerator generator, CSharpCompilation compilation)
-    {
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
-        return driver.RunGenerators(compilation).GetRunResult();
-    }
-
-    /// <summary>
-    /// 加载 Infrastructure 程序集并创建槽位绑定生成器实例。
-    /// </summary>
-    private static IIncrementalGenerator CreateSlotBindingGenerator()
-    {
-        string root = FindRepositoryRoot();
-        string infrastructurePath = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "bin",
-            "Release",
-            "netstandard2.0",
-            "MiKiNuo.Mvi.Infrastructure.dll");
-
-        if (!File.Exists(infrastructurePath))
-        {
-            infrastructurePath = Path.Combine(
-                root,
-                "src",
-                "MiKiNuo.Mvi.Infrastructure",
-                "bin",
-                "Debug",
-                "netstandard2.0",
-                "MiKiNuo.Mvi.Infrastructure.dll");
-        }
-
-        System.Reflection.Assembly assembly = System.Reflection.Assembly.LoadFrom(infrastructurePath);
-        Type generatorType = assembly.GetType(
-            "MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration.MviCompositeSlotBindingGenerator")
-            ?? throw new InvalidOperationException("未找到槽位绑定生成器类型。");
-
-        object? instance = Activator.CreateInstance(generatorType);
-        return (IIncrementalGenerator)(instance ?? throw new InvalidOperationException("无法创建生成器实例。"));
-    }
-
-    /// <summary>
-    /// 创建包含桩类型与测试 View 的 <c>CSharpCompilation</c>。
-    /// </summary>
-    private static CSharpCompilation CreateTestCompilation(string testSource)
-    {
-        string fullSource = StubDefinitions + "\n" + testSource;
-
-        CSharpParseOptions parseOptions = new(LanguageVersion.Preview);
-        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(fullSource, parseOptions);
-
-        List<MetadataReference> references = new()
-        {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(EventArgs).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
-        };
-
-        // 补充 System.Runtime 中的核心程序集引用
-        System.Reflection.Assembly coreAssembly = typeof(object).Assembly;
-        string? coreDir = Path.GetDirectoryName(coreAssembly.Location);
-        if (coreDir is not null)
-        {
-            string[] runtimeAssemblies = new[]
-            {
-                "System.Runtime.dll",
-                "System.ComponentModel.Primitives.dll",
-                "System.Collections.dll",
-                "System.Linq.dll",
-            };
-
-            foreach (string dllName in runtimeAssemblies)
-            {
-                string path = Path.Combine(coreDir, dllName);
-                if (File.Exists(path))
-                {
-                    references.Add(MetadataReference.CreateFromFile(path));
-                }
-            }
-        }
-
-        CSharpCompilationOptions options = new(
-            OutputKind.DynamicallyLinkedLibrary,
-            nullableContextOptions: NullableContextOptions.Enable);
-
-        return CSharpCompilation.Create(
-            "MviSlotBindingBehaviorTestAssembly",
-            new[] { syntaxTree },
-            references,
-            options);
     }
 
     /// <summary>
@@ -242,21 +138,4 @@ public sealed class MviSlotBindingGeneratorBehaviorTests
             }
         }
         """;
-
-    private static string FindRepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "MiKiNuo.Mvi.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        if (directory is null)
-        {
-            throw new InvalidOperationException("未找到解决方案根目录。");
-        }
-
-        return directory.FullName;
-    }
 }

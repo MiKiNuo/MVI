@@ -12,32 +12,19 @@ public sealed class EventBindingSelectionIntentHandler
     : IMviIntentHandler<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect>
 {
     /// <summary>
-    /// 处理意图并产生动作副作用。
+    /// 处理意图并产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>动作副作用集合。</returns>
-    public ValueTask<IReadOnlyList<EventBindingSelectionEffect>> HandleAsync(
+    /// <returns>后续意图集合,由 Store 递归派发。</returns>
+    public ValueTask<IReadOnlyList<EventBindingSelectionIntent>> HandleAsync(
         EventBindingSelectionState state,
         EventBindingSelectionIntent intent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-
-        IReadOnlyList<EventBindingSelectionEffect> effects = intent switch
-        {
-            EventBindingSelectionIntent.ChangeSelection changeSelection => HandleChangeSelection(changeSelection),
-            _ => Array.Empty<EventBindingSelectionEffect>(),
-        };
-        return new ValueTask<IReadOnlyList<EventBindingSelectionEffect>>(effects);
-    }
-
-    private static IReadOnlyList<EventBindingSelectionEffect> HandleChangeSelection(
-        EventBindingSelectionIntent.ChangeSelection intent)
-    {
-        string patientId = intent.Payload.SelectedValue?.ToString() ?? "-";
-        return new EventBindingSelectionEffect[] { new EventBindingSelectionEffect.NotifySelectionChanged(patientId) };
+        return new ValueTask<IReadOnlyList<EventBindingSelectionIntent>>(Array.Empty<EventBindingSelectionIntent>());
     }
 }

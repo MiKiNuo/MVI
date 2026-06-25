@@ -104,7 +104,7 @@ public sealed class CardReducerSmokeTest
             SelectedBedStatuses: new HashSet<BedStatus>());
         IMviStore<CardState, CardIntent, CardEffect> store = new MviStore<CardState, CardIntent, CardEffect>(
             initial,
-            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardIntentHandler(),
             new CardReducer(DashboardCardRegistry.All),
             dispatcher);
         using IDisposable __ = store;
@@ -155,7 +155,7 @@ public sealed class CardReducerSmokeTest
         string firstInitial = initial.FormValues[0].Value;
         using MviStore<CardState, CardIntent, CardEffect> store = new(
             initial,
-            new CardIntentHandler(DashboardCardRegistry.All),
+            new CardIntentHandler(),
             new CardReducer(DashboardCardRegistry.All),
             new NoopCardEffectDispatcher());
 
@@ -202,7 +202,7 @@ public sealed class CardReducerSmokeTest
         CardState state = CardState.FromDefinition(probeDefinition);
         using MviStore<CardState, CardIntent, CardEffect> store = new(
             state,
-            new CardIntentHandler(isolated),
+            new CardIntentHandler(),
             new CardReducer(isolated),
             new NoopCardEffectDispatcher());
 

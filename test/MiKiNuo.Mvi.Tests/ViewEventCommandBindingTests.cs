@@ -458,13 +458,13 @@ public sealed class EventCommandIntentHandler
     : IMviIntentHandler<EventCommandState, EventCommandIntent, EventCommandEffect>
 {
     /// <summary>
-    /// 处理意图产生副作用。
+    /// 处理意图产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>副作用集合。</returns>
-    public ValueTask<IReadOnlyList<EventCommandEffect>> HandleAsync(
+    /// <returns>后续意图集合。</returns>
+    public ValueTask<IReadOnlyList<EventCommandIntent>> HandleAsync(
         EventCommandState state,
         EventCommandIntent intent,
         CancellationToken cancellationToken = default)
@@ -472,11 +472,11 @@ public sealed class EventCommandIntentHandler
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
 
-        IReadOnlyList<EventCommandEffect> effects = intent switch
+        IReadOnlyList<EventCommandIntent> subsequentIntents = intent switch
         {
-            _ => Array.Empty<EventCommandEffect>(),
+            _ => Array.Empty<EventCommandIntent>(),
         };
-        return new ValueTask<IReadOnlyList<EventCommandEffect>>(effects);
+        return new ValueTask<IReadOnlyList<EventCommandIntent>>(subsequentIntents);
     }
 }
 

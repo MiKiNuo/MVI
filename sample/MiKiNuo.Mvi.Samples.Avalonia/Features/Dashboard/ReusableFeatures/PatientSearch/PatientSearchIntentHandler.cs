@@ -13,33 +13,19 @@ public sealed class PatientSearchIntentHandler
     : IMviIntentHandler<PatientSearchState, PatientSearchIntent, PatientSearchEffect>
 {
     /// <summary>
-    /// 处理意图并产生动作副作用。
+    /// 处理意图并产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>动作副作用集合。</returns>
-    public ValueTask<IReadOnlyList<PatientSearchEffect>> HandleAsync(
+    /// <returns>后续意图集合,由 Store 递归派发。</returns>
+    public ValueTask<IReadOnlyList<PatientSearchIntent>> HandleAsync(
         PatientSearchState state,
         PatientSearchIntent intent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-
-        IReadOnlyList<PatientSearchEffect> effects = intent switch
-        {
-            PatientSearchIntent.SelectFirstPatient when state.CanSelectPatient =>
-                new PatientSearchEffect[]
-                {
-                    new PatientSearchEffect.RequestPatientContext(
-                        state.PageKey,
-                        state.SelectedPatientName,
-                        state.SelectedPatientNo),
-                },
-            _ => Array.Empty<PatientSearchEffect>(),
-        };
-
-        return new ValueTask<IReadOnlyList<PatientSearchEffect>>(effects);
+        return new ValueTask<IReadOnlyList<PatientSearchIntent>>(Array.Empty<PatientSearchIntent>());
     }
 }

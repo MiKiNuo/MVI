@@ -11,15 +11,17 @@ public sealed partial class EventBindingDetailReducer
 {
     /// <summary>处理准备动作意图。</summary>
     [MviReduce(typeof(EventBindingDetailIntent.Prepare))]
-    private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePrepare(
+    private static MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePrepare(
         EventBindingDetailState state,
         EventBindingDetailIntent.Prepare intent)
     {
-        return MviReduceResult.State<EventBindingDetailState, EventBindingDetailEffect>(
-            state with
-            {
-                PrepareCount = state.PrepareCount + 1,
-                StatusText = $"准备动作：{intent.Payload.SourceName ?? "Unknown"}",
-            });
+        EventBindingDetailState newState = state with
+        {
+            PrepareCount = state.PrepareCount + 1,
+            StatusText = $"准备动作：{intent.Payload.SourceName ?? "Unknown"}",
+        };
+        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
+            newState,
+            new EventBindingDetailEffect.NotifyPrepare(intent.Payload.SourceName ?? "Unknown"));
     }
 }
