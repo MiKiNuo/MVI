@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.AuditTimeline;
 
@@ -7,13 +8,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.Audit
 /// 表示审计时间线规约器。
 /// </summary>
 public sealed partial class AuditTimelineReducer
-    : MviReducerBase<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect>
+    : MviReducerBase<AuditTimelineState, AuditTimelineIntent, UnitEffect>
 {
     /// <summary>
     /// 处理追加条目意图。
     /// </summary>
     [MviReduce(typeof(AuditTimelineIntent.AppendEntry))]
-    private static MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleAppendEntry(
+    private MviReduceResult<AuditTimelineState, UnitEffect> HandleAppendEntry(
         AuditTimelineState state,
         AuditTimelineIntent.AppendEntry intent)
     {
@@ -29,14 +30,14 @@ public sealed partial class AuditTimelineReducer
             EntriesText = entries,
             CanClear = true,
         };
-        return MviReduceResult.State<AuditTimelineState, AuditTimelineEffect>(newState);
+        return MviReduceResult.State<AuditTimelineState, UnitEffect>(newState);
     }
 
     /// <summary>
     /// 处理清空条目意图。
     /// </summary>
     [MviReduce(typeof(AuditTimelineIntent.ClearEntries))]
-    private static MviReduceResult<AuditTimelineState, AuditTimelineEffect> HandleClearEntries(
+    private MviReduceResult<AuditTimelineState, UnitEffect> HandleClearEntries(
         AuditTimelineState state,
         AuditTimelineIntent.ClearEntries intent)
     {
@@ -47,6 +48,6 @@ public sealed partial class AuditTimelineReducer
             EntriesText = "暂无审计记录。",
             CanClear = false,
         };
-        return MviReduceResult.State<AuditTimelineState, AuditTimelineEffect>(newState);
+        return MviReduceResult.State<AuditTimelineState, UnitEffect>(newState);
     }
 }

@@ -1,4 +1,5 @@
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
@@ -7,17 +8,17 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 /// 表示应用壳规约器。
 /// </summary>
 public sealed partial class AppShellReducer
-    : MviReducerBase<AppShellState, AppShellIntent, AppShellEffect>
+    : MviReducerBase<AppShellState, AppShellIntent, UnitEffect>
 {
     /// <summary>
     /// 处理显示页面意图。
     /// </summary>
     [MviReduce(typeof(AppShellIntent.ShowPage))]
-    private static MviReduceResult<AppShellState, AppShellEffect> HandleShowPage(
+    private MviReduceResult<AppShellState, UnitEffect> HandleShowPage(
         AppShellState state,
         AppShellIntent.ShowPage intent)
     {
-        return MviReduceResult.State<AppShellState, AppShellEffect>(
+        return MviReduceResult.State<AppShellState, UnitEffect>(
             state with { CurrentPageKey = intent.PageKey, Title = intent.Title });
     }
 }

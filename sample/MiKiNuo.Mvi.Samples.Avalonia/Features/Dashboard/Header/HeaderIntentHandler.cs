@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Header;
 /// 表示 Dashboard 头部组件意图处理器。
 /// </summary>
 public sealed class HeaderIntentHandler
-    : IMviIntentHandler<HeaderState, HeaderIntent, HeaderEffect>
+    : IMviIntentHandler<HeaderState, HeaderIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

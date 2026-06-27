@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
@@ -43,9 +44,9 @@ public sealed class LoginIntentHandler
                 .LoginAsync(state.UserName, state.Password, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (result.IsSuccess && result.DisplayName is not null)
+            if (result.IsSuccess && result.Profile is not null)
             {
-                return new LoginIntent[] { new LoginIntent.LoginSucceeded(result.DisplayName) };
+                return new LoginIntent[] { new LoginIntent.LoginSucceeded(result.Profile) };
             }
 
             return new LoginIntent[] { new LoginIntent.LoginFailed(result.ErrorMessage ?? "登录失败。") };

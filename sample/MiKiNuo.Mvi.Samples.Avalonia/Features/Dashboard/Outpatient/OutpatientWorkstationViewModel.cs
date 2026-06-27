@@ -1,7 +1,8 @@
-﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 
@@ -16,7 +17,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 /// </para>
 /// </summary>
 public sealed partial class OutpatientWorkstationViewModel
-    : MviViewModelBase<OutpatientWorkstationState, OutpatientWorkstationIntent, OutpatientWorkstationEffect>
+    : MviViewModelBase<OutpatientWorkstationState, OutpatientWorkstationIntent, UnitEffect>
 {
     private readonly IOutpatientSubPanelFactory _subPanelFactory;
 
@@ -27,7 +28,7 @@ public sealed partial class OutpatientWorkstationViewModel
     /// <param name="subPanelFactory">3 个子组件 ViewModel 的工厂（候诊队列 / 电子病历编辑 / 临床提醒）。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public OutpatientWorkstationViewModel(
-        IMviStore<OutpatientWorkstationState, OutpatientWorkstationIntent, OutpatientWorkstationEffect> store,
+        IMviStore<OutpatientWorkstationState, OutpatientWorkstationIntent, UnitEffect> store,
         IOutpatientSubPanelFactory subPanelFactory,
         IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)

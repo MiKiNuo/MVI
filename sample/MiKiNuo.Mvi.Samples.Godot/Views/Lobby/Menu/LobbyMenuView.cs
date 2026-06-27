@@ -40,15 +40,15 @@ public partial class LobbyMenuView : GodotMviControlView<LobbyMenuViewModel>
         BindButton(forgeButton, viewModel.SelectForgeLabCommand, bindings);
         BindButton(battleButton, viewModel.SelectBattlePrepCommand, bindings);
         BindButton(logoutButton, viewModel.LogoutCommand, bindings);
-        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => missionButton.Text = Mark(viewModel.CurrentPanel, LobbyPanelKeys.MissionBoard, "任务大厅"), bindings);
-        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => heroButton.Text = Mark(viewModel.CurrentPanel, LobbyPanelKeys.HeroRoster, "英雄队伍"), bindings);
-        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => inventoryButton.Text = Mark(viewModel.CurrentPanel, LobbyPanelKeys.Inventory, "背包仓库"), bindings);
-        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => forgeButton.Text = Mark(viewModel.CurrentPanel, LobbyPanelKeys.ForgeLab, "锻造工坊"), bindings);
-        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => battleButton.Text = Mark(viewModel.CurrentPanel, LobbyPanelKeys.BattlePrep, "战斗准备"), bindings);
+        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => missionButton.Text = Mark(viewModel.CurrentPanel, LobbyPanel.MissionBoard, "任务大厅"), bindings);
+        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => heroButton.Text = Mark(viewModel.CurrentPanel, LobbyPanel.HeroRoster, "英雄队伍"), bindings);
+        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => inventoryButton.Text = Mark(viewModel.CurrentPanel, LobbyPanel.Inventory, "背包仓库"), bindings);
+        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => forgeButton.Text = Mark(viewModel.CurrentPanel, LobbyPanel.ForgeLab, "锻造工坊"), bindings);
+        BindPropertyChanged(viewModel, nameof(LobbyMenuViewModel.CurrentPanel), () => battleButton.Text = Mark(viewModel.CurrentPanel, LobbyPanel.BattlePrep, "战斗准备"), bindings);
     }
 
-    private static string Mark(string currentPanel, string panel, string text)
+    private static string Mark(LobbyPanel currentPanel, LobbyPanel panel, string text)
     {
-        return string.Equals(currentPanel, panel, StringComparison.Ordinal) ? $"✓ {text}" : text;
+        return currentPanel == panel ? $"✓ {text}" : text;
     }
 }

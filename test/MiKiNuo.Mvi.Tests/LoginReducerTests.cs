@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 using R3;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -78,7 +79,7 @@ public sealed class LoginReducerTests
         List<LoginEffect> effects = [];
         IDisposable subscription = store.Effects.Subscribe(e => effects.Add(e));
 
-        await store.DispatchAsync(new LoginIntent.LoginSucceeded("管理员"));
+        await store.DispatchAsync(new LoginIntent.LoginSucceeded(new AvaloniaProfile("管理员")));
 
         await Assert.That(store.CurrentState.IsBusy).IsFalse();
         await Assert.That(effects.Count).IsEqualTo(1);

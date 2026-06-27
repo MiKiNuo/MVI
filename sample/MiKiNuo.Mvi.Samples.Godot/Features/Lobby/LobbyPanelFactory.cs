@@ -7,13 +7,13 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示游戏大厅可切换面板 ViewModel 的工厂实现。
 /// <para>
-/// 5 个互斥面板（任务大厅/英雄队伍/背包仓库/锻造工坊/战斗准备）共享同一个 <c>LobbyStore</c>，
-/// 因此每张面板的 VM 都是无副作用的轻量级代理；本工厂缓存为单例避免每次切换面板都重新构造。
+/// 5 个互斥面板（任务大厅/英雄队伍/背包仓库/锻造工坊/战斗准备）由各自独立 Store 驱动；
+/// 本工厂缓存为单例避免每次切换面板都重新构造。
 /// </para>
 /// </summary>
 public sealed class LobbyPanelFactory : ILobbyPanelFactory
 {
-    private readonly IReadOnlyDictionary<string, object> _panelViewModels;
+    private readonly IReadOnlyDictionary<LobbyPanel, object> _panelViewModels;
 
     /// <summary>
     /// 初始化游戏大厅面板 ViewModel 工厂。
@@ -36,24 +36,23 @@ public sealed class LobbyPanelFactory : ILobbyPanelFactory
         ArgumentNullException.ThrowIfNull(forgeLabViewModel);
         ArgumentNullException.ThrowIfNull(battlePrepViewModel);
 
-        _panelViewModels = new Dictionary<string, object>(StringComparer.Ordinal)
+        _panelViewModels = new Dictionary<LobbyPanel, object>
         {
-            [LobbyPanelKeys.MissionBoard] = missionBoardViewModel,
-            [LobbyPanelKeys.HeroRoster] = heroRosterViewModel,
-            [LobbyPanelKeys.Inventory] = inventoryViewModel,
-            [LobbyPanelKeys.ForgeLab] = forgeLabViewModel,
-            [LobbyPanelKeys.BattlePrep] = battlePrepViewModel,
+            [LobbyPanel.MissionBoard] = missionBoardViewModel,
+            [LobbyPanel.HeroRoster] = heroRosterViewModel,
+            [LobbyPanel.Inventory] = inventoryViewModel,
+            [LobbyPanel.ForgeLab] = forgeLabViewModel,
+            [LobbyPanel.BattlePrep] = battlePrepViewModel,
         };
     }
 
     /// <summary>
-    /// 根据面板键解析面板 ViewModel。
+    /// 根据面板枚举解析面板 ViewModel。
     /// </summary>
-    /// <param name="panelKey">面板键。</param>
+    /// <param name="panel">面板枚举。</param>
     /// <returns>面板 ViewModel；未识别时返回 null。</returns>
-    public object? CreatePanel(string panelKey)
+    public object? CreatePanel(LobbyPanel panel)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(panelKey);
-        return _panelViewModels.TryGetValue(panelKey, out object? viewModel) ? viewModel : null;
+        return _panelViewModels.TryGetValue(panel, out object? viewModel) ? viewModel : null;
     }
 }

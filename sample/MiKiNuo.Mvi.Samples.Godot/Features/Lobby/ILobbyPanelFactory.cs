@@ -5,8 +5,8 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示游戏大厅内部可切换面板 ViewModel 的工厂。
 /// <para>
-/// 父 <see cref="LobbyViewModel"/> 仅持有 <see cref="LobbyPanelKeys"/> 判别器，
-/// 不再在 <see cref="LobbyState"/> 中直接存放 5 个互斥面板 ViewModel 引用；
+/// 父 <see cref="LobbyViewModel"/> 仅持有 <see cref="LobbyPanel"/> 判别器，
+/// 不再在 <see cref="NavigationState"/> 中直接存放 5 个互斥面板 ViewModel 引用；
 /// 当 <c>CurrentPanel</c> 变化时，View 层通过此工厂按需解析当前可见面板的 ViewModel。
 /// </para>
 /// <para>
@@ -17,9 +17,9 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 public interface ILobbyPanelFactory
 {
     /// <summary>
-    /// 根据 <paramref name="panelKey"/> 解析对应的面板 ViewModel。
+    /// 根据 <paramref name="panel"/> 解析对应的面板 ViewModel。
     /// </summary>
-    /// <param name="panelKey">面板键（<see cref="LobbyPanelKeys"/> 中之一）。</param>
-    /// <returns>对应面板的 ViewModel；未识别 panelKey 时返回 null。</returns>
-    public object? CreatePanel(string panelKey);
+    /// <param name="panel">面板枚举（<see cref="LobbyPanel"/> 中之一）。</param>
+    /// <returns>对应面板的 ViewModel；未识别 panel 时返回 null。</returns>
+    public object? CreatePanel(LobbyPanel panel);
 }

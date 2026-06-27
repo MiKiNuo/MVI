@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation
 /// 表示架构验证中心意图处理器。
 /// </summary>
 public sealed class ArchitectureValidationIntentHandler
-    : IMviIntentHandler<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect>
+    : IMviIntentHandler<ArchitectureValidationState, ArchitectureValidationIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

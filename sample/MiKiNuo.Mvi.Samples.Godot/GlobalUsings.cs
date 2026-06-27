@@ -13,3 +13,5 @@ global using global::MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 global using global::MiKiNuo.Mvi.Samples.Godot.Features.Common;
 global using global::MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 global using global::MiKiNuo.Mvi.Samples.Godot.Features.Login;
+global using global::MiKiNuo.Mvi.Samples.Shared.Features.Login;
+global using global::MiKiNuo.Mvi.Samples.Shared.Tracing;

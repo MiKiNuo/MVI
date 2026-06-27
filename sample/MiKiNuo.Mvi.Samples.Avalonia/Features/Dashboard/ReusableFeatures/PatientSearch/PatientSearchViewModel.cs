@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
+﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
@@ -20,7 +20,6 @@ public sealed partial class PatientSearchViewModel
     public PatientSearchViewModel(IMviStore<PatientSearchState, PatientSearchIntent, PatientSearchEffect> store, IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>

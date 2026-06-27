@@ -2,6 +2,7 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
@@ -17,7 +18,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 /// </para>
 /// </summary>
 public sealed partial class EventBindingWorkbenchViewModel
-    : MviViewModelBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
+    : MviViewModelBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect>
 {
     private readonly IEventBindingPanelFactory _panelFactory;
 
@@ -28,7 +29,7 @@ public sealed partial class EventBindingWorkbenchViewModel
     /// <param name="panelFactory">3 个子组件 ViewModel 的工厂。</param>
     /// <param name="uiDispatcher">UI 调度器（可选）。</param>
     public EventBindingWorkbenchViewModel(
-        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store,
+        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> store,
         IEventBindingPanelFactory panelFactory,
         IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)

@@ -1,6 +1,7 @@
 using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor;
 
@@ -8,13 +9,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEdi
 /// 表示门诊病历编辑规约器。
 /// </summary>
 public sealed partial class ClinicalEditorReducer
-    : MviReducerBase<ClinicalEditorState, ClinicalEditorIntent, ClinicalEditorEffect>
+    : MviReducerBase<ClinicalEditorState, ClinicalEditorIntent, UnitEffect>
 {
     /// <summary>
     /// 处理加载患者意图。
     /// </summary>
     [MviReduce(typeof(ClinicalEditorIntent.LoadPatient))]
-    private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleLoadPatient(
+    private MviReduceResult<ClinicalEditorState, UnitEffect> HandleLoadPatient(
         ClinicalEditorState state,
         ClinicalEditorIntent.LoadPatient intent)
     {
@@ -29,14 +30,14 @@ public sealed partial class ClinicalEditorReducer
             CanSave = false,
         };
 
-        return MviReduceResult.State<ClinicalEditorState, ClinicalEditorEffect>(newState);
+        return MviReduceResult.State<ClinicalEditorState, UnitEffect>(newState);
     }
 
     /// <summary>
     /// 处理修改诊断意图。
     /// </summary>
     [MviReduce(typeof(ClinicalEditorIntent.ChangeDiagnosis))]
-    private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleChangeDiagnosis(
+    private MviReduceResult<ClinicalEditorState, UnitEffect> HandleChangeDiagnosis(
         ClinicalEditorState state,
         ClinicalEditorIntent.ChangeDiagnosis intent)
     {
@@ -49,14 +50,14 @@ public sealed partial class ClinicalEditorReducer
             CanSave = canSave,
         };
 
-        return MviReduceResult.State<ClinicalEditorState, ClinicalEditorEffect>(newState);
+        return MviReduceResult.State<ClinicalEditorState, UnitEffect>(newState);
     }
 
     /// <summary>
     /// 处理保存草稿意图。
     /// </summary>
     [MviReduce(typeof(ClinicalEditorIntent.SaveDraft))]
-    private static MviReduceResult<ClinicalEditorState, ClinicalEditorEffect> HandleSaveDraft(
+    private MviReduceResult<ClinicalEditorState, UnitEffect> HandleSaveDraft(
         ClinicalEditorState state,
         ClinicalEditorIntent.SaveDraft intent)
     {
@@ -64,6 +65,6 @@ public sealed partial class ClinicalEditorReducer
 
         ClinicalEditorState newState = state with { SaveMessage = message };
 
-        return MviReduceResult.State<ClinicalEditorState, ClinicalEditorEffect>(newState);
+        return MviReduceResult.State<ClinicalEditorState, UnitEffect>(newState);
     }
 }

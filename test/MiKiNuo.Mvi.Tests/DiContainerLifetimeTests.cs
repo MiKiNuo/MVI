@@ -4,6 +4,7 @@ using MiKiNuo.Mvi.Domain.DI;
 using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 using TUnit.Assertions;
 using TUnit.Core;
 using ZLinq;

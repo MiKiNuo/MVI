@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.UserProfile;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.UserProfile;
 /// 表示用户信息组件意图处理器。
 /// </summary>
 public sealed class UserProfileIntentHandler
-    : IMviIntentHandler<UserProfileState, UserProfileIntent, UserProfileEffect>
+    : IMviIntentHandler<UserProfileState, UserProfileIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

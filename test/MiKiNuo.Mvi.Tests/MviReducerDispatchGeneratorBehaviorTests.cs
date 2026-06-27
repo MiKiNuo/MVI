@@ -157,7 +157,7 @@ public sealed class MviReducerDispatchGeneratorBehaviorTests
                 : MiKiNuo.Mvi.Application.MVI.Reducer.MviReducerBase<LoginState, LoginIntent, LoginEffect>
             {
                 [MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduce(typeof(LoginIntent.ChangeUserName))]
-                private static MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
+                private MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
                     LoginState state, LoginIntent.ChangeUserName intent)
                 {
                     return MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult.State<LoginState, LoginEffect>(
@@ -185,13 +185,13 @@ public sealed class MviReducerDispatchGeneratorBehaviorTests
                 : MiKiNuo.Mvi.Application.MVI.Reducer.MviReducerBase<LoginState, LoginIntent, LoginEffect>
             {
                 [MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmit))]
-                private static MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<LoginState, LoginEffect> HandleSubmit(
+                private MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<LoginState, LoginEffect> HandleSubmit(
                     LoginState state, LoginIntent.Submit intent)
                 {
                     return MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult.State<LoginState, LoginEffect>(state);
                 }
 
-                private static bool CanSubmit(LoginState state) => state.CanSubmit;
+                private bool CanSubmit(LoginState state) => state.CanSubmit;
             }
         }
         """;

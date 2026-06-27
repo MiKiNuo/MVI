@@ -3,6 +3,7 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
@@ -20,7 +21,6 @@ public sealed partial class LoginViewModel
     public LoginViewModel(IMviStore<LoginState, LoginIntent, LoginEffect> store, IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>

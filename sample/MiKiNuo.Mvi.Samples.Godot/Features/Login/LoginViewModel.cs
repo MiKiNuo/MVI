@@ -19,7 +19,6 @@ public sealed partial class LoginViewModel : MviViewModelBase<LoginState, LoginI
     public LoginViewModel(IMviStore<LoginState, LoginIntent, LoginEffect> store, IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>

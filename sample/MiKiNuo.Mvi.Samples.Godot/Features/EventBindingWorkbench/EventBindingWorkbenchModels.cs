@@ -19,13 +19,13 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
 /// <summary>表示 Godot 事件绑定组合示例的记录型中介者。</summary>
 public sealed class EventBindingRecordingMediator : IMviMediator
 {
-    private IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>? _workbenchStore;
+    private IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect>? _workbenchStore;
 
     /// <summary>获取已记录的请求。</summary>
     public List<EventBindingWorkbenchInteractionRequest> RecordedRequests { get; } = new();
 
     /// <summary>设置父组合 Store。</summary>
-    public void SetWorkbenchStore(IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore)
+    public void SetWorkbenchStore(IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> workbenchStore)
     {
         _workbenchStore = workbenchStore ?? throw new ArgumentNullException(nameof(workbenchStore));
     }
@@ -75,7 +75,7 @@ public sealed class EventBindingRecordingMediator : IMviMediator
 /// 按需解析子 VM，再交由 ViewRegistry 创建对应 View。
 /// </para>
 public sealed partial class EventBindingWorkbenchViewModel
-    : MviViewModelBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
+    : MviViewModelBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect>
 {
     private readonly IEventBindingPanelFactory _panelFactory;
 
@@ -83,7 +83,7 @@ public sealed partial class EventBindingWorkbenchViewModel
     /// <param name="store">组合根状态存储。</param>
     /// <param name="panelFactory">3 个子组件 ViewModel 的工厂（搜索 / 选择 / 详情）。</param>
     public EventBindingWorkbenchViewModel(
-        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> store,
+        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> store,
         IEventBindingPanelFactory panelFactory)
         : base(store)
     {
@@ -335,7 +335,7 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
         MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> searchStore,
         MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> selectionStore,
         MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> detailStore,
-        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore,
+        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> workbenchStore,
         EventBindingSearchViewModel searchViewModel,
         EventBindingSelectionViewModel selectionViewModel,
         EventBindingDetailViewModel detailViewModel,
@@ -365,7 +365,7 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
     public MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> DetailStore { get; }
 
     /// <summary>获取组合根 Store。</summary>
-    public MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> WorkbenchStore { get; }
+    public MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> WorkbenchStore { get; }
 
     /// <summary>获取搜索面板 ViewModel。</summary>
     public EventBindingSearchViewModel SearchViewModel { get; }
@@ -402,13 +402,13 @@ public sealed class EventBindingWorkbenchComposition : IDisposable
         EventBindingSearchViewModel searchViewModel = new(searchStore);
         EventBindingSelectionViewModel selectionViewModel = new(selectionStore);
         EventBindingDetailViewModel detailViewModel = new(detailStore);
-        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore = new(
+        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> workbenchStore = new(
             new EventBindingWorkbenchState(
                 "等待 Godot 子组件事件。",
                 0),
             new EventBindingWorkbenchIntentHandler(),
             new EventBindingWorkbenchReducer(),
-            new EventBindingWorkbenchEffectDispatcher());
+            NullEffectDispatcher.Instance);
         mediator.SetWorkbenchStore(workbenchStore);
         // 父 VM 不再直接持有 3 个子 VM 引用；改用 IEventBindingPanelFactory 工厂封装 3 个子 VM，
         // 由父 VM 在 View 按需解析时通过工厂方法获取，避免"VM-in-VM"反模式。

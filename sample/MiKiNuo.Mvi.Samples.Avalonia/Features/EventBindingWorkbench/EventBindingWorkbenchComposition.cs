@@ -1,5 +1,7 @@
+using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
@@ -13,14 +15,14 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 /// </summary>
 public sealed class EventBindingRecordingMediator : IMviMediator
 {
-    private readonly IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> _workbenchStore;
+    private readonly IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> _workbenchStore;
 
     /// <summary>
     /// 初始化记录型中介者。
     /// </summary>
     /// <param name="workbenchStore">父组合 Store。</param>
     public EventBindingRecordingMediator(
-        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore)
+        IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> workbenchStore)
     {
         _workbenchStore = workbenchStore ?? throw new ArgumentNullException(nameof(workbenchStore));
     }
@@ -83,7 +85,7 @@ public sealed class EventBindingWorkbenchComposition : IAsyncDisposable, IDispos
         MviStore<EventBindingSearchState, EventBindingSearchIntent, EventBindingSearchEffect> searchStore,
         MviStore<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect> selectionStore,
         MviStore<EventBindingDetailState, EventBindingDetailIntent, EventBindingDetailEffect> detailStore,
-        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore,
+        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> workbenchStore,
         EventBindingSearchViewModel searchViewModel,
         EventBindingSelectionViewModel selectionViewModel,
         EventBindingDetailViewModel detailViewModel,
@@ -123,7 +125,7 @@ public sealed class EventBindingWorkbenchComposition : IAsyncDisposable, IDispos
     /// <summary>
     /// 获取组合根 Store。
     /// </summary>
-    public MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> WorkbenchStore { get; }
+    public MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> WorkbenchStore { get; }
 
     /// <summary>
     /// 获取搜索面板 ViewModel。
@@ -155,11 +157,11 @@ public sealed class EventBindingWorkbenchComposition : IAsyncDisposable, IDispos
     /// <returns>组合示例。</returns>
     public static EventBindingWorkbenchComposition Create()
     {
-        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect> workbenchStore = new(
+        MviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> workbenchStore = new(
             new EventBindingWorkbenchState("等待子组件事件。", 0),
             new EventBindingWorkbenchIntentHandler(),
             new EventBindingWorkbenchReducer(),
-            new EventBindingWorkbenchEffectDispatcher());
+            NullEffectDispatcher.Instance);
 
         EventBindingRecordingMediator mediator = new(workbenchStore);
 

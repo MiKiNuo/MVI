@@ -16,14 +16,17 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Login;
 public sealed class LoginEffectDispatcher : IMviEffectDispatcher<LoginEffect>
 {
     private readonly IGameShellNavigator _navigator;
+    private readonly ITraceEffectLogger _traceLogger;
 
     /// <summary>
     /// 初始化游戏登录副作用分发器。
     /// </summary>
     /// <param name="navigator">游戏壳导航协调器。</param>
-    public LoginEffectDispatcher(IGameShellNavigator navigator)
+    /// <param name="logger">追踪日志记录器。</param>
+    public LoginEffectDispatcher(IGameShellNavigator navigator, ITraceEffectLogger logger)
     {
         _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
+        _traceLogger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -40,7 +43,7 @@ public sealed class LoginEffectDispatcher : IMviEffectDispatcher<LoginEffect>
         switch (effect)
         {
             case LoginEffect.Trace trace:
-                GD.Print($"[Godot Game MVI Login Effect] {trace.Text}");
+                _traceLogger.Log(trace);
                 break;
             case LoginEffect.LoginSucceeded succeeded:
                 GD.Print($"[Godot Game MVI Login Effect] OpenLobby {succeeded.Profile.PlayerName}");

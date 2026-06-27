@@ -1,0 +1,69 @@
+using MiKiNuo.Mvi.Application.MVI.Effect;
+using MiKiNuo.Mvi.Application.MVI.Store;
+
+namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
+
+/// <summary>
+/// 表示任务副作用分发器。
+/// </summary>
+public sealed class MissionEffectDispatcher : IMviEffectDispatcher<MissionEffect>
+{
+    private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
+    private readonly IMviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect> _battlePrepStore;
+    private readonly IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> _activityLogStore;
+    private readonly ITraceEffectLogger _traceLogger;
+
+    /// <summary>
+    /// 初始化任务副作用分发器。
+    /// </summary>
+    /// <param name="playerStore">玩家状态存储。</param>
+    /// <param name="battlePrepStore">战斗准备状态存储。</param>
+    /// <param name="activityLogStore">活动日志状态存储。</param>
+    /// <param name="traceLogger">追踪日志记录器。</param>
+    public MissionEffectDispatcher(
+        IMviStore<PlayerState, PlayerIntent, PlayerEffect> playerStore,
+        IMviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect> battlePrepStore,
+        IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> activityLogStore,
+        ITraceEffectLogger traceLogger)
+    {
+        ArgumentNullException.ThrowIfNull(playerStore);
+        ArgumentNullException.ThrowIfNull(battlePrepStore);
+        ArgumentNullException.ThrowIfNull(activityLogStore);
+        ArgumentNullException.ThrowIfNull(traceLogger);
+        _playerStore = playerStore;
+        _battlePrepStore = battlePrepStore;
+        _activityLogStore = activityLogStore;
+        _traceLogger = traceLogger;
+    }
+
+    /// <summary>
+    /// 分发副作用。
+    /// </summary>
+    /// <param name="effect">副作用。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步分发过程的任务。</returns>
+    public async ValueTask DispatchAsync(MissionEffect effect, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(effect);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        switch (effect)
+        {
+            case MissionEffect.Trace trace:
+                _traceLogger.Log(trace);
+                break;
+            case MissionEffect.ConsumeStamina data:
+                await _playerStore.DispatchAsync(new PlayerIntent.ConsumeStamina(data.Amount), cancellationToken).ConfigureAwait(false);
+                break;
+            case MissionEffect.AddGold data:
+                await _playerStore.DispatchAsync(new PlayerIntent.AddGold(data.Amount), cancellationToken).ConfigureAwait(false);
+                break;
+            case MissionEffect.UpdateBattleReadyText data:
+                await _battlePrepStore.DispatchAsync(new BattlePrepIntent.UpdateReadyText(data.ReadyText), cancellationToken).ConfigureAwait(false);
+                break;
+            case MissionEffect.LogActivity data:
+                await _activityLogStore.DispatchAsync(new ActivityLogIntent.AppendEntry(data.Message), cancellationToken).ConfigureAwait(false);
+                break;
+        }
+    }
+}

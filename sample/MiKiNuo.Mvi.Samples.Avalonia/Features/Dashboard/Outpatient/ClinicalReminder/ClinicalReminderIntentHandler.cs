@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalRem
 /// 表示临床提醒意图处理器。
 /// </summary>
 public sealed class ClinicalReminderIntentHandler
-    : IMviIntentHandler<ClinicalReminderState, ClinicalReminderIntent, ClinicalReminderEffect>
+    : IMviIntentHandler<ClinicalReminderState, ClinicalReminderIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

@@ -1,4 +1,6 @@
 using MiKiNuo.Mvi.Domain.DI;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
+
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
 /// <summary>
@@ -24,7 +26,7 @@ public sealed class FakeAuthService : IAuthService
         if (string.Equals(userName, "admin", StringComparison.OrdinalIgnoreCase)
             && password == "123456")
         {
-            return LoginResult.Success("架构师 Admin");
+            return LoginResult.Success(new AvaloniaProfile("架构师 Admin"));
         }
 
         return LoginResult.Failure("账号或密码错误。示例账号：admin / 123456");

@@ -257,8 +257,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
                 handlers.Add(new ReduceHandlerModel(
                     method.Name,
                     intentSubtype!,
-                    guardName,
-                    method.IsStatic));
+                    guardName));
             }
 
             ReportDuplicateHandlers(intentToMethods, reducerSymbol, context);
@@ -572,17 +571,14 @@ internal sealed class ReduceHandlerModel
     /// <param name="methodName">方法名称。</param>
     /// <param name="intentSubtype">意图子类型。</param>
     /// <param name="guardName">守卫谓词方法名。</param>
-    /// <param name="isStatic">是否静态方法。</param>
     public ReduceHandlerModel(
         string methodName,
         INamedTypeSymbol intentSubtype,
-        string? guardName,
-        bool isStatic)
+        string? guardName)
     {
         MethodName = methodName;
         IntentSubtype = intentSubtype;
         GuardName = guardName;
-        IsStatic = isStatic;
     }
 
     /// <summary>方法名称。</summary>
@@ -593,7 +589,4 @@ internal sealed class ReduceHandlerModel
 
     /// <summary>守卫谓词方法名。</summary>
     public string? GuardName { get; }
-
-    /// <summary>是否静态方法。</summary>
-    public bool IsStatic { get; }
 }

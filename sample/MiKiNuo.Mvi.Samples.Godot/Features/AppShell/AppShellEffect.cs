@@ -11,7 +11,7 @@ public abstract partial record AppShellEffect : IMviEffect
     /// <summary>
     /// 表示写入应用壳日志的副作用。
     /// </summary>
-    public sealed partial record Trace : AppShellEffect
+    public sealed partial record Trace : AppShellEffect, ITraceEffect
     {
         /// <summary>
         /// 初始化写入应用壳日志的副作用。

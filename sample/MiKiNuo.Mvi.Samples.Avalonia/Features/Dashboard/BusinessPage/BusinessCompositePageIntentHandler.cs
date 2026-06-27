@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 /// 表示生产业务组合页面意图处理器。
 /// </summary>
 public sealed class BusinessCompositePageIntentHandler
-    : IMviIntentHandler<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>
+    : IMviIntentHandler<BusinessCompositePageState, BusinessCompositePageIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

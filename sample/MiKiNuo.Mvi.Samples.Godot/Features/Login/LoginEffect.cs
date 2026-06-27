@@ -32,7 +32,7 @@ public abstract partial record LoginEffect : IMviEffect
     /// <summary>
     /// 表示写入登录日志的副作用。
     /// </summary>
-    public sealed partial record Trace : LoginEffect
+    public sealed partial record Trace : LoginEffect, ITraceEffect
     {
         /// <summary>
         /// 初始化写入登录日志副作用。

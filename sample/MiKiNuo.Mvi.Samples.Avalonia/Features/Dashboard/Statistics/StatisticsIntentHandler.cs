@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Statistics;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Statistics;
 /// 表示统计组件意图处理器。
 /// </summary>
 public sealed class StatisticsIntentHandler
-    : IMviIntentHandler<StatisticsState, StatisticsIntent, StatisticsEffect>
+    : IMviIntentHandler<StatisticsState, StatisticsIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

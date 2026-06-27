@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 using TUnit.Assertions;
 using TUnit.Core;
 

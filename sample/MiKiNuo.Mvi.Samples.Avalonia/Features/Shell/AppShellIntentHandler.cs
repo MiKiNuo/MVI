@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 /// 表示应用壳意图处理器。
 /// </summary>
 public sealed class AppShellIntentHandler
-    : IMviIntentHandler<AppShellState, AppShellIntent, AppShellEffect>
+    : IMviIntentHandler<AppShellState, AppShellIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

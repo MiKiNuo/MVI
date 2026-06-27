@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using global::Godot;
 using MiKiNuo.Mvi.Application.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
@@ -11,6 +10,17 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 /// </summary>
 public sealed class AppShellEffectDispatcher : IMviEffectDispatcher<AppShellEffect>
 {
+    private readonly ITraceEffectLogger _traceLogger;
+
+    /// <summary>
+    /// 初始化游戏应用壳副作用分发器。
+    /// </summary>
+    /// <param name="logger">追踪日志记录器。</param>
+    public AppShellEffectDispatcher(ITraceEffectLogger logger)
+    {
+        _traceLogger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <summary>
     /// 分发副作用。
     /// </summary>
@@ -23,7 +33,7 @@ public sealed class AppShellEffectDispatcher : IMviEffectDispatcher<AppShellEffe
         cancellationToken.ThrowIfCancellationRequested();
         if (effect is AppShellEffect.Trace trace)
         {
-            GD.Print($"[Godot Game MVI Shell Effect] {trace.Text}");
+            _traceLogger.Log(trace);
         }
 
         return ValueTask.CompletedTask;

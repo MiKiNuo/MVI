@@ -1,8 +1,9 @@
-﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
+﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder;
 
@@ -10,17 +11,16 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalRem
 /// 表示临床提醒 ViewModel。
 /// </summary>
 public sealed partial class ClinicalReminderViewModel
-    : MviViewModelBase<ClinicalReminderState, ClinicalReminderIntent, ClinicalReminderEffect>
+    : MviViewModelBase<ClinicalReminderState, ClinicalReminderIntent, UnitEffect>
 {
     /// <summary>
     /// 初始化临床提醒 ViewModel。
     /// </summary>
     /// <param name="store">临床提醒状态存储。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
-    public ClinicalReminderViewModel(IMviStore<ClinicalReminderState, ClinicalReminderIntent, ClinicalReminderEffect> store, IMviUiDispatcher? uiDispatcher = null)
+    public ClinicalReminderViewModel(IMviStore<ClinicalReminderState, ClinicalReminderIntent, UnitEffect> store, IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>

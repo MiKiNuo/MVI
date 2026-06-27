@@ -41,7 +41,6 @@ public sealed partial class CardViewModel
     {
         ArgumentNullException.ThrowIfNull(store);
 
-        InitializeGeneratedCommands();
         RebuildDerivedProperties(store.CurrentState);
         _derivedPropertiesSubscription = store.States.Subscribe(
             this,

@@ -1,8 +1,9 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 
@@ -28,7 +29,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.BusinessPage;
 /// </para>
 /// </summary>
 public sealed partial class BusinessCompositePageViewModel
-    : MviViewModelBase<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect>
+    : MviViewModelBase<BusinessCompositePageState, BusinessCompositePageIntent, UnitEffect>
 {
     private readonly CardStoreFactory _cardStoreFactory;
 
@@ -39,7 +40,7 @@ public sealed partial class BusinessCompositePageViewModel
     /// <param name="cardStoreFactory">仪表板卡片工厂（用于按 PageKey 解析具体 CardViewModel）。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public BusinessCompositePageViewModel(
-        IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, BusinessCompositePageEffect> store,
+        IMviStore<BusinessCompositePageState, BusinessCompositePageIntent, UnitEffect> store,
         CardStoreFactory cardStoreFactory,
         IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)

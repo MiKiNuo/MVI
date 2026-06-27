@@ -99,6 +99,9 @@ public static class DiagnosticIdCatalog
     /// <summary>守卫谓词方法不存在或签名不匹配。</summary>
     public const string MviReduceGuardInvalid = "MVI0008";
 
+    /// <summary>声明 [MviBind] 时禁止手写 ApplyStateCore 重写。</summary>
+    public const string MviApplyStateCoreConflict = "MVI0009";
+
     /// <summary>
     /// 获取全部已发布的诊断 ID 列表。
     /// 列表顺序与诊断类别（ARCH → DOC → CODE → MVI）保持一致，便于人工审查。
@@ -132,5 +135,6 @@ public static class DiagnosticIdCatalog
         MviReduceHandlerDuplicate,
         MviReduceHandlerSignatureInvalid,
         MviReduceGuardInvalid,
+        MviApplyStateCoreConflict,
     ];
 }

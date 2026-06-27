@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalReminder;
 
@@ -9,13 +10,13 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalRem
 /// 表示临床提醒规约器。
 /// </summary>
 public sealed partial class ClinicalReminderReducer
-    : MviReducerBase<ClinicalReminderState, ClinicalReminderIntent, ClinicalReminderEffect>
+    : MviReducerBase<ClinicalReminderState, ClinicalReminderIntent, UnitEffect>
 {
     /// <summary>
     /// 处理加载患者提醒意图。
     /// </summary>
     [MviReduce(typeof(ClinicalReminderIntent.LoadPatient))]
-    private static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleLoadPatient(
+    private MviReduceResult<ClinicalReminderState, UnitEffect> HandleLoadPatient(
         ClinicalReminderState state,
         ClinicalReminderIntent.LoadPatient intent)
     {
@@ -23,7 +24,7 @@ public sealed partial class ClinicalReminderReducer
             ? (IReadOnlyList<string>)["胸痛中心绿色通道评估。", "建议 10 分钟内完成心电图。", "核查阿司匹林禁忌。"]
             : ["核查过敏史。", "复核既往用药。", "完善生命体征记录。"];
 
-        return MviReduceResult.State<ClinicalReminderState, ClinicalReminderEffect>(
+        return MviReduceResult.State<ClinicalReminderState, UnitEffect>(
             state with
             {
                 PatientName = intent.PatientName,
@@ -37,11 +38,11 @@ public sealed partial class ClinicalReminderReducer
     /// 处理首要提醒意图。
     /// </summary>
     [MviReduce(typeof(ClinicalReminderIntent.ResolvePrimaryAlert))]
-    private static MviReduceResult<ClinicalReminderState, ClinicalReminderEffect> HandleResolvePrimaryAlert(
+    private MviReduceResult<ClinicalReminderState, UnitEffect> HandleResolvePrimaryAlert(
         ClinicalReminderState state,
         ClinicalReminderIntent.ResolvePrimaryAlert intent)
     {
-        return MviReduceResult.State<ClinicalReminderState, ClinicalReminderEffect>(
+        return MviReduceResult.State<ClinicalReminderState, UnitEffect>(
             state with { PrimaryAlert = "首要提醒已处理。", HasAlert = false });
     }
 }

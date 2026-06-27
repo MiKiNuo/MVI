@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.AuditTimeline;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.Audit
 /// 表示审计时间线意图处理器。
 /// </summary>
 public sealed class AuditTimelineIntentHandler
-    : IMviIntentHandler<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect>
+    : IMviIntentHandler<AuditTimelineState, AuditTimelineIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

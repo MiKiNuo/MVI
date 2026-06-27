@@ -1,6 +1,7 @@
 using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
 
@@ -8,17 +9,17 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation
 /// 表示架构验证中心规约器。
 /// </summary>
 public sealed partial class ArchitectureValidationReducer
-    : MviReducerBase<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect>
+    : MviReducerBase<ArchitectureValidationState, ArchitectureValidationIntent, UnitEffect>
 {
     /// <summary>
     /// 处理上下文更新意图。
     /// </summary>
     [MviReduce(typeof(ArchitectureValidationIntent.UpdateContext))]
-    private static MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> HandleUpdateContext(
+    private MviReduceResult<ArchitectureValidationState, UnitEffect> HandleUpdateContext(
         ArchitectureValidationState state,
         ArchitectureValidationIntent.UpdateContext intent)
     {
-        return MviReduceResult.State<ArchitectureValidationState, ArchitectureValidationEffect>(
+        return MviReduceResult.State<ArchitectureValidationState, UnitEffect>(
             state with { ActiveContext = intent.ActiveContext, FlowStatus = intent.FlowStatus });
     }
 
@@ -26,15 +27,15 @@ public sealed partial class ArchitectureValidationReducer
     /// 处理追加日志意图。
     /// </summary>
     [MviReduce(typeof(ArchitectureValidationIntent.AppendInteractionLog))]
-    private static MviReduceResult<ArchitectureValidationState, ArchitectureValidationEffect> HandleAppendInteractionLog(
+    private MviReduceResult<ArchitectureValidationState, UnitEffect> HandleAppendInteractionLog(
         ArchitectureValidationState state,
         ArchitectureValidationIntent.AppendInteractionLog intent)
     {
-        return MviReduceResult.State<ArchitectureValidationState, ArchitectureValidationEffect>(
+        return MviReduceResult.State<ArchitectureValidationState, UnitEffect>(
             state with { InteractionLog = ComputeNextLog(state.InteractionLog, intent.Message) });
     }
 
-    private static string ComputeNextLog(string currentLog, string message)
+    private string ComputeNextLog(string currentLog, string message)
     {
         return string.IsNullOrWhiteSpace(currentLog)
             ? message

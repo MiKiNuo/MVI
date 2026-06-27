@@ -1,8 +1,9 @@
-﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
+﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.AuditTimeline;
 
@@ -10,17 +11,16 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.Audit
 /// 表示可复用审计时间线 MVI ViewModel。
 /// </summary>
 public sealed partial class AuditTimelineViewModel
-    : MviViewModelBase<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect>
+    : MviViewModelBase<AuditTimelineState, AuditTimelineIntent, UnitEffect>
 {
     /// <summary>
     /// 初始化可复用审计时间线 MVI ViewModel。
     /// </summary>
     /// <param name="store">状态存储。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
-    public AuditTimelineViewModel(IMviStore<AuditTimelineState, AuditTimelineIntent, AuditTimelineEffect> store, IMviUiDispatcher? uiDispatcher = null)
+    public AuditTimelineViewModel(IMviStore<AuditTimelineState, AuditTimelineIntent, UnitEffect> store, IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>

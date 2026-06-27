@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -14,6 +14,7 @@ using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.ClinicalEditor;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 using TUnit.Assertions;
 using TUnit.Core;

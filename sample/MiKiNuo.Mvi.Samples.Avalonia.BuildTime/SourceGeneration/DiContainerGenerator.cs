@@ -139,7 +139,10 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
                 classesByFullName,
                 containingNamespace + "." + baseName + "EffectDispatcher");
 
-            if (reducerType is null || dispatcherType is null)
+            bool isUnitEffect = effectType.Name == "UnitEffect";
+            // UnitEffect 表示无副作用，无需自定义 EffectDispatcher；
+            // 其他 Feature 仍要求显式 dispatcherType。
+            if (reducerType is null || (!isUnitEffect && dispatcherType is null))
             {
                 continue;
             }
@@ -338,8 +341,13 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         return ViewConstructorKind.Parameterless;
     }
 
-    private static DispatcherConstructorKind GetDispatcherConstructorKind(INamedTypeSymbol dispatcherType)
+    private static DispatcherConstructorKind GetDispatcherConstructorKind(INamedTypeSymbol? dispatcherType)
     {
+        if (dispatcherType is null)
+        {
+            return DispatcherConstructorKind.Unsupported;
+        }
+
         foreach (IMethodSymbol constructor in dispatcherType.Constructors)
         {
             if (constructor.DeclaredAccessibility != Accessibility.Public)
@@ -780,7 +788,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
     /// <summary>生成 Store 工厂方法。</summary>
     private static void EmitStoreMethods(StringBuilder builder, GenerationModel model, FeatureInfo login, FeatureInfo shell)
     {
-        AppendStoreHelpers(builder, login, shell);
+        AppendStoreHelpers(builder, model, login, shell);
         AppendCardStoreFactoryResolver(builder, model);
     }
 
@@ -1152,7 +1160,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine();
     }
 
-    private static void AppendStoreHelpers(StringBuilder builder, FeatureInfo login, FeatureInfo shell)
+    private static void AppendStoreHelpers(StringBuilder builder, GenerationModel model, FeatureInfo login, FeatureInfo shell)
     {
         builder.Append("    private ").Append(shell.ViewModelTypeName).AppendLine(" ResolveShellViewModel()");
         builder.AppendLine("    {");
@@ -1176,22 +1184,29 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             .Append(StoreType(login)).AppendLine("), CreateLoginStore);");
         builder.AppendLine("    }");
         builder.AppendLine();
-        AppendLoginStoreFactory(builder, login, "    ");
+        AppendLoginStoreFactory(builder, model, login, "    ");
     }
 
-    private static void AppendLoginStoreFactory(StringBuilder builder, FeatureInfo login, string indent)
+    private static void AppendLoginStoreFactory(StringBuilder builder, GenerationModel model, FeatureInfo login, string indent)
     {
         builder.Append(indent).Append("private ").Append(StoreType(login)).Append(" CreateLoginStore()");
         builder.Append(indent).AppendLine("{");
-        string authNamespace = "global::" + login.ViewModelType.ContainingNamespace.ToDisplayString();
+        // 服务契约可能位于与 ViewModel 不同的命名空间（如 IAuthService 下沉到 Shared 项目），
+        // 因此必须使用源生成器已发现的真实类型全名，而非从 ViewModel 命名空间推导。
+        string loginNavigationServiceTypeName = model.LoginNavigationService is not null
+            ? Format(model.LoginNavigationService)
+            : "global::" + login.ViewModelType.ContainingNamespace.ToDisplayString() + ".ILoginNavigationService";
+        string authServiceTypeName = model.AuthService is not null
+            ? model.AuthService.ServiceTypeName
+            : "global::" + login.ViewModelType.ContainingNamespace.ToDisplayString() + ".IAuthService";
         // 经典 MVI 模式：IntentHandler 持有 AuthService 执行异步登录，EffectDispatcher 仅持有导航服务。
         builder.Append(indent).Append("    ").Append(login.DispatcherTypeName).Append(" dispatcher = new(");
-        builder.Append("Resolve<").Append(authNamespace).Append(".ILoginNavigationService>());").AppendLine();
+        builder.Append("Resolve<").Append(loginNavigationServiceTypeName).Append(">());").AppendLine();
         builder.Append(indent).Append("    return new MviStore<").Append(login.StateTypeName).Append(", ")
             .Append(login.IntentTypeName).Append(", ").Append(login.EffectTypeName).AppendLine(">(");
         builder.Append(indent).Append("        ").Append(login.StateTypeName).AppendLine(".Initial,");
         builder.Append(indent).Append("        new ").Append(login.IntentHandlerTypeName).Append("(");
-        builder.Append("Resolve<").Append(authNamespace).Append(".IAuthService>()),");
+        builder.Append("Resolve<").Append(authServiceTypeName).Append(">()),");
         builder.Append(indent).Append("        new ").Append(login.ReducerTypeName).AppendLine("(),");
         builder.Append(indent).AppendLine("        dispatcher);");
         builder.Append(indent).AppendLine("}");
@@ -1864,6 +1879,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
     private static string CreateDispatcherExpression(FeatureInfo feature)
     {
+        // UnitEffect 表示无副作用，统一返回 NullEffectDispatcher 单例。
+        if (feature.IsUnitEffect)
+        {
+            return "global::MiKiNuo.Mvi.Application.MVI.Effect.NullEffectDispatcher.Instance";
+        }
+
         switch (feature.DispatcherConstructorKind)
         {
             case DispatcherConstructorKind.Mediator:
@@ -2038,7 +2059,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             INamedTypeSymbol intentType,
             INamedTypeSymbol effectType,
             INamedTypeSymbol reducerType,
-            INamedTypeSymbol dispatcherType,
+            INamedTypeSymbol? dispatcherType,
             DispatcherConstructorKind dispatcherConstructorKind,
             bool hasInitial,
             bool hasStringCreateInitial,
@@ -2051,11 +2072,12 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
             IntentTypeName = Format(intentType);
             EffectTypeName = Format(effectType);
             ReducerTypeName = Format(reducerType);
-            DispatcherTypeName = Format(dispatcherType);
+            DispatcherTypeName = dispatcherType is null ? null : Format(dispatcherType);
             DispatcherConstructorKind = dispatcherConstructorKind;
             HasInitial = hasInitial;
             HasStringCreateInitial = hasStringCreateInitial;
             IntentHandlerTypeName = intentHandlerType is not null ? Format(intentHandlerType) : null;
+            IsUnitEffect = effectType.Name == "UnitEffect";
         }
 
         public string BaseName { get; }
@@ -2072,7 +2094,8 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         public string ReducerTypeName { get; }
 
-        public string DispatcherTypeName { get; }
+        /// <summary>EffectDispatcher 类型完整限定名；UnitEffect Feature 为 null。</summary>
+        public string? DispatcherTypeName { get; }
 
         public DispatcherConstructorKind DispatcherConstructorKind { get; }
 
@@ -2082,6 +2105,9 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
 
         /// <summary>意图处理器类型完整限定名；为 null 表示无意图处理器。</summary>
         public string? IntentHandlerTypeName { get; }
+
+        /// <summary>是否为 UnitEffect（无副作用）Feature。</summary>
+        public bool IsUnitEffect { get; }
     }
 
     private sealed class ViewInfo

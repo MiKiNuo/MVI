@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 /// 表示事件绑定组合根意图处理器。
 /// </summary>
 public sealed class EventBindingWorkbenchIntentHandler
-    : IMviIntentHandler<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
+    : IMviIntentHandler<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

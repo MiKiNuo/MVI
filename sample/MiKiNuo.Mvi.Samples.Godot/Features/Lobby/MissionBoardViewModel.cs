@@ -1,56 +1,87 @@
+using System;
 using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using R3;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
 /// <summary>
 /// 表示任务大厅 ViewModel。
 /// </summary>
-public sealed partial class MissionBoardViewModel : MviViewModelBase<LobbyState, LobbyIntent, LobbyEffect>
+public sealed partial class MissionBoardViewModel : MviViewModelBase<MissionState, MissionIntent, MissionEffect>
 {
+    private readonly IDisposable _playerSubscription;
+    private int _gold;
+    private int _stamina;
+
     /// <summary>
     /// 初始化任务大厅 ViewModel。
     /// </summary>
-    /// <param name="store">大厅状态存储。</param>
-    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Godot 主线程触发 CanExecuteChanged）。</param>
-    public MissionBoardViewModel(IMviStore<LobbyState, LobbyIntent, LobbyEffect> store, IMviUiDispatcher? uiDispatcher = null)
+    /// <param name="store">任务状态存储。</param>
+    /// <param name="playerStore">玩家状态存储（跨 Store 读取金币/体力）。</param>
+    /// <param name="uiDispatcher">UI 调度器。</param>
+    public MissionBoardViewModel(
+        IMviStore<MissionState, MissionIntent, MissionEffect> store,
+        IMviStore<PlayerState, PlayerIntent, PlayerEffect> playerStore,
+        IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
-        InitializeGeneratedCommands();
+        ArgumentNullException.ThrowIfNull(playerStore);
+        _playerSubscription = playerStore.States.Subscribe(this, static (state, vm) =>
+        {
+            vm.Gold = state.Gold;
+            vm.Stamina = state.Stamina;
+        });
+
+        Observable<bool> canExecute = Store.States
+            .Select(static _ => true)
+            .DistinctUntilChanged();
+
+        AcceptForestMissionCommand = new MviAsyncCommand(canExecute, (_, ct) => DispatchAsync(new MissionIntent.Accept(MissionSpec.ForestPatrol), ct), UiDispatcher);
+        AcceptMineMissionCommand = new MviAsyncCommand(canExecute, (_, ct) => DispatchAsync(new MissionIntent.Accept(MissionSpec.MineRescue), ct), UiDispatcher);
     }
 
     /// <summary>获取当前选中任务。</summary>
-    [MviBind("Mission.SelectedMission")]
+    [MviBind(nameof(MissionState.SelectedMission))]
     public partial string SelectedMission { get; private set; }
 
     /// <summary>获取任务进度说明。</summary>
-    [MviBind("Mission.MissionProgress")]
+    [MviBind(nameof(MissionState.MissionProgress))]
     public partial string MissionProgress { get; private set; }
 
     /// <summary>获取金币数量。</summary>
-    [MviBind("Player.Gold")]
-    public partial int Gold { get; private set; }
+    public int Gold
+    {
+        get => _gold;
+        private set => SetProperty(ref _gold, value);
+    }
 
     /// <summary>获取体力值。</summary>
-    [MviBind("Player.Stamina")]
-    public partial int Stamina { get; private set; }
-
-    /// <summary>获取大厅命令是否允许执行。</summary>
-    [MviBind(nameof(LobbyState.CanExecuteCommands))]
-    public partial bool CanExecuteCommands { get; private set; }
+    public int Stamina
+    {
+        get => _stamina;
+        private set => SetProperty(ref _stamina, value);
+    }
 
     /// <summary>获取接受森林任务命令。</summary>
-    [MviCommand(typeof(LobbyIntent.AcceptForestMission), CanExecuteProperty = nameof(CanExecuteCommands))]
-    public partial IMviCommand AcceptForestMissionCommand { get; private set; }
+    public MviAsyncCommand AcceptForestMissionCommand { get; }
 
     /// <summary>获取接受矿洞任务命令。</summary>
-    [MviCommand(typeof(LobbyIntent.AcceptMineMission), CanExecuteProperty = nameof(CanExecuteCommands))]
-    public partial IMviCommand AcceptMineMissionCommand { get; private set; }
+    public MviAsyncCommand AcceptMineMissionCommand { get; }
 
     /// <summary>获取完成任务命令。</summary>
-    [MviCommand(typeof(LobbyIntent.CompleteMission), CanExecuteProperty = nameof(CanExecuteCommands))]
+    [MviCommand(typeof(MissionIntent.Complete))]
     public partial IMviCommand CompleteMissionCommand { get; private set; }
+
+    /// <summary>释放跨 Store 订阅和手动命令资源。</summary>
+    protected override void OnDispose()
+    {
+        _playerSubscription.Dispose();
+        AcceptForestMissionCommand.Dispose();
+        AcceptMineMissionCommand.Dispose();
+        base.OnDispose();
+    }
 }

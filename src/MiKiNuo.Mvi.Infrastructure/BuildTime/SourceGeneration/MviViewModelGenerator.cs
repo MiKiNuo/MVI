@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿using System.Collections.Generic;
+﻿﻿﻿﻿﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -86,6 +86,14 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        private static readonly DiagnosticDescriptor ApplyStateCoreConflictRule = new(
+            id: DiagnosticIdCatalog.MviApplyStateCoreConflict,
+            title: "声明 [MviBind] 时禁止手写 ApplyStateCore 重写",
+            messageFormat: "类型“{0}”同时声明 [MviBind] 特性和手写 ApplyStateCore 重写；有 [MviBind] 时 ApplyStateCore 由源生成器实现，请删除手写重写。",
+            category: "MviBinding",
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         /// <summary>
         /// 收集 ViewModel 类型的完整描述。
         /// </summary>
@@ -109,6 +117,15 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             if (bindProperties.Count == 0 && commandProperties.Count == 0)
             {
                 return null;
+            }
+
+            // MVI0009: 声明 [MviBind] 时禁止手写 ApplyStateCore 重写
+            if (bindProperties.Count > 0 && HasManualApplyStateCoreOverride(viewModelSymbol))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    ApplyStateCoreConflictRule,
+                    viewModelSymbol.Locations.Length > 0 ? viewModelSymbol.Locations[0] : Location.None,
+                    viewModelSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
             }
 
             return new MviViewModelModels.ViewModelDescriptor(viewModelSymbol, mviBase!, bindProperties, commandProperties);
@@ -135,6 +152,24 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             }
 
             mviBase = null;
+            return false;
+        }
+
+        /// <summary>
+        /// 检查类型是否手写了 ApplyStateCore 重写。
+        /// </summary>
+        /// <param name="viewModelSymbol">ViewModel 类型符号。</param>
+        /// <returns>若存在手写重写则返回 true。</returns>
+        private static bool HasManualApplyStateCoreOverride(INamedTypeSymbol viewModelSymbol)
+        {
+            foreach (IMethodSymbol method in viewModelSymbol.GetMembers().OfType<IMethodSymbol>())
+            {
+                if (method.Name == "ApplyStateCore" && method.IsOverride)
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 

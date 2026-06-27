@@ -1,12 +1,17 @@
 using System;
 using System.Collections.Generic;
 using global::Godot;
+using R3;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
+using MiKiNuo.Mvi.Domain.MVI.Intent;
+using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Presentation.ViewRegistry;
 using MiKiNuo.Mvi.Platforms.Godot.Composition;
 using MiKiNuo.Mvi.Samples.Godot.Composition;
+using MiKiNuo.Mvi.Samples.Godot.Tracing;
 using MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 using MiKiNuo.Mvi.Samples.Godot.Features.Login;
 using MiKiNuo.Mvi.Samples.Godot.Features.Common;
@@ -16,23 +21,31 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 /// <summary>
 /// 表示 Godot 游戏示例应用组合根。
 /// <para>
-/// 父 VM 不再持有子 VM 引用：
+/// 大厅拆分为 8 个独立 Store：ActivityLog / Navigation / BattlePrep / Player / Mission / HeroRoster / Inventory / ForgeLab。
+/// 各 Store 拥有完整 MVI 模型（State/Intent/Effect/Reducer/IntentHandler/EffectDispatcher）。
 /// </para>
-/// <list type="bullet">
-/// <item><see cref="LobbyViewModel"/> 通过 <see cref="ILobbyChromeFactory"/> 解析 3 个常驻 chrome 子 VM（玩家头部 / 大厅菜单 / 活动日志），通过 <see cref="ILobbyPanelFactory"/> 解析 5 个互斥面板 VM。</item>
-/// <item><see cref="AppShellViewModel"/> 通过 <see cref="IGameScreenFactory"/> 解析 Login / Lobby VM。</item>
-/// </list>
+/// <para>
+/// IntentHandler 与 EffectDispatcher 之间存在循环依赖（Player↔Mission↔HeroRoster↔Inventory 互相读取 CurrentState，
+/// 并向 BattlePrep 写入 DispatchAsync）。通过 <see cref="StoreReference{TState,TIntent,TEffect}"/> 代理模式打破：
+/// 先创建引用占位，构造完真实 Store 后通过 <c>SetTarget</c> 注入。
+/// </para>
 /// <para>
 /// 同时持有 <see cref="IGodotMviViewRegistry"/>（编译期生成）+ <see cref="GodotMviViewRegistryAdapter"/>
-/// 桥接为 <see cref="IMviViewRegistry"/>，供 <see cref="global::MiKiNuo.Mvi.Samples.Godot.Views.Lobby.LobbyView"/> 等带 [MviSlot] 的 View 在源生成器
-/// emit 的 <c>OnBindSlots</c> 钩子里按 <c>{Name}ViewModel</c> 解析为 <c>{Name}View</c>。
+/// 桥接为 <see cref="IMviViewRegistry"/>，供带 [MviSlot] 的 View 在源生成器 emit 的 <c>OnBindSlots</c> 钩子里按 <c>{Name}ViewModel</c> 解析为 <c>{Name}View</c>。
 /// </para>
 /// </summary>
 public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI.IMviResolver
 {
     private readonly MviStore<AppShellState, AppShellIntent, AppShellEffect> _appShellStore;
     private readonly MviStore<LoginState, LoginIntent, LoginEffect> _loginStore;
-    private readonly MviStore<LobbyState, LobbyIntent, LobbyEffect> _lobbyStore;
+    private readonly MviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> _activityLogStore;
+    private readonly MviStore<NavigationState, NavigationIntent, NavigationEffect> _navigationStore;
+    private readonly MviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect> _battlePrepStore;
+    private readonly MviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
+    private readonly MviStore<MissionState, MissionIntent, MissionEffect> _missionStore;
+    private readonly MviStore<HeroRosterState, HeroRosterIntent, HeroRosterEffect> _heroRosterStore;
+    private readonly MviStore<InventoryState, InventoryIntent, InventoryEffect> _inventoryStore;
+    private readonly MviStore<UnitState, ForgeLabIntent, ForgeLabEffect> _forgeLabStore;
     private readonly LoginViewModel _loginViewModel;
     private readonly LobbyViewModel _lobbyViewModel;
     private readonly GodotSampleGeneratedViewRegistry _godotViewRegistry;
@@ -47,10 +60,14 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
     {
         ArgumentNullException.ThrowIfNull(uiDispatcher);
 
+        GodotTraceEffectLogger traceLogger = new GodotTraceEffectLogger();
         GameLogicService gameLogicService = new();
+        FakeLobbyApiService apiService = new(gameLogicService);
+
+        // === AppShell Store ===
         AppShellIntentHandler appShellIntentHandler = new();
         AppShellReducer appShellReducer = new();
-        AppShellEffectDispatcher appShellEffectDispatcher = new();
+        AppShellEffectDispatcher appShellEffectDispatcher = new(traceLogger);
         _appShellStore = new MviStore<AppShellState, AppShellIntent, AppShellEffect>(
             AppShellState.Initial,
             appShellIntentHandler,
@@ -58,44 +75,145 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
             appShellEffectDispatcher,
             Array.Empty<IMviMiddleware<AppShellState, AppShellIntent, AppShellEffect>>());
 
-        LobbyReducer lobbyReducer = new();
-        LobbyIntentHandler lobbyIntentHandler = new(new FakeLobbyApiService(gameLogicService));
-        LobbyEffectDispatcher lobbyEffectDispatcher = new();
-        IReadOnlyList<IMviMiddleware<LobbyState, LobbyIntent, LobbyEffect>> lobbyMiddlewares = [new LobbyMiddleware()];
-        _lobbyStore = new MviStore<LobbyState, LobbyIntent, LobbyEffect>(
-            LobbyState.Initial,
-            lobbyIntentHandler,
-            lobbyReducer,
-            lobbyEffectDispatcher,
-            lobbyMiddlewares);
+        // === 1. ActivityLogStore（叶子，无兄弟依赖） ===
+        ActivityLogIntentHandler activityLogIntentHandler = new();
+        ActivityLogReducer activityLogReducer = new();
+        ActivityLogEffectDispatcher activityLogEffectDispatcher = new(traceLogger);
+        _activityLogStore = new MviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect>(
+            ActivityLogState.Initial,
+            activityLogIntentHandler,
+            activityLogReducer,
+            activityLogEffectDispatcher,
+            Array.Empty<IMviMiddleware<ActivityLogState, ActivityLogIntent, ActivityLogEffect>>());
 
-        GameShellNavigator navigator = new(_appShellStore, _lobbyStore);
-        lobbyEffectDispatcher.SetNavigator(navigator);
+        // === 2. NavigationStore（叶子，无兄弟依赖） ===
+        NavigationIntentHandler navigationIntentHandler = new();
+        NavigationReducer navigationReducer = new();
+        NavigationEffectDispatcher navigationEffectDispatcher = new(_activityLogStore, traceLogger);
+        _navigationStore = new MviStore<NavigationState, NavigationIntent, NavigationEffect>(
+            NavigationState.Initial,
+            navigationIntentHandler,
+            navigationReducer,
+            navigationEffectDispatcher,
+            Array.Empty<IMviMiddleware<NavigationState, NavigationIntent, NavigationEffect>>());
+
+        // === 3. 创建 StoreReference 打破循环依赖 ===
+        StoreReference<PlayerState, PlayerIntent, PlayerEffect> playerStoreRef = new();
+        StoreReference<MissionState, MissionIntent, MissionEffect> missionStoreRef = new();
+        StoreReference<HeroRosterState, HeroRosterIntent, HeroRosterEffect> heroRosterStoreRef = new();
+        StoreReference<InventoryState, InventoryIntent, InventoryEffect> inventoryStoreRef = new();
+        StoreReference<BattlePrepState, BattlePrepIntent, BattlePrepEffect> battlePrepStoreRef = new();
+
+        // === 4. BattlePrepStore（IntentHandler 依赖循环中的 Store） ===
+        BattlePrepIntentHandler battlePrepIntentHandler = new(
+            apiService, playerStoreRef, missionStoreRef, heroRosterStoreRef, inventoryStoreRef);
+        BattlePrepReducer battlePrepReducer = new();
+        BattlePrepEffectDispatcher battlePrepEffectDispatcher = new(_activityLogStore, traceLogger);
+        _battlePrepStore = new MviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect>(
+            BattlePrepState.Initial,
+            battlePrepIntentHandler,
+            battlePrepReducer,
+            battlePrepEffectDispatcher,
+            Array.Empty<IMviMiddleware<BattlePrepState, BattlePrepIntent, BattlePrepEffect>>());
+        battlePrepStoreRef.SetTarget(_battlePrepStore);
+
+        // === 5. PlayerStore ===
+        PlayerIntentHandler playerIntentHandler = new(
+            apiService, missionStoreRef, heroRosterStoreRef, inventoryStoreRef);
+        PlayerReducer playerReducer = new();
+        PlayerEffectDispatcher playerEffectDispatcher = new(battlePrepStoreRef, _activityLogStore, traceLogger);
+        _playerStore = new MviStore<PlayerState, PlayerIntent, PlayerEffect>(
+            PlayerState.Initial,
+            playerIntentHandler,
+            playerReducer,
+            playerEffectDispatcher,
+            Array.Empty<IMviMiddleware<PlayerState, PlayerIntent, PlayerEffect>>());
+        playerStoreRef.SetTarget(_playerStore);
+
+        // === 6. MissionStore ===
+        MissionIntentHandler missionIntentHandler = new(
+            apiService, playerStoreRef, heroRosterStoreRef, inventoryStoreRef);
+        MissionReducer missionReducer = new();
+        MissionEffectDispatcher missionEffectDispatcher = new(
+            playerStoreRef, battlePrepStoreRef, _activityLogStore, traceLogger);
+        _missionStore = new MviStore<MissionState, MissionIntent, MissionEffect>(
+            MissionState.Initial,
+            missionIntentHandler,
+            missionReducer,
+            missionEffectDispatcher,
+            Array.Empty<IMviMiddleware<MissionState, MissionIntent, MissionEffect>>());
+        missionStoreRef.SetTarget(_missionStore);
+
+        // === 7. HeroRosterStore ===
+        HeroRosterIntentHandler heroRosterIntentHandler = new(
+            apiService, playerStoreRef, missionStoreRef, inventoryStoreRef);
+        HeroRosterReducer heroRosterReducer = new();
+        HeroRosterEffectDispatcher heroRosterEffectDispatcher = new(
+            playerStoreRef, battlePrepStoreRef, _activityLogStore, traceLogger);
+        _heroRosterStore = new MviStore<HeroRosterState, HeroRosterIntent, HeroRosterEffect>(
+            HeroRosterState.Initial,
+            heroRosterIntentHandler,
+            heroRosterReducer,
+            heroRosterEffectDispatcher,
+            Array.Empty<IMviMiddleware<HeroRosterState, HeroRosterIntent, HeroRosterEffect>>());
+        heroRosterStoreRef.SetTarget(_heroRosterStore);
+
+        // === 8. InventoryStore ===
+        InventoryIntentHandler inventoryIntentHandler = new(
+            apiService, playerStoreRef, missionStoreRef, heroRosterStoreRef);
+        InventoryReducer inventoryReducer = new();
+        InventoryEffectDispatcher inventoryEffectDispatcher = new(
+            playerStoreRef, battlePrepStoreRef, _activityLogStore, traceLogger);
+        _inventoryStore = new MviStore<InventoryState, InventoryIntent, InventoryEffect>(
+            InventoryState.Initial,
+            inventoryIntentHandler,
+            inventoryReducer,
+            inventoryEffectDispatcher,
+            Array.Empty<IMviMiddleware<InventoryState, InventoryIntent, InventoryEffect>>());
+        inventoryStoreRef.SetTarget(_inventoryStore);
+
+        // === 9. ForgeLabStore（无状态 Store） ===
+        ForgeLabIntentHandler forgeLabIntentHandler = new(
+            apiService, playerStoreRef, missionStoreRef, heroRosterStoreRef, inventoryStoreRef);
+        ForgeLabReducer forgeLabReducer = new();
+        ForgeLabEffectDispatcher forgeLabEffectDispatcher = new(
+            inventoryStoreRef, heroRosterStoreRef, battlePrepStoreRef, _activityLogStore, traceLogger);
+        _forgeLabStore = new MviStore<UnitState, ForgeLabIntent, ForgeLabEffect>(
+            UnitState.Instance,
+            forgeLabIntentHandler,
+            forgeLabReducer,
+            forgeLabEffectDispatcher,
+            Array.Empty<IMviMiddleware<UnitState, ForgeLabIntent, ForgeLabEffect>>());
+
+        // === Navigator（依赖 PlayerStore 和 AppShellStore） ===
+        GameShellNavigator navigator = new(_appShellStore, _playerStore);
+        navigationEffectDispatcher.SetNavigator(navigator);
+
+        // === Login Store ===
         LoginIntentHandler loginIntentHandler = new(new FakeAuthService());
         LoginReducer loginReducer = new();
         IReadOnlyList<IMviMiddleware<LoginState, LoginIntent, LoginEffect>> loginMiddlewares = [new LoginMiddleware()];
-        LoginEffectDispatcher loginEffectDispatcher = new(navigator);
+        LoginEffectDispatcher loginEffectDispatcher = new(navigator, traceLogger);
         _loginStore = new MviStore<LoginState, LoginIntent, LoginEffect>(
-            LoginState.Initial,
+            new LoginState("miki", "123456", false, null, true, "演示账号已预填。点击登录会进入游戏大厅。密码长度至少 3 位。"),
             loginIntentHandler,
             loginReducer,
             loginEffectDispatcher,
             loginMiddlewares);
 
+        // === ViewModels ===
         _loginViewModel = new LoginViewModel(_loginStore, uiDispatcher);
 
-        // Lobby 8 个子 VM：3 个常驻 chrome（PlayerHeader / LobbyMenu / ActivityLog）+ 5 个互斥面板
-        // 全部共用同一份 _lobbyStore，由组合根一次性构造：
-        //   - 3 个常驻 chrome VM 交给 LobbyChromeFactory 工厂缓存
-        //   - 5 个互斥面板 VM 交给 LobbyPanelFactory 工厂缓存
-        PlayerHeaderViewModel playerHeaderViewModel = new(_lobbyStore, uiDispatcher);
-        LobbyMenuViewModel lobbyMenuViewModel = new(_lobbyStore, uiDispatcher);
-        ActivityLogViewModel activityLogViewModel = new(_lobbyStore, uiDispatcher);
-        MissionBoardViewModel missionBoardViewModel = new(_lobbyStore, uiDispatcher);
-        HeroRosterViewModel heroRosterViewModel = new(_lobbyStore, uiDispatcher);
-        InventoryViewModel inventoryViewModel = new(_lobbyStore, uiDispatcher);
-        ForgeLabViewModel forgeLabViewModel = new(_lobbyStore, uiDispatcher);
-        BattlePrepViewModel battlePrepViewModel = new(_lobbyStore, uiDispatcher);
+        // Lobby 8 个子 VM：3 个常驻 chrome + 5 个互斥面板，各自绑定独立 Store
+        PlayerHeaderViewModel playerHeaderViewModel = new(_playerStore, _navigationStore, uiDispatcher);
+        LobbyMenuViewModel lobbyMenuViewModel = new(_navigationStore, uiDispatcher);
+        ActivityLogViewModel activityLogViewModel = new(_activityLogStore, uiDispatcher);
+        MissionBoardViewModel missionBoardViewModel = new(_missionStore, _playerStore, uiDispatcher);
+        HeroRosterViewModel heroRosterViewModel = new(_heroRosterStore, _playerStore, uiDispatcher);
+        InventoryViewModel inventoryViewModel = new(_inventoryStore, _playerStore, uiDispatcher);
+        ForgeLabViewModel forgeLabViewModel = new(_forgeLabStore, _inventoryStore, _heroRosterStore, uiDispatcher);
+        BattlePrepViewModel battlePrepViewModel = new(_battlePrepStore, _missionStore, _heroRosterStore, _playerStore, uiDispatcher);
+
         ILobbyChromeFactory chromeFactory = new LobbyChromeFactory(
             playerHeaderViewModel,
             lobbyMenuViewModel,
@@ -107,7 +225,7 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
             forgeLabViewModel,
             battlePrepViewModel);
         _lobbyViewModel = new LobbyViewModel(
-            _lobbyStore,
+            _navigationStore,
             chromeFactory,
             panelFactory,
             uiDispatcher);
@@ -130,7 +248,7 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
 
     /// <summary>
     /// 获取平台无关 View 注册表（<see cref="GodotMviViewRegistryAdapter"/>），
-    /// 由 <see cref="global::MiKiNuo.Mvi.Samples.Godot.Views.Lobby.LobbyView"/> 等带 [MviSlot] 字段的 View 在源生成器 emit 的 OnBindSlots 钩子中解析。
+    /// 由带 [MviSlot] 字段的 View 在源生成器 emit 的 OnBindSlots 钩子中解析。
     /// </summary>
     public IMviViewRegistry ViewRegistry => _viewRegistry;
 
@@ -154,7 +272,14 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
         _lobbyViewModel.Dispose();
         _loginViewModel.Dispose();
         _loginStore.Dispose();
-        _lobbyStore.Dispose();
+        _forgeLabStore.Dispose();
+        _inventoryStore.Dispose();
+        _heroRosterStore.Dispose();
+        _missionStore.Dispose();
+        _playerStore.Dispose();
+        _battlePrepStore.Dispose();
+        _navigationStore.Dispose();
+        _activityLogStore.Dispose();
         _appShellStore.Dispose();
         _disposed = true;
     }
@@ -217,6 +342,79 @@ public sealed class AppCompositionRoot : IDisposable, MiKiNuo.Mvi.Application.DI
     public MiKiNuo.Mvi.Application.DI.IMviScope CreateScope()
     {
         return new EmptyScope();
+    }
+
+    /// <summary>
+    /// 表示 MVI Store 引用代理，用于打破 IntentHandler 之间的循环依赖。
+    /// <para>
+    /// 先创建引用占位，构造完真实 Store 后通过 <see cref="SetTarget"/> 注入；
+    /// 所有成员委托给 target，target 未设置时调用即抛出。
+    /// </para>
+    /// </summary>
+    /// <typeparam name="TState">状态类型。</typeparam>
+    /// <typeparam name="TIntent">意图类型。</typeparam>
+    /// <typeparam name="TEffect">副作用类型。</typeparam>
+    private sealed class StoreReference<TState, TIntent, TEffect> : IMviStore<TState, TIntent, TEffect>
+        where TState : IMviState
+        where TIntent : IMviIntent
+        where TEffect : IMviEffect
+    {
+        private IMviStore<TState, TIntent, TEffect>? _target;
+
+        /// <summary>
+        /// 设置真实 Store 目标。
+        /// </summary>
+        /// <param name="target">真实 Store 实例。</param>
+        public void SetTarget(IMviStore<TState, TIntent, TEffect> target)
+        {
+            _target = target ?? throw new ArgumentNullException(nameof(target));
+        }
+
+        /// <summary>获取当前状态。</summary>
+        public TState CurrentState
+        {
+            get
+            {
+                ArgumentNullException.ThrowIfNull(_target);
+                return _target.CurrentState;
+            }
+        }
+
+        /// <summary>获取状态变化流。</summary>
+        public Observable<TState> States
+        {
+            get
+            {
+                ArgumentNullException.ThrowIfNull(_target);
+                return _target.States;
+            }
+        }
+
+        /// <summary>获取副作用变化流。</summary>
+        public Observable<TEffect> Effects
+        {
+            get
+            {
+                ArgumentNullException.ThrowIfNull(_target);
+                return _target.Effects;
+            }
+        }
+
+        /// <summary>派发意图。</summary>
+        /// <param name="intent">意图。</param>
+        /// <param name="cancellationToken">取消标记。</param>
+        /// <returns>表示异步派发过程的任务。</returns>
+        public ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(_target);
+            return _target.DispatchAsync(intent, cancellationToken);
+        }
+
+        /// <summary>释放资源（委托给 target）。</summary>
+        public void Dispose()
+        {
+            _target?.Dispose();
+        }
     }
 
     /// <summary>

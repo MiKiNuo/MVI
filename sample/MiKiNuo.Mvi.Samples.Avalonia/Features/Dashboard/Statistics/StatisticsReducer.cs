@@ -1,4 +1,5 @@
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Statistics;
@@ -7,17 +8,17 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Statistics;
 /// 表示统计组件规约器。
 /// </summary>
 public sealed partial class StatisticsReducer
-    : MviReducerBase<StatisticsState, StatisticsIntent, StatisticsEffect>
+    : MviReducerBase<StatisticsState, StatisticsIntent, UnitEffect>
 {
     /// <summary>
     /// 处理刷新统计意图。
     /// </summary>
     [MviReduce(typeof(StatisticsIntent.Refresh))]
-    private static MviReduceResult<StatisticsState, StatisticsEffect> HandleRefresh(
+    private MviReduceResult<StatisticsState, UnitEffect> HandleRefresh(
         StatisticsState state,
         StatisticsIntent.Refresh intent)
     {
-        return MviReduceResult.State<StatisticsState, StatisticsEffect>(
+        return MviReduceResult.State<StatisticsState, UnitEffect>(
             state with { OnlineUsers = intent.OnlineUsers, RequestCount = intent.RequestCount, SuccessRate = intent.SuccessRate });
     }
 }

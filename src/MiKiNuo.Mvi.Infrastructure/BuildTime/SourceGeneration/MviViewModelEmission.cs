@@ -38,6 +38,7 @@ internal static class MviViewModelEmission
         {
             EmitInitializeCommands(builder, commandProperties);
             EmitIntentFactory(builder, intentBaseTypeName, commandProperties);
+            EmitOnConstructed(builder);
         }
 
         EmitStateMapping(builder, stateTypeName, bindProperties, hasTwoWay);
@@ -165,6 +166,21 @@ internal static class MviViewModelEmission
             builder.AppendLine();
         }
 
+        builder.AppendLine("    }");
+        builder.AppendLine();
+    }
+
+    /// <summary>
+    /// 发射构造钩子实现，自动初始化命令。
+    /// </summary>
+    private static void EmitOnConstructed(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 构造钩子，初始化命令。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    protected override void OnConstructed()");
+        builder.AppendLine("    {");
+        builder.AppendLine("        InitializeGeneratedCommands();");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -319,7 +335,7 @@ internal static class MviViewModelEmission
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    /// 释放命令资源。");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    protected override void DisposeManagedResources()");
+        builder.AppendLine("    protected override void DisposeGeneratedCommands()");
         builder.AppendLine("    {");
         for (int commandIndex = 0; commandIndex < commandProperties.Count; commandIndex++)
         {

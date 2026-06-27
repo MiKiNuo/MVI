@@ -13,7 +13,7 @@ public sealed partial class PatientSearchReducer
     /// 处理查询文本变更。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.ChangeQueryText))]
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleChangeQueryText(
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleChangeQueryText(
         PatientSearchState state,
         PatientSearchIntent.ChangeQueryText intent)
     {
@@ -33,7 +33,7 @@ public sealed partial class PatientSearchReducer
     /// 处理检索患者意图。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.SearchPatient))]
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSearchPatient(
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSearchPatient(
         PatientSearchState state,
         PatientSearchIntent.SearchPatient intent)
     {
@@ -59,7 +59,7 @@ public sealed partial class PatientSearchReducer
     /// 处理选择首位患者。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.SelectFirstPatient))]
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSelectFirstPatient(
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSelectFirstPatient(
         PatientSearchState state,
         PatientSearchIntent.SelectFirstPatient intent)
     {
@@ -81,7 +81,7 @@ public sealed partial class PatientSearchReducer
     /// 处理外部更新意图。
     /// </summary>
     [MviReduce(typeof(PatientSearchIntent.ApplyExternalUpdate))]
-    private static MviReduceResult<PatientSearchState, PatientSearchEffect> HandleApplyExternalUpdate(
+    private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleApplyExternalUpdate(
         PatientSearchState state,
         PatientSearchIntent.ApplyExternalUpdate intent)
     {

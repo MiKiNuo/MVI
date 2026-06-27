@@ -8,24 +8,24 @@ using MiKiNuo.Mvi.Samples.Godot.Features.Common;
 namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
 
 /// <summary>
-/// 表示游戏壳导航协调器，负责跨 Login MVI、Shell MVI 和 Lobby MVI 编排。
+/// 表示游戏壳导航协调器，负责跨 Login MVI、Shell MVI 和 Player MVI 编排。
 /// </summary>
 public sealed class GameShellNavigator : IGameShellNavigator
 {
     private readonly IMviStore<AppShellState, AppShellIntent, AppShellEffect> _appShellStore;
-    private readonly IMviStore<LobbyState, LobbyIntent, LobbyEffect> _lobbyStore;
+    private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
 
     /// <summary>
     /// 初始化游戏壳导航协调器。
     /// </summary>
     /// <param name="appShellStore">应用壳状态存储。</param>
-    /// <param name="lobbyStore">大厅状态存储。</param>
+    /// <param name="playerStore">玩家资料状态存储。</param>
     public GameShellNavigator(
         IMviStore<AppShellState, AppShellIntent, AppShellEffect> appShellStore,
-        IMviStore<LobbyState, LobbyIntent, LobbyEffect> lobbyStore)
+        IMviStore<PlayerState, PlayerIntent, PlayerEffect> playerStore)
     {
         _appShellStore = appShellStore ?? throw new ArgumentNullException(nameof(appShellStore));
-        _lobbyStore = lobbyStore ?? throw new ArgumentNullException(nameof(lobbyStore));
+        _playerStore = playerStore ?? throw new ArgumentNullException(nameof(playerStore));
     }
 
     /// <summary>
@@ -38,7 +38,7 @@ public sealed class GameShellNavigator : IGameShellNavigator
     {
         ArgumentNullException.ThrowIfNull(profile);
         cancellationToken.ThrowIfCancellationRequested();
-        await _lobbyStore.DispatchAsync(new LobbyIntent.SetPlayer(profile), cancellationToken).ConfigureAwait(false);
+        await _playerStore.DispatchAsync(new PlayerIntent.SetPlayer(profile), cancellationToken).ConfigureAwait(false);
         await _appShellStore.DispatchAsync(new AppShellIntent.ShowLobby(), cancellationToken).ConfigureAwait(false);
     }
 

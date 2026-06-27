@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 
@@ -9,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient;
 /// 表示门诊工作站页面意图处理器。
 /// </summary>
 public sealed class OutpatientWorkstationIntentHandler
-    : IMviIntentHandler<OutpatientWorkstationState, OutpatientWorkstationIntent, OutpatientWorkstationEffect>
+    : IMviIntentHandler<OutpatientWorkstationState, OutpatientWorkstationIntent, UnitEffect>
 {
     /// <summary>
     /// 处理意图并产生后续意图。

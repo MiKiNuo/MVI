@@ -1,7 +1,8 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 
@@ -19,7 +20,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 /// </list>
 /// </summary>
 public sealed partial class DashboardViewModel
-    : MviViewModelBase<DashboardState, DashboardIntent, DashboardEffect>
+    : MviViewModelBase<DashboardState, DashboardIntent, UnitEffect>
 {
     private readonly IDashboardChromeFactory _chromeFactory;
     private readonly IDashboardPageFactory _pageFactory;
@@ -32,7 +33,7 @@ public sealed partial class DashboardViewModel
     /// <param name="pageFactory">把 PageKey 解析为具体页面 ViewModel 的工厂。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public DashboardViewModel(
-        IMviStore<DashboardState, DashboardIntent, DashboardEffect> store,
+        IMviStore<DashboardState, DashboardIntent, UnitEffect> store,
         IDashboardChromeFactory chromeFactory,
         IDashboardPageFactory pageFactory,
         IMviUiDispatcher? uiDispatcher = null)

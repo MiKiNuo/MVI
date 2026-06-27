@@ -16,6 +16,14 @@ namespace MiKiNuo.Mvi.Application.MVI.ViewModel;
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
 /// <typeparam name="TEffect">副作用类型。</typeparam>
+/// <remarks>
+/// 源生成器协议：
+/// <list type="number">
+/// <item><see cref="OnConstructed"/> 钩子由源生成器实现，自动初始化命令；子类无需手调。</item>
+/// <item><see cref="DisposeGeneratedCommands"/> 专留给源生成器释放命令；子类请重写 <see cref="OnDispose"/>。</item>
+/// <item><see cref="ApplyStateCore"/> 在声明 [MviBind] 时由源生成器实现，禁止手写重写。</item>
+/// </list>
+/// </remarks>
 public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent, INotifyPropertyChanged
     where TState : IMviState
     where TIntent : IMviIntent
@@ -38,6 +46,17 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
         _uiDispatcher = uiDispatcher ?? MviInlineUiDispatcher.Instance;
         _stateSubscription = Store.States.Subscribe(this, static (state, viewModel) => viewModel.ApplyState(state));
         ApplyState(Store.CurrentState);
+        OnConstructed();
+    }
+
+    /// <summary>
+    /// 构造钩子，由源生成器重写以初始化命令。
+    /// </summary>
+    /// <remarks>
+    /// 基类构造函数末尾调用此方法；源生成器在含 [MviCommand] 的子类中 emit 重写以自动初始化命令，子类无需手调。
+    /// </remarks>
+    protected virtual void OnConstructed()
+    {
     }
 
     /// <summary>
@@ -113,18 +132,17 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
     }
 
     /// <summary>
-    /// 释放命令或子类资源。
+    /// 释放源生成器创建的命令资源。
     /// </summary>
     /// <remarks>
-    /// 源生成器会为带命令的子类重写此方法以释放命令资源。
-    /// 若子类需要释放其它资源，请重写 <see cref="OnDispose"/>，避免与生成器冲突。
+    /// 此方法专留给源生成器重写以释放命令资源；子类请重写 <see cref="OnDispose"/> 释放额外资源。
     /// </remarks>
-    protected virtual void DisposeManagedResources()
+    protected virtual void DisposeGeneratedCommands()
     {
     }
 
     /// <summary>
-    /// ViewModel 释放的最终扩展点，由 <see cref="Dispose"/> 在 <see cref="DisposeManagedResources"/> 之后调用。
+    /// ViewModel 释放的最终扩展点，由 <see cref="Dispose"/> 在 <see cref="DisposeGeneratedCommands"/> 之后调用。
     /// </summary>
     /// <remarks>
     /// 适用于"额外的订阅/资源"需要在 ViewModel 生命周期结束时释放，但与源生成器管理的命令资源无直接依赖关系的场景。
@@ -170,7 +188,7 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
         _isDisposed = true;
 
         _stateSubscription.Dispose();
-        DisposeManagedResources();
+        DisposeGeneratedCommands();
         OnDispose();
         base.Dispose();
         GC.SuppressFinalize(this);

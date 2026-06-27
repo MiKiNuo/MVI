@@ -1,8 +1,9 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation;
 
@@ -23,7 +24,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation
 /// </para>
 /// </summary>
 public sealed partial class ArchitectureValidationViewModel
-    : MviViewModelBase<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect>
+    : MviViewModelBase<ArchitectureValidationState, ArchitectureValidationIntent, UnitEffect>
 {
     private readonly IArchitectureValidationPanelFactory _panelFactory;
     private readonly CardStoreFactory _cardStoreFactory;
@@ -36,7 +37,7 @@ public sealed partial class ArchitectureValidationViewModel
     /// <param name="cardStoreFactory">指标卡片 MVI Store / ViewModel 工厂（提供 4 张指标卡片）。</param>
     /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
     public ArchitectureValidationViewModel(
-        IMviStore<ArchitectureValidationState, ArchitectureValidationIntent, ArchitectureValidationEffect> store,
+        IMviStore<ArchitectureValidationState, ArchitectureValidationIntent, UnitEffect> store,
         IArchitectureValidationPanelFactory panelFactory,
         CardStoreFactory cardStoreFactory,
         IMviUiDispatcher? uiDispatcher = null)

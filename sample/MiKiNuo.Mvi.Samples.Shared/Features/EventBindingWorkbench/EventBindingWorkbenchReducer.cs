@@ -1,4 +1,5 @@
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
@@ -7,11 +8,11 @@ namespace MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 /// 表示事件绑定组合根规约器。
 /// </summary>
 public sealed partial class EventBindingWorkbenchReducer
-    : MviReducerBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, EventBindingWorkbenchEffect>
+    : MviReducerBase<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect>
 {
     /// <summary>处理记录交互意图。</summary>
     [MviReduce(typeof(EventBindingWorkbenchIntent.RecordInteraction))]
-    private static MviReduceResult<EventBindingWorkbenchState, EventBindingWorkbenchEffect> HandleRecordInteraction(
+    private MviReduceResult<EventBindingWorkbenchState, UnitEffect> HandleRecordInteraction(
         EventBindingWorkbenchState state,
         EventBindingWorkbenchIntent.RecordInteraction intent)
     {
@@ -21,6 +22,6 @@ public sealed partial class EventBindingWorkbenchReducer
             LastInteractionText = interactionText,
             InteractionCount = state.InteractionCount + 1,
         };
-        return MviReduceResult.State<EventBindingWorkbenchState, EventBindingWorkbenchEffect>(newState);
+        return MviReduceResult.State<EventBindingWorkbenchState, UnitEffect>(newState);
     }
 }

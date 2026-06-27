@@ -515,7 +515,6 @@ public sealed partial class EventCommandViewModel
     public EventCommandViewModel(IMviStore<EventCommandState, EventCommandIntent, EventCommandEffect> store)
         : base(store)
     {
-        InitializeGeneratedCommands();
     }
 
     /// <summary>

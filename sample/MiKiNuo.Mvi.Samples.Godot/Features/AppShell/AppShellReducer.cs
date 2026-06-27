@@ -11,7 +11,7 @@ public sealed partial class AppShellReducer
 {
     /// <summary>处理显示登录界面意图。</summary>
     [MviReduce(typeof(AppShellIntent.ShowLogin))]
-    private static MviReduceResult<AppShellState, AppShellEffect> HandleShowLogin(
+    private MviReduceResult<AppShellState, AppShellEffect> HandleShowLogin(
         AppShellState state,
         AppShellIntent.ShowLogin intent)
     {
@@ -28,7 +28,7 @@ public sealed partial class AppShellReducer
 
     /// <summary>处理显示游戏大厅意图。</summary>
     [MviReduce(typeof(AppShellIntent.ShowLobby))]
-    private static MviReduceResult<AppShellState, AppShellEffect> HandleShowLobby(
+    private MviReduceResult<AppShellState, AppShellEffect> HandleShowLobby(
         AppShellState state,
         AppShellIntent.ShowLobby intent)
     {
