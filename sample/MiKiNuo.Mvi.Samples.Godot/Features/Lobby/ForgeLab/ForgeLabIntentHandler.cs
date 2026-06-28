@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.State;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -39,13 +40,13 @@ public sealed class ForgeLabIntentHandler
     }
 
     /// <summary>
-    /// 处理意图并产生后续意图。
+    /// 处理意图并产生业务结果。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合。</returns>
-    public async ValueTask<IReadOnlyList<ForgeLabIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public async ValueTask<IMviBusinessResult?> HandleAsync(
         UnitState state,
         ForgeLabIntent intent,
         CancellationToken cancellationToken = default)
@@ -58,11 +59,11 @@ public sealed class ForgeLabIntentHandler
             case ForgeLabIntent.Forge forge:
                 return await HandleForgeAsync(forge, cancellationToken).ConfigureAwait(false);
             default:
-                return Array.Empty<ForgeLabIntent>();
+                return null;
         }
     }
 
-    private async ValueTask<IReadOnlyList<ForgeLabIntent>> HandleForgeAsync(
+    private async ValueTask<IMviBusinessResult?> HandleForgeAsync(
         ForgeLabIntent.Forge forge,
         CancellationToken cancellationToken)
     {
@@ -87,25 +88,21 @@ public sealed class ForgeLabIntentHandler
 
         if (!result.Success)
         {
-            return new ForgeLabIntent[]
-            {
-                new ForgeLabIntent.ForgeFailed(result.ErrorMessage ?? "锻造失败。"),
-            };
+            return new FollowUpIntentResult<ForgeLabIntent>(
+                new ForgeLabIntent.ForgeFailed(result.ErrorMessage ?? "锻造失败。"));
         }
 
         int newPower = heroPower + forge.Spec.PowerBonus;
         string readyText = await _apiService
             .BuildBattleReadyTextAsync(selectedMission, newPower, stamina, potionCount, cancellationToken)
             .ConfigureAwait(false);
-        return new ForgeLabIntent[]
-        {
+        return new FollowUpIntentResult<ForgeLabIntent>(
             new ForgeLabIntent.Forged(
                 forge.Spec.ItemName,
                 forge.Spec.OreCost,
                 forge.Spec.CrystalCost,
                 forge.Spec.PowerBonus,
                 result.ForgeScore,
-                readyText),
-        };
+                readyText));
     }
 }

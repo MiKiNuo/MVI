@@ -2,6 +2,7 @@ using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -14,7 +15,8 @@ namespace MiKiNuo.Mvi.Application.MVI.Store;
 /// 表示经典 MVI 状态存储。
 /// </summary>
 /// <remarks>
-/// 数据流：Intent → Middleware → IntentHandler(异步业务,产后续 Intent) → Reducer(纯函数) → 新 State + Effects → EffectDispatcher。
+/// 数据流：Intent → Middleware → 第一次 Reduce(产中间状态) → IntentHandler(异步业务,产业务结果) → 第二次 Reduce(消费业务结果,产最终状态+Effects) → EffectDispatcher。
+/// 无异步业务的 Intent 仅执行第一次 Reduce。
 /// </remarks>
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
@@ -78,7 +80,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     public Observable<TEffect> Effects => _effects;
 
     /// <summary>
-    /// 派发意图,队列化处理后续意图。
+    /// 派发意图,执行两次 Reduce 与异步业务。
     /// </summary>
     /// <param name="intent">意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
@@ -88,17 +90,22 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         ArgumentNullException.ThrowIfNull(intent);
 
-        Queue<TIntent> pending = new();
-        pending.Enqueue(intent);
-
-        while (pending.Count > 0)
+        await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            TIntent current = pending.Dequeue();
-            IReadOnlyList<TIntent> subsequentIntents = await DispatchOneAsync(current, cancellationToken);
-            foreach (TIntent subsequent in subsequentIntents)
-            {
-                pending.Enqueue(subsequent);
-            }
+            MviMiddlewareContext<TState, TIntent, TEffect> context = new(CurrentState, intent);
+
+            MviReduceResult<TState, TEffect> finalResult = await _pipeline.InvokeAsync(
+                context,
+                ExecuteCoreAsync,
+                cancellationToken).ConfigureAwait(false);
+
+            _state.Value = finalResult.State;
+            await DispatchEffectsAsync(finalResult.Effects, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _ = _dispatchGate.Release();
         }
     }
 
@@ -120,48 +127,53 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     }
 
     /// <summary>
-    /// 派发单个意图并通过中间件管道执行。
+    /// 执行核心调度:两次 Reduce 与异步业务。
     /// </summary>
-    /// <param name="intent">当前意图。</param>
+    /// <param name="context">中间件上下文。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>IntentHandler 产生的后续意图集合。</returns>
-    private async ValueTask<IReadOnlyList<TIntent>> DispatchOneAsync(
-        TIntent intent,
+    /// <returns>最终规约结果。</returns>
+    private async ValueTask<MviReduceResult<TState, TEffect>> ExecuteCoreAsync(
+        MviMiddlewareContext<TState, TIntent, TEffect> context,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<TIntent> subsequentIntents = Array.Empty<TIntent>();
-        IReadOnlyList<TEffect> effects;
+        TState state = context.State;
+        TIntent intent = context.Intent;
 
-        await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
+        // 第一次 Reduce:无业务结果,产中间状态(如 IsBusy)
+        MviReduceResult<TState, TEffect> intermediate = _reducer.Reduce(state, intent, null);
+
+        // 立即更新中间状态,让 IntentHandler 看到中间状态
+        _state.Value = intermediate.State;
+        await DispatchEffectsAsync(intermediate.Effects, cancellationToken).ConfigureAwait(false);
+
+        // 异步业务
+        IMviBusinessResult? businessResult = await _intentHandler
+            .HandleAsync(intermediate.State, intent, cancellationToken)
+            .ConfigureAwait(false);
+
+        // 无业务结果:中间状态即最终状态,返回空 Effects 避免外层重复派发
+        if (businessResult is null)
         {
-            MviMiddlewareContext<TState, TIntent, TEffect> context = new(CurrentState, intent);
-
-            MviReduceResult<TState, TEffect> result = await _pipeline.InvokeAsync(
-                context,
-                async (ctx, ct) =>
-                {
-                    subsequentIntents = await _intentHandler
-                        .HandleAsync(ctx.State, ctx.Intent, ct)
-                        .ConfigureAwait(false);
-                    return _reducer.Reduce(ctx.State, ctx.Intent);
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            _state.Value = result.State;
-            effects = result.Effects;
-        }
-        finally
-        {
-            _ = _dispatchGate.Release();
+            return MviReduceResult.State<TState, TEffect>(intermediate.State);
         }
 
+        // 第二次 Reduce:有业务结果,产最终状态与副作用
+        return _reducer.Reduce(intermediate.State, intent, businessResult);
+    }
+
+    /// <summary>
+    /// 派发副作用集合到分发器。
+    /// </summary>
+    /// <param name="effects">副作用集合。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    private async ValueTask DispatchEffectsAsync(
+        IReadOnlyList<TEffect> effects,
+        CancellationToken cancellationToken)
+    {
         foreach (TEffect effect in effects)
         {
             _effects.OnNext(effect);
             await _effectDispatcher.DispatchAsync(effect, cancellationToken).ConfigureAwait(false);
         }
-
-        return subsequentIntents;
     }
 }

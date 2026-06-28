@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.PatientQueue;
@@ -16,7 +17,8 @@ public sealed partial class PatientQueueReducer
     [MviReduce(typeof(PatientQueueIntent.CallNext))]
     private MviReduceResult<PatientQueueState, PatientQueueEffect> HandleCallNext(
         PatientQueueState state,
-        PatientQueueIntent.CallNext intent)
+        PatientQueueIntent.CallNext intent,
+        IMviBusinessResult? result)
     {
         int nextIndex = Math.Min(state.CurrentIndex + 1, state.Patients.Count - 1);
         string patientName = state.Patients[nextIndex];

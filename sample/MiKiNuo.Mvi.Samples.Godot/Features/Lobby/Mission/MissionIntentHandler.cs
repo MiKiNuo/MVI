@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -38,13 +39,13 @@ public sealed class MissionIntentHandler
     }
 
     /// <summary>
-    /// 处理意图并产生后续意图。
+    /// 处理意图并产生业务结果。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合。</returns>
-    public async ValueTask<IReadOnlyList<MissionIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public async ValueTask<IMviBusinessResult?> HandleAsync(
         MissionState state,
         MissionIntent intent,
         CancellationToken cancellationToken = default)
@@ -59,11 +60,11 @@ public sealed class MissionIntentHandler
             case MissionIntent.Complete:
                 return await HandleCompleteAsync(state, cancellationToken).ConfigureAwait(false);
             default:
-                return Array.Empty<MissionIntent>();
+                return null;
         }
     }
 
-    private async ValueTask<IReadOnlyList<MissionIntent>> HandleAcceptAsync(
+    private async ValueTask<IMviBusinessResult?> HandleAcceptAsync(
         MissionState state,
         MissionIntent.Accept accept,
         CancellationToken cancellationToken)
@@ -84,10 +85,8 @@ public sealed class MissionIntentHandler
 
         if (!result.Success)
         {
-            return new MissionIntent[]
-            {
-                new MissionIntent.AcceptFailed(result.ErrorMessage ?? "接受任务失败。"),
-            };
+            return new FollowUpIntentResult<MissionIntent>(
+                new MissionIntent.AcceptFailed(result.ErrorMessage ?? "接受任务失败。"));
         }
 
         string readyText = await _apiService
@@ -98,18 +97,16 @@ public sealed class MissionIntentHandler
                 potionCount,
                 cancellationToken)
             .ConfigureAwait(false);
-        return new MissionIntent[]
-        {
+        return new FollowUpIntentResult<MissionIntent>(
             new MissionIntent.Accepted(
                 accept.Spec.MissionName,
                 accept.Spec.StaminaCost,
                 result.Reward,
                 result.NewStamina,
-                readyText),
-        };
+                readyText));
     }
 
-    private async ValueTask<IReadOnlyList<MissionIntent>> HandleCompleteAsync(
+    private async ValueTask<IMviBusinessResult?> HandleCompleteAsync(
         MissionState state,
         CancellationToken cancellationToken)
     {
@@ -129,6 +126,6 @@ public sealed class MissionIntentHandler
                 potionCount,
                 cancellationToken)
             .ConfigureAwait(false);
-        return new MissionIntent[] { new MissionIntent.Completed(reward, readyText) };
+        return new FollowUpIntentResult<MissionIntent>(new MissionIntent.Completed(reward, readyText));
     }
 }

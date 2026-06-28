@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -37,13 +38,13 @@ public sealed class HeroRosterIntentHandler
     }
 
     /// <summary>
-    /// 处理意图并产生后续意图。
+    /// 处理意图并产生业务结果。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合。</returns>
-    public async ValueTask<IReadOnlyList<HeroRosterIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public async ValueTask<IMviBusinessResult?> HandleAsync(
         HeroRosterState state,
         HeroRosterIntent intent,
         CancellationToken cancellationToken = default)
@@ -56,11 +57,11 @@ public sealed class HeroRosterIntentHandler
             case HeroRosterIntent.Train train:
                 return await HandleTrainAsync(state, train, cancellationToken).ConfigureAwait(false);
             default:
-                return Array.Empty<HeroRosterIntent>();
+                return null;
         }
     }
 
-    private async ValueTask<IReadOnlyList<HeroRosterIntent>> HandleTrainAsync(
+    private async ValueTask<IMviBusinessResult?> HandleTrainAsync(
         HeroRosterState state,
         HeroRosterIntent.Train train,
         CancellationToken cancellationToken)
@@ -86,10 +87,8 @@ public sealed class HeroRosterIntentHandler
 
         if (!result.Success)
         {
-            return new HeroRosterIntent[]
-            {
-                new HeroRosterIntent.TrainFailed(result.ErrorMessage ?? "训练失败。"),
-            };
+            return new FollowUpIntentResult<HeroRosterIntent>(
+                new HeroRosterIntent.TrainFailed(result.ErrorMessage ?? "训练失败。"));
         }
 
         HeroRosterState leveledRoster = ApplyHeroLevel(state, train.Kind, result.NewLevel);
@@ -100,10 +99,8 @@ public sealed class HeroRosterIntentHandler
         string readyText = await _apiService
             .BuildBattleReadyTextAsync(selectedMission, nextPower, stamina, potionCount, cancellationToken)
             .ConfigureAwait(false);
-        return new HeroRosterIntent[]
-        {
-            new HeroRosterIntent.Trained(train.Kind, heroName, result.NewLevel, result.Cost, readyText),
-        };
+        return new FollowUpIntentResult<HeroRosterIntent>(
+            new HeroRosterIntent.Trained(train.Kind, heroName, result.NewLevel, result.Cost, readyText));
     }
 
     private static HeroRosterState ApplyHeroLevel(HeroRosterState roster, HeroKind kind, int newLevel)

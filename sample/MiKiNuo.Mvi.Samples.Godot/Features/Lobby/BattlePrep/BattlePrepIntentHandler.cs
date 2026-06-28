@@ -1,5 +1,6 @@
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -38,13 +39,13 @@ public sealed class BattlePrepIntentHandler
     }
 
     /// <summary>
-    /// 处理意图并产生后续意图。
+    /// 处理意图并产生业务结果。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合。</returns>
-    public async ValueTask<IReadOnlyList<BattlePrepIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public async ValueTask<IMviBusinessResult?> HandleAsync(
         BattlePrepState state,
         BattlePrepIntent intent,
         CancellationToken cancellationToken = default)
@@ -57,11 +58,11 @@ public sealed class BattlePrepIntentHandler
             case BattlePrepIntent.PrepareBattle:
                 return await HandlePrepareBattleAsync(cancellationToken).ConfigureAwait(false);
             default:
-                return Array.Empty<BattlePrepIntent>();
+                return null;
         }
     }
 
-    private async ValueTask<IReadOnlyList<BattlePrepIntent>> HandlePrepareBattleAsync(
+    private async ValueTask<IMviBusinessResult?> HandlePrepareBattleAsync(
         CancellationToken cancellationToken)
     {
         string selectedMission = _missionStore.CurrentState.SelectedMission;
@@ -72,9 +73,7 @@ public sealed class BattlePrepIntentHandler
         string readyText = await _apiService
             .BuildBattleReadyTextAsync(selectedMission, heroPower, stamina, potionCount, cancellationToken)
             .ConfigureAwait(false);
-        return new BattlePrepIntent[]
-        {
-            new BattlePrepIntent.BattlePrepared(readyText),
-        };
+        return new FollowUpIntentResult<BattlePrepIntent>(
+            new BattlePrepIntent.BattlePrepared(readyText));
     }
 }

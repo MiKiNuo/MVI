@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -14,10 +15,25 @@ public sealed partial class PlayerReducer
     [MviReduce(typeof(PlayerIntent.SetPlayer))]
     private MviReduceResult<PlayerState, PlayerEffect> HandleSetPlayer(
         PlayerState state,
-        PlayerIntent.SetPlayer intent)
+        PlayerIntent.SetPlayer intent,
+        IMviBusinessResult? result)
     {
         PlayerProfile profile = intent.Profile;
         PlayerState newState = new(profile.PlayerName, profile.Level, profile.Gold, profile.Stamina);
+        if (result is FollowUpIntentResult<PlayerIntent> fur
+            && fur.Intent is PlayerIntent.PlayerSet playerSet)
+        {
+            return MviReduceResult.StateAndEffects<PlayerState, PlayerEffect>(
+                newState,
+                new PlayerEffect[]
+                {
+                    new PlayerEffect.Trace("Player SetPlayer"),
+                    new PlayerEffect.LogActivity($"登录玩家：{profile.PlayerName}。"),
+                    new PlayerEffect.UpdateBattleReadyText(playerSet.BattleReadyText),
+                    new PlayerEffect.Trace("Player PlayerSet"),
+                });
+        }
+
         return MviReduceResult.StateAndEffects<PlayerState, PlayerEffect>(
             newState,
             new PlayerEffect[]
@@ -31,7 +47,8 @@ public sealed partial class PlayerReducer
     [MviReduce(typeof(PlayerIntent.PlayerSet))]
     private MviReduceResult<PlayerState, PlayerEffect> HandlePlayerSet(
         PlayerState state,
-        PlayerIntent.PlayerSet intent)
+        PlayerIntent.PlayerSet intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.StateAndEffects<PlayerState, PlayerEffect>(
             state,
@@ -46,7 +63,8 @@ public sealed partial class PlayerReducer
     [MviReduce(typeof(PlayerIntent.ConsumeGold))]
     private MviReduceResult<PlayerState, PlayerEffect> HandleConsumeGold(
         PlayerState state,
-        PlayerIntent.ConsumeGold intent)
+        PlayerIntent.ConsumeGold intent,
+        IMviBusinessResult? result)
     {
         PlayerState newState = state with { Gold = Math.Max(0, state.Gold - intent.Amount) };
         return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(
@@ -58,7 +76,8 @@ public sealed partial class PlayerReducer
     [MviReduce(typeof(PlayerIntent.AddGold))]
     private MviReduceResult<PlayerState, PlayerEffect> HandleAddGold(
         PlayerState state,
-        PlayerIntent.AddGold intent)
+        PlayerIntent.AddGold intent,
+        IMviBusinessResult? result)
     {
         PlayerState newState = state with { Gold = state.Gold + intent.Amount };
         return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(
@@ -70,7 +89,8 @@ public sealed partial class PlayerReducer
     [MviReduce(typeof(PlayerIntent.ConsumeStamina))]
     private MviReduceResult<PlayerState, PlayerEffect> HandleConsumeStamina(
         PlayerState state,
-        PlayerIntent.ConsumeStamina intent)
+        PlayerIntent.ConsumeStamina intent,
+        IMviBusinessResult? result)
     {
         PlayerState newState = state with { Stamina = Math.Max(0, state.Stamina - intent.Amount) };
         return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(
@@ -82,7 +102,8 @@ public sealed partial class PlayerReducer
     [MviReduce(typeof(PlayerIntent.RestoreStamina))]
     private MviReduceResult<PlayerState, PlayerEffect> HandleRestoreStamina(
         PlayerState state,
-        PlayerIntent.RestoreStamina intent)
+        PlayerIntent.RestoreStamina intent,
+        IMviBusinessResult? result)
     {
         PlayerState newState = state with { Stamina = intent.NewStamina };
         return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(

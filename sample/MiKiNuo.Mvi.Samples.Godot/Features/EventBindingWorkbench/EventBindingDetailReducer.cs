@@ -1,4 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
@@ -13,7 +14,8 @@ public sealed partial class EventBindingDetailReducer
     [MviReduce(typeof(EventBindingDetailIntent.Prepare))]
     private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePrepare(
         EventBindingDetailState state,
-        EventBindingDetailIntent.Prepare intent)
+        EventBindingDetailIntent.Prepare intent,
+        IMviBusinessResult? result)
     {
         EventBindingDetailState newState = state with
         {

@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -14,14 +15,50 @@ public sealed partial class HeroRosterReducer
     [MviReduce(typeof(HeroRosterIntent.Train))]
     private MviReduceResult<HeroRosterState, HeroRosterEffect> HandleTrain(
         HeroRosterState state,
-        HeroRosterIntent.Train intent)
-        => MviReduceResult.State<HeroRosterState, HeroRosterEffect>(state);
+        HeroRosterIntent.Train intent,
+        IMviBusinessResult? result)
+    {
+        if (result is FollowUpIntentResult<HeroRosterIntent> fur)
+        {
+            switch (fur.Intent)
+            {
+                case HeroRosterIntent.Trained trained:
+                {
+                    HeroRosterState leveledRoster = ApplyHeroLevel(state, trained.Kind, trained.NewLevel);
+                    int nextPower = CalculateHeroPower(leveledRoster.WarriorLevel, leveledRoster.MageLevel, leveledRoster.ArcherLevel);
+                    HeroRosterState newRoster = leveledRoster with { HeroTeamPower = nextPower };
+                    return MviReduceResult.StateAndEffects<HeroRosterState, HeroRosterEffect>(
+                        newRoster,
+                        new HeroRosterEffect[]
+                        {
+                            new HeroRosterEffect.ConsumeGold(trained.Cost),
+                            new HeroRosterEffect.UpdateBattleReadyText(trained.BattleReadyText),
+                            new HeroRosterEffect.LogActivity($"训练{trained.HeroName}，消耗 {trained.Cost} 金币，战力 {nextPower}。"),
+                            new HeroRosterEffect.Trace($"Hero Train {trained.HeroName}"),
+                        });
+                }
+                case HeroRosterIntent.TrainFailed failed:
+                {
+                    return MviReduceResult.StateAndEffects<HeroRosterState, HeroRosterEffect>(
+                        state,
+                        new HeroRosterEffect[]
+                        {
+                            new HeroRosterEffect.LogActivity(failed.ErrorMessage ?? "训练失败。"),
+                            new HeroRosterEffect.Trace("Hero Train Failed"),
+                        });
+                }
+            }
+        }
+
+        return MviReduceResult.State<HeroRosterState, HeroRosterEffect>(state);
+    }
 
     /// <summary>处理英雄训练成功意图。</summary>
     [MviReduce(typeof(HeroRosterIntent.Trained))]
     private MviReduceResult<HeroRosterState, HeroRosterEffect> HandleTrained(
         HeroRosterState state,
-        HeroRosterIntent.Trained intent)
+        HeroRosterIntent.Trained intent,
+        IMviBusinessResult? result)
     {
         HeroRosterState leveledRoster = ApplyHeroLevel(state, intent.Kind, intent.NewLevel);
         int nextPower = CalculateHeroPower(leveledRoster.WarriorLevel, leveledRoster.MageLevel, leveledRoster.ArcherLevel);
@@ -41,7 +78,8 @@ public sealed partial class HeroRosterReducer
     [MviReduce(typeof(HeroRosterIntent.TrainFailed))]
     private MviReduceResult<HeroRosterState, HeroRosterEffect> HandleTrainFailed(
         HeroRosterState state,
-        HeroRosterIntent.TrainFailed intent)
+        HeroRosterIntent.TrainFailed intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.StateAndEffects<HeroRosterState, HeroRosterEffect>(
             state,
@@ -56,7 +94,8 @@ public sealed partial class HeroRosterReducer
     [MviReduce(typeof(HeroRosterIntent.AddPower))]
     private MviReduceResult<HeroRosterState, HeroRosterEffect> HandleAddPower(
         HeroRosterState state,
-        HeroRosterIntent.AddPower intent)
+        HeroRosterIntent.AddPower intent,
+        IMviBusinessResult? result)
     {
         HeroRosterState newState = state with { HeroTeamPower = state.HeroTeamPower + intent.Bonus };
         return MviReduceResult.StateAndEffect<HeroRosterState, HeroRosterEffect>(

@@ -1,4 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -16,7 +17,8 @@ public sealed partial class UserProfileReducer
     [MviReduce(typeof(UserProfileIntent.ChangeRole))]
     private MviReduceResult<UserProfileState, UnitEffect> HandleChangeRole(
         UserProfileState state,
-        UserProfileIntent.ChangeRole intent)
+        UserProfileIntent.ChangeRole intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.State<UserProfileState, UnitEffect>(
             state with { RoleName = intent.RoleName });

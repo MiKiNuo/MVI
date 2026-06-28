@@ -1,4 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 
@@ -14,14 +15,47 @@ public sealed partial class ForgeLabReducer
     [MviReduce(typeof(ForgeLabIntent.Forge))]
     private MviReduceResult<UnitState, ForgeLabEffect> HandleForge(
         UnitState state,
-        ForgeLabIntent.Forge intent)
-        => MviReduceResult.State<UnitState, ForgeLabEffect>(state);
+        ForgeLabIntent.Forge intent,
+        IMviBusinessResult? result)
+    {
+        if (result is FollowUpIntentResult<ForgeLabIntent> fur)
+        {
+            switch (fur.Intent)
+            {
+                case ForgeLabIntent.Forged forged:
+                {
+                    ForgeLabEffect[] effects = new ForgeLabEffect[]
+                    {
+                        new ForgeLabEffect.ConsumeMaterials(forged.OreCost, forged.CrystalCost),
+                        new ForgeLabEffect.UpdateForgeScore(forged.ForgeScore),
+                        new ForgeLabEffect.AddPower(forged.PowerBonus),
+                        new ForgeLabEffect.UpdateBattleReadyText(forged.BattleReadyText),
+                        new ForgeLabEffect.LogActivity($"锻造{forged.ItemName}，评分 {forged.ForgeScore}，战力 +{forged.PowerBonus}。"),
+                        new ForgeLabEffect.Trace($"Forge {forged.ItemName}"),
+                    };
+                    return MviReduceResult.StateAndEffects<UnitState, ForgeLabEffect>(state, effects);
+                }
+                case ForgeLabIntent.ForgeFailed failed:
+                {
+                    ForgeLabEffect[] effects = new ForgeLabEffect[]
+                    {
+                        new ForgeLabEffect.LogActivity(failed.ErrorMessage ?? "锻造失败。"),
+                        new ForgeLabEffect.Trace("Forge Failed"),
+                    };
+                    return MviReduceResult.StateAndEffects<UnitState, ForgeLabEffect>(state, effects);
+                }
+            }
+        }
+
+        return MviReduceResult.State<UnitState, ForgeLabEffect>(state);
+    }
 
     /// <summary>处理锻造成功意图。</summary>
     [MviReduce(typeof(ForgeLabIntent.Forged))]
     private MviReduceResult<UnitState, ForgeLabEffect> HandleForged(
         UnitState state,
-        ForgeLabIntent.Forged intent)
+        ForgeLabIntent.Forged intent,
+        IMviBusinessResult? result)
     {
         ForgeLabEffect[] effects = new ForgeLabEffect[]
         {
@@ -39,7 +73,8 @@ public sealed partial class ForgeLabReducer
     [MviReduce(typeof(ForgeLabIntent.ForgeFailed))]
     private MviReduceResult<UnitState, ForgeLabEffect> HandleForgeFailed(
         UnitState state,
-        ForgeLabIntent.ForgeFailed intent)
+        ForgeLabIntent.ForgeFailed intent,
+        IMviBusinessResult? result)
     {
         ForgeLabEffect[] effects = new ForgeLabEffect[]
         {

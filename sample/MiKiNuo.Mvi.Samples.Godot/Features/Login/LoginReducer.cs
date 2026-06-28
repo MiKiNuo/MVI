@@ -1,5 +1,7 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Login;
 
@@ -13,7 +15,8 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.ChangeUserName))]
     private MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
         LoginState state,
-        LoginIntent.ChangeUserName intent)
+        LoginIntent.ChangeUserName intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.State<LoginState, LoginEffect>(
             state with
@@ -29,7 +32,8 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.ChangePassword))]
     private MviReduceResult<LoginState, LoginEffect> HandleChangePassword(
         LoginState state,
-        LoginIntent.ChangePassword intent)
+        LoginIntent.ChangePassword intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.State<LoginState, LoginEffect>(
             state with
@@ -45,53 +49,51 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmitState))]
     private MviReduceResult<LoginState, LoginEffect> HandleSubmit(
         LoginState state,
-        LoginIntent.Submit intent)
+        LoginIntent.Submit intent,
+        IMviBusinessResult? result)
     {
-        return MviReduceResult.State<LoginState, LoginEffect>(
-            state with { IsBusy = true, CanSubmit = false, LoginStatus = "正在登录..." });
-    }
-
-    /// <summary>处理登录成功意图。</summary>
-    [MviReduce(typeof(LoginIntent.LoginSucceeded))]
-    private MviReduceResult<LoginState, LoginEffect> HandleLoginSucceeded(
-        LoginState state,
-        LoginIntent.LoginSucceeded intent)
-    {
-        PlayerProfile profile = (PlayerProfile)intent.Profile;
-        LoginState newState = state with
+        if (result is null)
         {
-            IsBusy = false,
-            ErrorMessage = null,
-            LoginStatus = $"登录成功：{profile.PlayerName}，准备进入游戏大厅。",
-        };
-        return MviReduceResult.StateAndEffects<LoginState, LoginEffect>(
-            newState,
-            new LoginEffect[]
+            return MviReduceResult.State<LoginState, LoginEffect>(
+                state with { IsBusy = true, LoginStatus = "正在登录..." });
+        }
+
+        if (result is LoginBusinessResult.Success success)
+        {
+            PlayerProfile profile = (PlayerProfile)success.Profile;
+            LoginState newState = state with
             {
-                new LoginEffect.LoginSucceeded(profile),
-                new LoginEffect.Trace($"Login succeeded for {profile.PlayerName}"),
-            });
-    }
+                IsBusy = false,
+                ErrorMessage = null,
+                LoginStatus = $"登录成功：{profile.PlayerName}，准备进入游戏大厅。",
+            };
+            return MviReduceResult.StateAndEffects<LoginState, LoginEffect>(
+                newState,
+                new LoginEffect[]
+                {
+                    new LoginEffect.LoginSucceeded(profile),
+                    new LoginEffect.Trace($"Login succeeded for {profile.PlayerName}"),
+                });
+        }
 
-    /// <summary>处理登录失败意图。</summary>
-    [MviReduce(typeof(LoginIntent.LoginFailed))]
-    private MviReduceResult<LoginState, LoginEffect> HandleLoginFailed(
-        LoginState state,
-        LoginIntent.LoginFailed intent)
-    {
-        LoginState newState = state with
+        if (result is LoginBusinessResult.Failure failure)
         {
-            IsBusy = false,
-            ErrorMessage = intent.ErrorMessage,
-            CanSubmit = CanSubmit(state.UserName, state.Password),
-            LoginStatus = "登录失败，请检查账号和密码。",
-        };
-        return MviReduceResult.StateAndEffect<LoginState, LoginEffect>(
-            newState,
-            new LoginEffect.Trace("Login validation failed"));
+            LoginState newState = state with
+            {
+                IsBusy = false,
+                ErrorMessage = failure.ErrorMessage,
+                CanSubmit = CanSubmit(state.UserName, state.Password),
+                LoginStatus = "登录失败，请检查账号和密码。",
+            };
+            return MviReduceResult.StateAndEffect<LoginState, LoginEffect>(
+                newState,
+                new LoginEffect.Trace("Login validation failed"));
+        }
+
+        return MviReduceResult.State<LoginState, LoginEffect>(state);
     }
 
-    private bool CanSubmitState(LoginState state) => CanSubmit(state.UserName, state.Password);
+    private bool CanSubmitState(LoginState state) => CanSubmit(state.UserName, state.Password) || state.IsBusy;
 
     private bool CanSubmit(string userName, string password)
     {

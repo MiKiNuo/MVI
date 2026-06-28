@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
@@ -30,7 +31,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.ExecutePrimaryAction))]
     private MviReduceResult<CardState, CardEffect> HandleExecutePrimaryAction(
         CardState state,
-        CardIntent.ExecutePrimaryAction intent)
+        CardIntent.ExecutePrimaryAction intent,
+        IMviBusinessResult? result)
     {
         CardState newState = state with
         {
@@ -48,7 +50,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.ExecuteSecondaryAction))]
     private MviReduceResult<CardState, CardEffect> HandleExecuteSecondaryAction(
         CardState state,
-        CardIntent.ExecuteSecondaryAction intent)
+        CardIntent.ExecuteSecondaryAction intent,
+        IMviBusinessResult? result)
     {
         CardState newState = state with
         {
@@ -66,7 +69,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.ApplyExternalUpdate))]
     private MviReduceResult<CardState, CardEffect> HandleApplyExternalUpdate(
         CardState state,
-        CardIntent.ApplyExternalUpdate intent)
+        CardIntent.ApplyExternalUpdate intent,
+        IMviBusinessResult? result)
     {
         CardState newState = state with
         {
@@ -82,7 +86,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.ApplyPatientAdmitted))]
     private MviReduceResult<CardState, CardEffect> HandleApplyPatientAdmitted(
         CardState state,
-        CardIntent.ApplyPatientAdmitted intent)
+        CardIntent.ApplyPatientAdmitted intent,
+        IMviBusinessResult? result)
     {
         Patient patient = intent.Patient;
         CardState newState = state with
@@ -108,7 +113,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.SetFormField))]
     private MviReduceResult<CardState, CardEffect> HandleSetFormField(
         CardState state,
-        CardIntent.SetFormField intent)
+        CardIntent.SetFormField intent,
+        IMviBusinessResult? result)
     {
         CardDefinition? definition = ResolveDefinition(state);
         if (definition is null || !definition.IsFormCard)
@@ -139,7 +145,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.SubmitForm))]
     private MviReduceResult<CardState, CardEffect> HandleSubmitForm(
         CardState state,
-        CardIntent.SubmitForm intent)
+        CardIntent.SubmitForm intent,
+        IMviBusinessResult? result)
     {
         CardDefinition? definition = ResolveDefinition(state);
         if (definition is null || !definition.IsFormCard || definition.Validator is null)
@@ -179,7 +186,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.SetBedFilter))]
     private MviReduceResult<CardState, CardEffect> HandleSetBedFilter(
         CardState state,
-        CardIntent.SetBedFilter intent)
+        CardIntent.SetBedFilter intent,
+        IMviBusinessResult? result)
     {
         if (state.PageKey != PageKey.BedOverview)
         {
@@ -207,7 +215,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.ToggleBedType))]
     private MviReduceResult<CardState, CardEffect> HandleToggleBedType(
         CardState state,
-        CardIntent.ToggleBedType intent)
+        CardIntent.ToggleBedType intent,
+        IMviBusinessResult? result)
     {
         if (state.PageKey != PageKey.BedOverview)
         {
@@ -246,7 +255,8 @@ public sealed partial class CardReducer
     [MviReduce(typeof(CardIntent.ToggleBedStatus))]
     private MviReduceResult<CardState, CardEffect> HandleToggleBedStatus(
         CardState state,
-        CardIntent.ToggleBedStatus intent)
+        CardIntent.ToggleBedStatus intent,
+        IMviBusinessResult? result)
     {
         if (state.PageKey != PageKey.BedOverview)
         {

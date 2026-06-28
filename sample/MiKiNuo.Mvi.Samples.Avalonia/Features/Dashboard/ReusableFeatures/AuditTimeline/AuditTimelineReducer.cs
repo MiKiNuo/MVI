@@ -1,4 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 
@@ -16,7 +17,8 @@ public sealed partial class AuditTimelineReducer
     [MviReduce(typeof(AuditTimelineIntent.AppendEntry))]
     private MviReduceResult<AuditTimelineState, UnitEffect> HandleAppendEntry(
         AuditTimelineState state,
-        AuditTimelineIntent.AppendEntry intent)
+        AuditTimelineIntent.AppendEntry intent,
+        IMviBusinessResult? result)
     {
         string timestampedMessage = $"{DateTime.Now:HH:mm:ss} · {intent.Message}";
         string entries = state.EntryCount == 0 || state.EntriesText == "暂无审计记录。"
@@ -39,7 +41,8 @@ public sealed partial class AuditTimelineReducer
     [MviReduce(typeof(AuditTimelineIntent.ClearEntries))]
     private MviReduceResult<AuditTimelineState, UnitEffect> HandleClearEntries(
         AuditTimelineState state,
-        AuditTimelineIntent.ClearEntries intent)
+        AuditTimelineIntent.ClearEntries intent,
+        IMviBusinessResult? result)
     {
         AuditTimelineState newState = state with
         {

@@ -93,7 +93,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
         private static readonly DiagnosticDescriptor HandlerSignatureInvalidRule = new(
             id: DiagnosticIdCatalog.MviReduceHandlerSignatureInvalid,
             title: "规约方法签名不符合约定",
-            messageFormat: "方法“{0}”的签名不符合约定。必须是 (TState state, TIntent.Xxx intent) => MviReduceResult<TState, TEffect>。",
+            messageFormat: "方法“{0}”的签名不符合约定。必须是 (TState state, TIntent.Xxx intent, IMviBusinessResult? result) => MviReduceResult<TState, TEffect>。",
             category: "MviReducer",
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -321,7 +321,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
                 return false;
             }
 
-            if (method.Parameters.Length != 2)
+            if (method.Parameters.Length != 3)
             {
                 return false;
             }
@@ -332,6 +332,21 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
             }
 
             if (!method.Parameters[1].Type.Equals(intentSubtype, SymbolEqualityComparer.Default))
+            {
+                return false;
+            }
+
+            INamedTypeSymbol? businessResultType = compilation.GetTypeByMetadataName(
+                "MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult");
+            if (businessResultType is null)
+            {
+                return false;
+            }
+
+            ITypeSymbol thirdParamType = method.Parameters[2].Type;
+            INamedTypeSymbol? thirdParamNamed = (thirdParamType as INamedTypeSymbol)?.OriginalDefinition;
+            if (thirdParamNamed is null
+                || !thirdParamNamed.Equals(businessResultType, SymbolEqualityComparer.Default))
             {
                 return false;
             }
@@ -468,6 +483,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
             builder.AppendLine($"using {descriptor.StateType.ContainingNamespace.ToDisplayString()};");
             builder.AppendLine($"using {descriptor.IntentType.ContainingNamespace.ToDisplayString()};");
             builder.AppendLine($"using {descriptor.EffectType.ContainingNamespace.ToDisplayString()};");
+            builder.AppendLine("using MiKiNuo.Mvi.Domain.MVI.Business;");
             builder.AppendLine("using MiKiNuo.Mvi.Domain.MVI.Reducer;");
             builder.AppendLine();
             builder.AppendLine($"namespace {namespaceName};");
@@ -477,7 +493,8 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
 
             builder.AppendLine($"    public override MviReduceResult<{stateTypeName}, {effectTypeName}> Reduce(");
             builder.AppendLine($"        {stateTypeName} state,");
-            builder.AppendLine($"        {intentTypeName} intent)");
+            builder.AppendLine($"        {intentTypeName} intent,");
+            builder.AppendLine("        IMviBusinessResult? result = null)");
             builder.AppendLine("    {");
             builder.AppendLine("        ArgumentNullException.ThrowIfNull(state);");
             builder.AppendLine("        ArgumentNullException.ThrowIfNull(intent);");
@@ -495,7 +512,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
                     ? string.Empty
                     : $" when {handler.GuardName}(state)";
 
-                builder.Append($"            {intentSubtypeName} {variableName}{guardClause} => {handler.MethodName}(state, {variableName})");
+                builder.Append($"            {intentSubtypeName} {variableName}{guardClause} => {handler.MethodName}(state, {variableName}, result)");
 
                 if (i < descriptor.Handlers.Count - 1)
                 {

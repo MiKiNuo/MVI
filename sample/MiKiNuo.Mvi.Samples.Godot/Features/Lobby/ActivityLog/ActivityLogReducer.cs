@@ -1,5 +1,6 @@
-using System.Globalization;
+﻿using System.Globalization;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -14,7 +15,8 @@ public sealed partial class ActivityLogReducer
     [MviReduce(typeof(ActivityLogIntent.AppendEntry))]
     private MviReduceResult<ActivityLogState, ActivityLogEffect> HandleAppendEntry(
         ActivityLogState state,
-        ActivityLogIntent.AppendEntry intent)
+        ActivityLogIntent.AppendEntry intent,
+        IMviBusinessResult? result)
     {
         string timestamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
         string newLog = string.Concat(state.ActivityLog, "[", timestamp, "] ", intent.Message, Environment.NewLine);

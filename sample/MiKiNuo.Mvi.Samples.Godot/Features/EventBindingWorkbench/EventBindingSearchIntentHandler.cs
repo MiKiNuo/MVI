@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
@@ -18,14 +19,14 @@ public sealed class EventBindingSearchIntentHandler
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合,由 Store 递归派发。</returns>
-    public ValueTask<IReadOnlyList<EventBindingSearchIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public ValueTask<IMviBusinessResult?> HandleAsync(
         EventBindingSearchState state,
         EventBindingSearchIntent intent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        return new ValueTask<IReadOnlyList<EventBindingSearchIntent>>(Array.Empty<EventBindingSearchIntent>());
+        return ValueTask.FromResult<IMviBusinessResult?>(null);
     }
 }

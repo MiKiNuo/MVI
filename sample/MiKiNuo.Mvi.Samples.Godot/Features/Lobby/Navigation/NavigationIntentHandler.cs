@@ -1,5 +1,6 @@
 using System;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -13,14 +14,14 @@ public sealed class NavigationIntentHandler
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合。</returns>
-    public ValueTask<IReadOnlyList<NavigationIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public ValueTask<IMviBusinessResult?> HandleAsync(
         NavigationState state,
         NavigationIntent intent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
-        return new ValueTask<IReadOnlyList<NavigationIntent>>(Array.Empty<NavigationIntent>());
+        return ValueTask.FromResult<IMviBusinessResult?>(null);
     }
 }

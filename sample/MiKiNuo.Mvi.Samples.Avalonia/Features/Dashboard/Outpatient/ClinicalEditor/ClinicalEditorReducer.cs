@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 
@@ -17,7 +18,8 @@ public sealed partial class ClinicalEditorReducer
     [MviReduce(typeof(ClinicalEditorIntent.LoadPatient))]
     private MviReduceResult<ClinicalEditorState, UnitEffect> HandleLoadPatient(
         ClinicalEditorState state,
-        ClinicalEditorIntent.LoadPatient intent)
+        ClinicalEditorIntent.LoadPatient intent,
+        IMviBusinessResult? result)
     {
         string riskLevel = intent.PatientName.Contains("胸闷", StringComparison.Ordinal) ? "高危" : "普通";
 
@@ -39,7 +41,8 @@ public sealed partial class ClinicalEditorReducer
     [MviReduce(typeof(ClinicalEditorIntent.ChangeDiagnosis))]
     private MviReduceResult<ClinicalEditorState, UnitEffect> HandleChangeDiagnosis(
         ClinicalEditorState state,
-        ClinicalEditorIntent.ChangeDiagnosis intent)
+        ClinicalEditorIntent.ChangeDiagnosis intent,
+        IMviBusinessResult? result)
     {
         bool canSave = !string.IsNullOrWhiteSpace(intent.Diagnosis) && state.PatientName != "未选择患者";
 
@@ -59,7 +62,8 @@ public sealed partial class ClinicalEditorReducer
     [MviReduce(typeof(ClinicalEditorIntent.SaveDraft))]
     private MviReduceResult<ClinicalEditorState, UnitEffect> HandleSaveDraft(
         ClinicalEditorState state,
-        ClinicalEditorIntent.SaveDraft intent)
+        ClinicalEditorIntent.SaveDraft intent,
+        IMviBusinessResult? result)
     {
         string message = $"{DateTime.Now:HH:mm:ss} 已保存 {state.PatientName} 的门诊病历草稿。";
 

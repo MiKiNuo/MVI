@@ -23,16 +23,4 @@ public abstract partial record LoginIntent : IMviIntent
     /// 表示提交登录意图。
     /// </summary>
     public sealed partial record Submit : LoginIntent;
-
-    /// <summary>
-    /// 表示登录成功意图。
-    /// </summary>
-    /// <param name="Profile">登录用户资料。</param>
-    public sealed partial record LoginSucceeded(ILoginProfile Profile) : LoginIntent;
-
-    /// <summary>
-    /// 表示登录失败意图。
-    /// </summary>
-    /// <param name="ErrorMessage">错误消息。</param>
-    public sealed partial record LoginFailed(string ErrorMessage) : LoginIntent;
 }

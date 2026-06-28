@@ -6,6 +6,7 @@ using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -458,13 +459,13 @@ public sealed class EventCommandIntentHandler
     : IMviIntentHandler<EventCommandState, EventCommandIntent, EventCommandEffect>
 {
     /// <summary>
-    /// 处理意图产生后续意图。
+    /// 处理意图产生业务结果。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合。</returns>
-    public ValueTask<IReadOnlyList<EventCommandIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public ValueTask<IMviBusinessResult?> HandleAsync(
         EventCommandState state,
         EventCommandIntent intent,
         CancellationToken cancellationToken = default)
@@ -472,11 +473,7 @@ public sealed class EventCommandIntentHandler
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
 
-        IReadOnlyList<EventCommandIntent> subsequentIntents = intent switch
-        {
-            _ => Array.Empty<EventCommandIntent>(),
-        };
-        return new ValueTask<IReadOnlyList<EventCommandIntent>>(subsequentIntents);
+        return ValueTask.FromResult<IMviBusinessResult?>(null);
     }
 }
 
@@ -491,11 +488,13 @@ public sealed partial class EventCommandReducer
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">捕获文本意图。</param>
+    /// <param name="result">业务结果。</param>
     /// <returns>规约结果。</returns>
     [MviReduce(typeof(EventCommandIntent.CaptureText))]
     private MviReduceResult<EventCommandState, EventCommandEffect> HandleCaptureText(
         EventCommandState state,
-        EventCommandIntent.CaptureText intent)
+        EventCommandIntent.CaptureText intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.State<EventCommandState, EventCommandEffect>(
             state with { Text = intent.Payload.Text, WasUserInitiated = intent.Payload.IsUserInitiated });

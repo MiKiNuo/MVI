@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 
@@ -17,7 +18,8 @@ public sealed partial class ArchitectureValidationReducer
     [MviReduce(typeof(ArchitectureValidationIntent.UpdateContext))]
     private MviReduceResult<ArchitectureValidationState, UnitEffect> HandleUpdateContext(
         ArchitectureValidationState state,
-        ArchitectureValidationIntent.UpdateContext intent)
+        ArchitectureValidationIntent.UpdateContext intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.State<ArchitectureValidationState, UnitEffect>(
             state with { ActiveContext = intent.ActiveContext, FlowStatus = intent.FlowStatus });
@@ -29,7 +31,8 @@ public sealed partial class ArchitectureValidationReducer
     [MviReduce(typeof(ArchitectureValidationIntent.AppendInteractionLog))]
     private MviReduceResult<ArchitectureValidationState, UnitEffect> HandleAppendInteractionLog(
         ArchitectureValidationState state,
-        ArchitectureValidationIntent.AppendInteractionLog intent)
+        ArchitectureValidationIntent.AppendInteractionLog intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.State<ArchitectureValidationState, UnitEffect>(
             state with { InteractionLog = ComputeNextLog(state.InteractionLog, intent.Message) });

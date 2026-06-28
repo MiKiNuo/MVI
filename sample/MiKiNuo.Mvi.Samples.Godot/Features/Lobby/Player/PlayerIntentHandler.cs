@@ -1,6 +1,7 @@
 using System;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -32,12 +33,12 @@ public sealed class PlayerIntentHandler
         _inventoryStore = inventoryStore ?? throw new ArgumentNullException(nameof(inventoryStore));
     }
 
-    /// <summary>处理意图并产生后续意图。</summary>
+    /// <summary>处理意图并产生业务结果。</summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>后续意图集合。</returns>
-    public async ValueTask<IReadOnlyList<PlayerIntent>> HandleAsync(
+    /// <returns>业务结果;无业务时返回 null。</returns>
+    public async ValueTask<IMviBusinessResult?> HandleAsync(
         PlayerState state,
         PlayerIntent intent,
         CancellationToken cancellationToken = default)
@@ -50,11 +51,11 @@ public sealed class PlayerIntentHandler
             case PlayerIntent.SetPlayer setPlayer:
                 return await HandleSetPlayerAsync(setPlayer, cancellationToken).ConfigureAwait(false);
             default:
-                return Array.Empty<PlayerIntent>();
+                return null;
         }
     }
 
-    private async ValueTask<IReadOnlyList<PlayerIntent>> HandleSetPlayerAsync(
+    private async ValueTask<IMviBusinessResult?> HandleSetPlayerAsync(
         PlayerIntent.SetPlayer intent,
         CancellationToken cancellationToken)
     {
@@ -69,6 +70,6 @@ public sealed class PlayerIntentHandler
                 potionCount,
                 cancellationToken)
             .ConfigureAwait(false);
-        return new PlayerIntent[] { new PlayerIntent.PlayerSet(readyText) };
+        return new FollowUpIntentResult<PlayerIntent>(new PlayerIntent.PlayerSet(readyText));
     }
 }

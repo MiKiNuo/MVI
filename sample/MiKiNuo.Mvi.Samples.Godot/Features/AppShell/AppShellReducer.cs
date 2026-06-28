@@ -1,4 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.AppShell;
@@ -13,7 +14,8 @@ public sealed partial class AppShellReducer
     [MviReduce(typeof(AppShellIntent.ShowLogin))]
     private MviReduceResult<AppShellState, AppShellEffect> HandleShowLogin(
         AppShellState state,
-        AppShellIntent.ShowLogin intent)
+        AppShellIntent.ShowLogin intent,
+        IMviBusinessResult? result)
     {
         AppShellState newState = state with
         {
@@ -30,7 +32,8 @@ public sealed partial class AppShellReducer
     [MviReduce(typeof(AppShellIntent.ShowLobby))]
     private MviReduceResult<AppShellState, AppShellEffect> HandleShowLobby(
         AppShellState state,
-        AppShellIntent.ShowLobby intent)
+        AppShellIntent.ShowLobby intent,
+        IMviBusinessResult? result)
     {
         AppShellState newState = state with
         {

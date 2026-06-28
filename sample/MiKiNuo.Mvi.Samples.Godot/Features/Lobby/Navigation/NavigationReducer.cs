@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -14,7 +15,8 @@ public sealed partial class NavigationReducer
     [MviReduce(typeof(NavigationIntent.SelectPanel))]
     private MviReduceResult<NavigationState, NavigationEffect> HandleSelectPanel(
         NavigationState state,
-        NavigationIntent.SelectPanel intent)
+        NavigationIntent.SelectPanel intent,
+        IMviBusinessResult? result)
     {
         string title = intent.Panel switch
         {
@@ -43,7 +45,8 @@ public sealed partial class NavigationReducer
     [MviReduce(typeof(NavigationIntent.Logout))]
     private MviReduceResult<NavigationState, NavigationEffect> HandleLogout(
         NavigationState state,
-        NavigationIntent.Logout intent)
+        NavigationIntent.Logout intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.StateAndEffects<NavigationState, NavigationEffect>(
             state,

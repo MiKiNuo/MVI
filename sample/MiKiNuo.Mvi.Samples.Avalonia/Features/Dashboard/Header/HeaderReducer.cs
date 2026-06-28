@@ -1,4 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -16,7 +17,8 @@ public sealed partial class HeaderReducer
     [MviReduce(typeof(HeaderIntent.UpdateTitle))]
     private MviReduceResult<HeaderState, UnitEffect> HandleUpdateTitle(
         HeaderState state,
-        HeaderIntent.UpdateTitle intent)
+        HeaderIntent.UpdateTitle intent,
+        IMviBusinessResult? result)
     {
         return MviReduceResult.State<HeaderState, UnitEffect>(
             state with { Title = intent.Title, SubTitle = intent.SubTitle });

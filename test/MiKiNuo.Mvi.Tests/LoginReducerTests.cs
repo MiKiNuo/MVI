@@ -59,32 +59,27 @@ public sealed class LoginReducerTests
     }
 
     /// <summary>
-    /// 验证登录成功产生导航副作用并退出忙碌状态。
+    /// 验证登录失败设置错误消息并退出忙碌状态。
     /// </summary>
     [Test]
-    public async Task LoginSucceeded_Should_EmitNavigateToDashboardEffectAsync()
+    public async Task LoginFailed_Should_SetErrorMessageAndExitBusyAsync()
     {
         LoginState initialState = LoginState.Initial with
         {
-            UserName = "admin",
-            Password = "123456",
-            IsBusy = true,
-            CanSubmit = false
+            UserName = "wrong",
+            Password = "wrong",
+            CanSubmit = true
         };
         using MviStore<LoginState, LoginIntent, LoginEffect> store = new(
             initialState,
             new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
             new EmptyLoginEffectDispatcher());
-        List<LoginEffect> effects = [];
-        IDisposable subscription = store.Effects.Subscribe(e => effects.Add(e));
 
-        await store.DispatchAsync(new LoginIntent.LoginSucceeded(new AvaloniaProfile("管理员")));
+        await store.DispatchAsync(new LoginIntent.Submit());
 
         await Assert.That(store.CurrentState.IsBusy).IsFalse();
-        await Assert.That(effects.Count).IsEqualTo(1);
-        await Assert.That(effects[0]).IsTypeOf<LoginEffect.NavigateToDashboard>();
-        subscription.Dispose();
+        await Assert.That(store.CurrentState.ErrorMessage).IsNotNull();
     }
 
     private sealed class EmptyLoginEffectDispatcher
