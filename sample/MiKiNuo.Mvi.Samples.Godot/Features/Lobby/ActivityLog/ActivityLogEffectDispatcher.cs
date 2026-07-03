@@ -5,7 +5,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示活动日志副作用分发器。
 /// </summary>
-public sealed class ActivityLogEffectDispatcher : IMviEffectDispatcher<ActivityLogEffect>
+public sealed class ActivityLogEffectDispatcher : MviEffectDispatcherBase<ActivityLogEffect>
 {
     private readonly ITraceEffectLogger _traceLogger;
 
@@ -25,11 +25,8 @@ public sealed class ActivityLogEffectDispatcher : IMviEffectDispatcher<ActivityL
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public ValueTask DispatchAsync(ActivityLogEffect effect, CancellationToken cancellationToken = default)
+    protected override ValueTask DispatchCoreAsync(ActivityLogEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (effect is ActivityLogEffect.Trace trace)
         {
             _traceLogger.Log(trace);

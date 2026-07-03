@@ -6,7 +6,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示战斗准备副作用分发器。
 /// </summary>
-public sealed class BattlePrepEffectDispatcher : IMviEffectDispatcher<BattlePrepEffect>
+public sealed class BattlePrepEffectDispatcher : MviEffectDispatcherBase<BattlePrepEffect>
 {
     private readonly IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> _activityLogStore;
     private readonly ITraceEffectLogger _traceLogger;
@@ -30,11 +30,8 @@ public sealed class BattlePrepEffectDispatcher : IMviEffectDispatcher<BattlePrep
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(BattlePrepEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(BattlePrepEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case BattlePrepEffect.Trace trace:

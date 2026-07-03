@@ -1740,10 +1740,7 @@ public sealed class AvaloniaSampleDiContainerGenerator : IIncrementalGenerator
         builder.AppendLine("        global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ArchitectureValidation.ArchitectureValidationPanelFactory panelFactory = new(contextName => CreatePatientSearchViewModel(contextName), contextName => CreateAuditTimelineViewModel(contextName));");
         builder.Append("        ").Append(StoreType(feature)).Append(" store = ");
         EmitStoreConstructionHeader(builder, feature);
-        builder.Append("            new ").Append(feature.StateTypeName).AppendLine("(");
-        builder.AppendLine("                \"架构验证中心\",");
-        builder.AppendLine("                \"MVI 4 大架构特性（中间件 / 复用组件 / 中介者 / 副作用）的静态展示，端到端验证请到 4 个生产页面。\",");
-        builder.AppendLine("                \"等待子组件交互。\"),");
+        builder.Append("            new ").Append(feature.StateTypeName).AppendLine("(),");
         EmitStoreReducerArgs(builder, feature);
         builder.Append("            ").Append(CreateDispatcherExpression(feature)).AppendLine(");");
         builder.Append("        return new ").Append(feature.ViewModelTypeName).AppendLine("(store, panelFactory, ResolveCardStoreFactory(), ResolveUiDispatcher());");

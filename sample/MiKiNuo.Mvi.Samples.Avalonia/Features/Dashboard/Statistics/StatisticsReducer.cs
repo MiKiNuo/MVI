@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -20,7 +20,7 @@ public sealed partial class StatisticsReducer
         StatisticsIntent.Refresh intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<StatisticsState, UnitEffect>(
+        return Unchanged(
             state with { OnlineUsers = intent.OnlineUsers, RequestCount = intent.RequestCount, SuccessRate = intent.SuccessRate });
     }
 }

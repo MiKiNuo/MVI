@@ -13,7 +13,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// </summary>
 public sealed partial class HeroRosterViewModel : MviViewModelBase<HeroRosterState, HeroRosterIntent, HeroRosterEffect>
 {
-    private readonly IDisposable _playerSubscription;
     private int _gold;
 
     /// <summary>
@@ -29,9 +28,9 @@ public sealed partial class HeroRosterViewModel : MviViewModelBase<HeroRosterSta
         : base(store, uiDispatcher)
     {
         ArgumentNullException.ThrowIfNull(playerStore);
-        _playerSubscription = playerStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(playerStore, state =>
         {
-            vm.Gold = state.Gold;
+            Gold = state.Gold;
         });
 
         Observable<bool> canExecute = Store.States
@@ -75,10 +74,9 @@ public sealed partial class HeroRosterViewModel : MviViewModelBase<HeroRosterSta
     /// <summary>获取训练弓手命令。</summary>
     public MviAsyncCommand TrainArcherCommand { get; }
 
-    /// <summary>释放跨 Store 订阅和手动命令资源。</summary>
+    /// <summary>释放手动命令资源。</summary>
     protected override void OnDispose()
     {
-        _playerSubscription.Dispose();
         TrainWarriorCommand.Dispose();
         TrainMageCommand.Dispose();
         TrainArcherCommand.Dispose();

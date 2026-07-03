@@ -7,7 +7,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示玩家资料副作用分发器。
 /// </summary>
-public sealed class PlayerEffectDispatcher : IMviEffectDispatcher<PlayerEffect>
+public sealed class PlayerEffectDispatcher : MviEffectDispatcherBase<PlayerEffect>
 {
     private readonly IMviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect> _battlePrepStore;
     private readonly IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> _activityLogStore;
@@ -31,11 +31,8 @@ public sealed class PlayerEffectDispatcher : IMviEffectDispatcher<PlayerEffect>
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(PlayerEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(PlayerEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case PlayerEffect.Trace trace:

@@ -376,7 +376,7 @@ public sealed class MviEventSourceGenerator : IIncrementalGenerator
             }
 
             IParameterSymbol lastParam = invokeMethod.Parameters[paramCount - 1];
-            return lastParam.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            return lastParam.Type.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
         }
     }
 

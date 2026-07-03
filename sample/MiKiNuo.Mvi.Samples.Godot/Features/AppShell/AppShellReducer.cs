@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -23,7 +23,7 @@ public sealed partial class AppShellReducer
             CurrentTitle = "登录游戏",
             ShellMessage = "已返回登录界面，等待重新进入大厅。",
         };
-        return MviReduceResult.StateAndEffect<AppShellState, AppShellEffect>(
+        return WithEffect(
             newState,
             new AppShellEffect.Trace("Shell ShowLogin"));
     }
@@ -41,7 +41,7 @@ public sealed partial class AppShellReducer
             CurrentTitle = "游戏大厅",
             ShellMessage = "Login MVI 已通过 EffectDispatcher 把玩家资料交给 Lobby MVI。",
         };
-        return MviReduceResult.StateAndEffect<AppShellState, AppShellEffect>(
+        return WithEffect(
             newState,
             new AppShellEffect.Trace("Shell ShowLobby"));
     }

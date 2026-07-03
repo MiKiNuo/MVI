@@ -23,7 +23,7 @@ public sealed partial class PlayerReducer
         if (result is FollowUpIntentResult<PlayerIntent> fur
             && fur.Intent is PlayerIntent.PlayerSet playerSet)
         {
-            return MviReduceResult.StateAndEffects<PlayerState, PlayerEffect>(
+            return WithEffects(
                 newState,
                 new PlayerEffect[]
                 {
@@ -34,7 +34,7 @@ public sealed partial class PlayerReducer
                 });
         }
 
-        return MviReduceResult.StateAndEffects<PlayerState, PlayerEffect>(
+        return WithEffects(
             newState,
             new PlayerEffect[]
             {
@@ -50,7 +50,7 @@ public sealed partial class PlayerReducer
         PlayerIntent.PlayerSet intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.StateAndEffects<PlayerState, PlayerEffect>(
+        return WithEffects(
             state,
             new PlayerEffect[]
             {
@@ -67,7 +67,7 @@ public sealed partial class PlayerReducer
         IMviBusinessResult? result)
     {
         PlayerState newState = state with { Gold = Math.Max(0, state.Gold - intent.Amount) };
-        return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(
+        return WithEffect(
             newState,
             new PlayerEffect.Trace($"Player ConsumeGold {intent.Amount}"));
     }
@@ -80,7 +80,7 @@ public sealed partial class PlayerReducer
         IMviBusinessResult? result)
     {
         PlayerState newState = state with { Gold = state.Gold + intent.Amount };
-        return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(
+        return WithEffect(
             newState,
             new PlayerEffect.Trace($"Player AddGold {intent.Amount}"));
     }
@@ -93,7 +93,7 @@ public sealed partial class PlayerReducer
         IMviBusinessResult? result)
     {
         PlayerState newState = state with { Stamina = Math.Max(0, state.Stamina - intent.Amount) };
-        return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(
+        return WithEffect(
             newState,
             new PlayerEffect.Trace($"Player ConsumeStamina {intent.Amount}"));
     }
@@ -106,7 +106,7 @@ public sealed partial class PlayerReducer
         IMviBusinessResult? result)
     {
         PlayerState newState = state with { Stamina = intent.NewStamina };
-        return MviReduceResult.StateAndEffect<PlayerState, PlayerEffect>(
+        return WithEffect(
             newState,
             new PlayerEffect.Trace($"Player RestoreStamina {intent.NewStamina}"));
     }

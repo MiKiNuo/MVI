@@ -13,7 +13,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// </summary>
 public sealed partial class MissionBoardViewModel : MviViewModelBase<MissionState, MissionIntent, MissionEffect>
 {
-    private readonly IDisposable _playerSubscription;
     private int _gold;
     private int _stamina;
 
@@ -30,10 +29,10 @@ public sealed partial class MissionBoardViewModel : MviViewModelBase<MissionStat
         : base(store, uiDispatcher)
     {
         ArgumentNullException.ThrowIfNull(playerStore);
-        _playerSubscription = playerStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(playerStore, state =>
         {
-            vm.Gold = state.Gold;
-            vm.Stamina = state.Stamina;
+            Gold = state.Gold;
+            Stamina = state.Stamina;
         });
 
         Observable<bool> canExecute = Store.States
@@ -76,10 +75,9 @@ public sealed partial class MissionBoardViewModel : MviViewModelBase<MissionStat
     [MviCommand(typeof(MissionIntent.Complete))]
     public partial IMviCommand CompleteMissionCommand { get; private set; }
 
-    /// <summary>释放跨 Store 订阅和手动命令资源。</summary>
+    /// <summary>释放手动命令资源。</summary>
     protected override void OnDispose()
     {
-        _playerSubscription.Dispose();
         AcceptForestMissionCommand.Dispose();
         AcceptMineMissionCommand.Dispose();
         base.OnDispose();

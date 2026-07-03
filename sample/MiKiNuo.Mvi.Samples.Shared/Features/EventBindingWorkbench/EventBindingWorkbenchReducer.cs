@@ -24,6 +24,6 @@ public sealed partial class EventBindingWorkbenchReducer
             LastInteractionText = interactionText,
             InteractionCount = state.InteractionCount + 1,
         };
-        return MviReduceResult.State<EventBindingWorkbenchState, UnitEffect>(newState);
+        return Unchanged(newState);
     }
 }

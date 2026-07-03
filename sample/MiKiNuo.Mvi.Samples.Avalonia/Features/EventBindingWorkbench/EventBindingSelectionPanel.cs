@@ -66,7 +66,7 @@ public abstract partial record EventBindingSelectionEffect : IMviEffect
 /// <summary>
 /// 表示事件绑定选择面板副作用分发器。
 /// </summary>
-public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher<EventBindingSelectionEffect>
+public sealed class EventBindingSelectionEffectDispatcher : MviEffectDispatcherBase<EventBindingSelectionEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -80,14 +80,13 @@ public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher
     }
 
     /// <summary>
-    /// 分发副作用。
+    /// 分发具体副作用。
     /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="effect">副作用（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(EventBindingSelectionEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(EventBindingSelectionEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
         if (effect is EventBindingSelectionEffect.NotifySelectionChanged selectionChanged)
         {
             await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(

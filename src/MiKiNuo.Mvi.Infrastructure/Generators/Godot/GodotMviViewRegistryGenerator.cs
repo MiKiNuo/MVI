@@ -7,6 +7,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 
 namespace MiKiNuo.Mvi.Infrastructure.Generators.Godot;
 
@@ -100,14 +101,14 @@ public sealed class GodotMviViewRegistryGenerator : IIncrementalGenerator
             ? null
             : typeSymbol.ContainingNamespace.ToDisplayString();
 
-        string fullName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+        string fullName = typeSymbol.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat)
             .Replace("global::", string.Empty);
 
         string hintName = fullName.Replace('.', '_') + ".GodotMviViewRegistry.g.cs";
 
         return new RegistryDeclaration(
             namespaceName,
-            GetAccessibilityText(typeSymbol.DeclaredAccessibility),
+            GeneratorSyntaxHelpers.GetAccessibilityText(typeSymbol.DeclaredAccessibility),
             typeSymbol.Name,
             hintName);
     }
@@ -156,7 +157,7 @@ public sealed class GodotMviViewRegistryGenerator : IIncrementalGenerator
             if (string.IsNullOrWhiteSpace(view.ScenePath))
             {
                 builder.Append("        builder.Register(\"")
-                    .Append(Escape(view.Key))
+                    .Append(GeneratorSyntaxHelpers.EscapeStringLiteral(view.Key))
                     .Append("\", static () => new ")
                     .Append(view.TypeName)
                     .AppendLine("());");
@@ -164,9 +165,9 @@ public sealed class GodotMviViewRegistryGenerator : IIncrementalGenerator
             else
             {
                 builder.Append("        builder.RegisterScene(\"")
-                    .Append(Escape(view.Key))
+                    .Append(GeneratorSyntaxHelpers.EscapeStringLiteral(view.Key))
                     .Append("\", \"")
-                    .Append(Escape(view.ScenePath!))
+                    .Append(GeneratorSyntaxHelpers.EscapeStringLiteral(view.ScenePath!))
                     .AppendLine("\");");
             }
         }
@@ -174,25 +175,6 @@ public sealed class GodotMviViewRegistryGenerator : IIncrementalGenerator
         builder.AppendLine("    }");
         builder.AppendLine("}");
         return builder.ToString();
-    }
-
-    private static string GetAccessibilityText(Accessibility accessibility)
-    {
-        return accessibility switch
-        {
-            Accessibility.Public => "public",
-            Accessibility.Internal => "internal",
-            Accessibility.Private => "private",
-            Accessibility.Protected => "protected",
-            Accessibility.ProtectedAndInternal => "private protected",
-            Accessibility.ProtectedOrInternal => "protected internal",
-            _ => "internal",
-        };
-    }
-
-    private static string Escape(string text)
-    {
-        return text.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
     private readonly struct RegistryDeclaration

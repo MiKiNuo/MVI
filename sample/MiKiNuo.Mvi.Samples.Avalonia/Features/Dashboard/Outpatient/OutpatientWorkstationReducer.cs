@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
@@ -20,6 +20,6 @@ public sealed partial class OutpatientWorkstationReducer
         OutpatientWorkstationIntent.RefreshPage intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<OutpatientWorkstationState, UnitEffect>(state);
+        return Unchanged(state);
     }
 }

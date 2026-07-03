@@ -6,7 +6,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示任务副作用分发器。
 /// </summary>
-public sealed class MissionEffectDispatcher : IMviEffectDispatcher<MissionEffect>
+public sealed class MissionEffectDispatcher : MviEffectDispatcherBase<MissionEffect>
 {
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
     private readonly IMviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect> _battlePrepStore;
@@ -42,11 +42,8 @@ public sealed class MissionEffectDispatcher : IMviEffectDispatcher<MissionEffect
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(MissionEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(MissionEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case MissionEffect.Trace trace:

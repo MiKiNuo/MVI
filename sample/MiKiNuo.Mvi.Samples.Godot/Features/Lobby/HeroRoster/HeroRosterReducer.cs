@@ -27,7 +27,7 @@ public sealed partial class HeroRosterReducer
                     HeroRosterState leveledRoster = ApplyHeroLevel(state, trained.Kind, trained.NewLevel);
                     int nextPower = CalculateHeroPower(leveledRoster.WarriorLevel, leveledRoster.MageLevel, leveledRoster.ArcherLevel);
                     HeroRosterState newRoster = leveledRoster with { HeroTeamPower = nextPower };
-                    return MviReduceResult.StateAndEffects<HeroRosterState, HeroRosterEffect>(
+                    return WithEffects(
                         newRoster,
                         new HeroRosterEffect[]
                         {
@@ -39,7 +39,7 @@ public sealed partial class HeroRosterReducer
                 }
                 case HeroRosterIntent.TrainFailed failed:
                 {
-                    return MviReduceResult.StateAndEffects<HeroRosterState, HeroRosterEffect>(
+                    return WithEffects(
                         state,
                         new HeroRosterEffect[]
                         {
@@ -50,7 +50,7 @@ public sealed partial class HeroRosterReducer
             }
         }
 
-        return MviReduceResult.State<HeroRosterState, HeroRosterEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>处理英雄训练成功意图。</summary>
@@ -63,7 +63,7 @@ public sealed partial class HeroRosterReducer
         HeroRosterState leveledRoster = ApplyHeroLevel(state, intent.Kind, intent.NewLevel);
         int nextPower = CalculateHeroPower(leveledRoster.WarriorLevel, leveledRoster.MageLevel, leveledRoster.ArcherLevel);
         HeroRosterState newRoster = leveledRoster with { HeroTeamPower = nextPower };
-        return MviReduceResult.StateAndEffects<HeroRosterState, HeroRosterEffect>(
+        return WithEffects(
             newRoster,
             new HeroRosterEffect[]
             {
@@ -81,7 +81,7 @@ public sealed partial class HeroRosterReducer
         HeroRosterIntent.TrainFailed intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.StateAndEffects<HeroRosterState, HeroRosterEffect>(
+        return WithEffects(
             state,
             new HeroRosterEffect[]
             {
@@ -98,7 +98,7 @@ public sealed partial class HeroRosterReducer
         IMviBusinessResult? result)
     {
         HeroRosterState newState = state with { HeroTeamPower = state.HeroTeamPower + intent.Bonus };
-        return MviReduceResult.StateAndEffect<HeroRosterState, HeroRosterEffect>(
+        return WithEffect(
             newState,
             new HeroRosterEffect.Trace($"HeroRoster AddPower {intent.Bonus}"));
     }

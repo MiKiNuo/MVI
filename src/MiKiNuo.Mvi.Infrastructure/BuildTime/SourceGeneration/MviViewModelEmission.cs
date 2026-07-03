@@ -23,7 +23,7 @@ internal static class MviViewModelEmission
         IReadOnlyList<MviViewModelModels.BindPropertyModel> bindProperties = descriptor.BindProperties;
         IReadOnlyList<MviViewModelModels.CommandPropertyModel> commandProperties = descriptor.CommandProperties;
 
-        string namespaceName = viewModelSymbol.ContainingNamespace.ToDisplayString();
+        string? namespaceName = GeneratorSyntaxHelpers.GetNamespaceForEmit(viewModelSymbol);
         string className = viewModelSymbol.Name;
         string stateTypeName = mviBase.TypeArguments[0].ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
         string intentBaseTypeName = mviBase.TypeArguments[1].ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
@@ -57,7 +57,7 @@ internal static class MviViewModelEmission
     /// </summary>
     private static void EmitClassDeclaration(
         StringBuilder builder,
-        string namespaceName,
+        string? namespaceName,
         string className,
         IReadOnlyList<MviViewModelModels.BindPropertyModel> bindProperties,
         IReadOnlyList<MviViewModelModels.CommandPropertyModel> commandProperties,

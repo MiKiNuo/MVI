@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -21,7 +21,7 @@ public sealed partial class ActivityLogReducer
         string timestamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
         string newLog = string.Concat(state.ActivityLog, "[", timestamp, "] ", intent.Message, Environment.NewLine);
         ActivityLogState newState = state with { ActivityLog = newLog };
-        return MviReduceResult.StateAndEffect<ActivityLogState, ActivityLogEffect>(
+        return WithEffect(
             newState,
             new ActivityLogEffect.Trace("ActivityLog AppendEntry"));
     }

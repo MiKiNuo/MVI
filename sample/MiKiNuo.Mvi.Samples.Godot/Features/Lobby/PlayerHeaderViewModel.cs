@@ -3,7 +3,6 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
-using R3;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -12,7 +11,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// </summary>
 public sealed partial class PlayerHeaderViewModel : MviViewModelBase<PlayerState, PlayerIntent, PlayerEffect>
 {
-    private readonly IDisposable _navigationSubscription;
     private string _currentPanelTitle = string.Empty;
 
     /// <summary>
@@ -28,9 +26,9 @@ public sealed partial class PlayerHeaderViewModel : MviViewModelBase<PlayerState
         : base(store, uiDispatcher)
     {
         ArgumentNullException.ThrowIfNull(navigationStore);
-        _navigationSubscription = navigationStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(navigationStore, state =>
         {
-            vm.CurrentPanelTitle = state.CurrentPanelTitle;
+            CurrentPanelTitle = state.CurrentPanelTitle;
         });
     }
 
@@ -55,12 +53,5 @@ public sealed partial class PlayerHeaderViewModel : MviViewModelBase<PlayerState
     {
         get => _currentPanelTitle;
         private set => SetProperty(ref _currentPanelTitle, value);
-    }
-
-    /// <summary>释放跨 Store 订阅资源。</summary>
-    protected override void OnDispose()
-    {
-        _navigationSubscription.Dispose();
-        base.OnDispose();
     }
 }

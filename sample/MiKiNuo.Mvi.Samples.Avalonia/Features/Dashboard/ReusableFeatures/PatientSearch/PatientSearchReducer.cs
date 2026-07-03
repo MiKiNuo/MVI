@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -20,7 +20,7 @@ public sealed partial class PatientSearchReducer
         IMviBusinessResult? result)
     {
         bool canSearch = !string.IsNullOrWhiteSpace(intent.QueryText);
-        return MviReduceResult.State<PatientSearchState, PatientSearchEffect>(
+        return Unchanged(
             state with
             {
                 QueryText = intent.QueryText,
@@ -42,12 +42,12 @@ public sealed partial class PatientSearchReducer
     {
         if (!state.CanSearch)
         {
-            return MviReduceResult.State<PatientSearchState, PatientSearchEffect>(
+            return Unchanged(
                 state with { StatusText = "检索被拒绝：患者关键字不能为空。" });
         }
 
         string normalizedQuery = state.QueryText.Trim();
-        return MviReduceResult.State<PatientSearchState, PatientSearchEffect>(
+        return Unchanged(
             state with
             {
                 SelectedPatientName = normalizedQuery,
@@ -73,12 +73,12 @@ public sealed partial class PatientSearchReducer
         PatientSearchState newState = state with { StatusText = statusText };
         if (state.CanSelectPatient)
         {
-            return MviReduceResult.StateAndEffect<PatientSearchState, PatientSearchEffect>(
+            return WithEffect(
                 newState,
                 new PatientSearchEffect.RequestPatientContext(state.PageKey, state.SelectedPatientName, state.SelectedPatientNo));
         }
 
-        return MviReduceResult.State<PatientSearchState, PatientSearchEffect>(newState);
+        return Unchanged(newState);
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ public sealed partial class PatientSearchReducer
         PatientSearchIntent.ApplyExternalUpdate intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<PatientSearchState, PatientSearchEffect>(
+        return Unchanged(
             state with
             {
                 ResultSummary = intent.Message,

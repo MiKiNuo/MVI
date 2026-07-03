@@ -7,7 +7,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Outpatient.PatientQueu
 /// <summary>
 /// 表示门诊队列副作用分发器。
 /// </summary>
-public sealed class PatientQueueEffectDispatcher : IMviEffectDispatcher<PatientQueueEffect>
+public sealed class PatientQueueEffectDispatcher : MviEffectDispatcherBase<PatientQueueEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -28,10 +28,8 @@ public sealed class PatientQueueEffectDispatcher : IMviEffectDispatcher<PatientQ
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(PatientQueueEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(PatientQueueEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-
         if (effect is PatientQueueEffect.PatientSelected selected)
         {
             await _mediator.SendAsync<OpenPatientEncounterRequest, PatientEncounterResponse>(

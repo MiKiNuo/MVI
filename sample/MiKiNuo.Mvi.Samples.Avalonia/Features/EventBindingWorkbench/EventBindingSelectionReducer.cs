@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -31,7 +31,7 @@ public sealed partial class EventBindingSelectionReducer
             EventCount = eventCount,
             StatusText = statusText,
         };
-        return MviReduceResult.StateAndEffect<EventBindingSelectionState, EventBindingSelectionEffect>(
+        return WithEffect(
             newState,
             new EventBindingSelectionEffect.NotifySelectionChanged(patientId));
     }

@@ -120,7 +120,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
         Compilation compilation,
         SourceProductionContext context)
         {
-            INamedTypeSymbol? baseGeneric = FindReducerBase(reducerSymbol, reducerBaseSymbol);
+            INamedTypeSymbol? baseGeneric = GeneratorSyntaxHelpers.FindGenericBaseInChain(reducerSymbol, reducerBaseSymbol);
             if (baseGeneric is null)
             {
                 return null;
@@ -155,24 +155,6 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
                 intentType,
                 effectType,
                 handlers);
-        }
-
-        private static INamedTypeSymbol? FindReducerBase(
-            INamedTypeSymbol reducerSymbol,
-            INamedTypeSymbol reducerBaseSymbol)
-        {
-            INamedTypeSymbol? current = reducerSymbol.BaseType;
-            while (current is not null)
-            {
-                if (current.OriginalDefinition.Equals(reducerBaseSymbol, SymbolEqualityComparer.Default))
-                {
-                    return current;
-                }
-
-                current = current.BaseType;
-            }
-
-            return null;
         }
 
         private static bool IsPartial(INamedTypeSymbol reducerSymbol)
@@ -469,7 +451,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
         /// <returns>生成的源代码。</returns>
         public static string Emit(ReducerDescriptor descriptor)
         {
-            string namespaceName = descriptor.ReducerSymbol.ContainingNamespace.ToDisplayString();
+            string? namespaceName = GeneratorSyntaxHelpers.GetNamespaceForEmit(descriptor.ReducerSymbol);
             string className = descriptor.ReducerSymbol.Name;
             string stateTypeName = GeneratorSyntaxHelpers.FormatFullyQualified(descriptor.StateType);
             string intentTypeName = GeneratorSyntaxHelpers.FormatFullyQualified(descriptor.IntentType);
@@ -486,8 +468,13 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
             builder.AppendLine("using MiKiNuo.Mvi.Domain.MVI.Business;");
             builder.AppendLine("using MiKiNuo.Mvi.Domain.MVI.Reducer;");
             builder.AppendLine();
-            builder.AppendLine($"namespace {namespaceName};");
-            builder.AppendLine();
+
+            if (namespaceName is not null)
+            {
+                builder.AppendLine($"namespace {namespaceName};");
+                builder.AppendLine();
+            }
+
             builder.AppendLine($"public sealed partial class {className}");
             builder.AppendLine("{");
 

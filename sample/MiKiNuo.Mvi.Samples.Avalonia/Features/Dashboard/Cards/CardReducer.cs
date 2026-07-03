@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -39,7 +39,7 @@ public sealed partial class CardReducer
             StatusText = $"已发起：{state.PrimaryActionText}",
             ActionLog = $"{state.Title} -> {state.PrimaryActionText} -> 等待 Mediator 协调父页面和兄弟卡片。",
         };
-        return MviReduceResult.StateAndEffect<CardState, CardEffect>(
+        return WithEffect(
             newState,
             new CardEffect.RequestPrimaryWorkflow($"{state.Title}：{state.PrimaryActionText}"));
     }
@@ -58,7 +58,7 @@ public sealed partial class CardReducer
             StatusText = $"已发起：{state.SecondaryActionText}",
             ActionLog = $"{state.Title} -> {state.SecondaryActionText} -> 等待 Mediator 协调副作用。",
         };
-        return MviReduceResult.StateAndEffect<CardState, CardEffect>(
+        return WithEffect(
             newState,
             new CardEffect.RequestSecondaryWorkflow($"{state.Title}：{state.SecondaryActionText}"));
     }
@@ -77,7 +77,7 @@ public sealed partial class CardReducer
             DetailText = intent.Message,
             ActionLog = $"收到父页面或兄弟卡片更新：{intent.Message}",
         };
-        return MviReduceResult.State<CardState, CardEffect>(newState);
+        return Unchanged(newState);
     }
 
     /// <summary>
@@ -97,7 +97,7 @@ public sealed partial class CardReducer
             DetailText = BuildPatientDetailLine(patient),
             ActionLog = $"兄弟卡片入院通知：{patient.Name}（{patient.Diagnosis}）入住 {patient.BedNo}。",
         };
-        return MviReduceResult.State<CardState, CardEffect>(newState);
+        return Unchanged(newState);
     }
 
     private string BuildPatientDetailLine(Patient patient)
@@ -119,14 +119,14 @@ public sealed partial class CardReducer
         CardDefinition? definition = ResolveDefinition(state);
         if (definition is null || !definition.IsFormCard)
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         CardState nextState = state.WithFormValue(intent.Key, intent.Value);
         if (definition.Validator is null)
         {
             CardState newState = nextState with { FormValues = nextState.FormValues };
-            return MviReduceResult.State<CardState, CardEffect>(newState);
+            return Unchanged(newState);
         }
 
         (bool _, string statusText, string actionLog) = definition.Validator(nextState.FormValues);
@@ -136,7 +136,7 @@ public sealed partial class CardReducer
             StatusText = statusText,
             ActionLog = actionLog,
         };
-        return MviReduceResult.State<CardState, CardEffect>(newStateWithValidation);
+        return Unchanged(newStateWithValidation);
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ public sealed partial class CardReducer
         CardDefinition? definition = ResolveDefinition(state);
         if (definition is null || !definition.IsFormCard || definition.Validator is null)
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         (bool canSubmit, string statusText, string actionLog) = definition.Validator(state.FormValues);
@@ -163,7 +163,7 @@ public sealed partial class CardReducer
                 ActionLog = actionLog,
                 FormErrorMessage = statusText,
             };
-            return MviReduceResult.State<CardState, CardEffect>(newState);
+            return Unchanged(newState);
         }
 
         string contextText = state.FormValues.AsValueEnumerable()
@@ -175,7 +175,7 @@ public sealed partial class CardReducer
             StatusText = $"{definition.Title} 已提交，等待兄弟卡片处理",
             ActionLog = $"{definition.SourceDisplayName} 提交 -> {contextText} -> 通过 Mediator 分发。",
         };
-        return MviReduceResult.StateAndEffect<CardState, CardEffect>(
+        return WithEffect(
             submittedState,
             new CardEffect.RequestFormSubmission(state.FormValues, summaryText));
     }
@@ -191,12 +191,12 @@ public sealed partial class CardReducer
     {
         if (state.PageKey != PageKey.BedOverview)
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         if (state.CurrentBedFilter == intent.Filter)
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         int count = BedCatalog.CountCombined(intent.Filter, state.SelectedBedTypes, state.SelectedBedStatuses);
@@ -206,7 +206,7 @@ public sealed partial class CardReducer
             FilteredBedCount = count,
             ActionLog = $"床位筛选已切换为：{BedFilterOption.All.Single(option => option.Value == intent.Filter).DisplayName}，匹配 {count} 张。",
         };
-        return MviReduceResult.State<CardState, CardEffect>(newState);
+        return Unchanged(newState);
     }
 
     /// <summary>
@@ -220,7 +220,7 @@ public sealed partial class CardReducer
     {
         if (state.PageKey != PageKey.BedOverview)
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         HashSet<BedType> nextTypes = new(state.SelectedBedTypes);
@@ -235,7 +235,7 @@ public sealed partial class CardReducer
 
         if (nextTypes.SetEquals(state.SelectedBedTypes))
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         int count = BedCatalog.CountCombined(state.CurrentBedFilter, nextTypes, state.SelectedBedStatuses);
@@ -246,7 +246,7 @@ public sealed partial class CardReducer
             FilteredBedCount = count,
             ActionLog = $"床位类型筛选：{BedRecordRow.ToTypeText(intent.BedType)} 已{verb}；当前匹配 {count} 张。",
         };
-        return MviReduceResult.State<CardState, CardEffect>(newState);
+        return Unchanged(newState);
     }
 
     /// <summary>
@@ -260,7 +260,7 @@ public sealed partial class CardReducer
     {
         if (state.PageKey != PageKey.BedOverview)
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         HashSet<BedStatus> nextStatuses = new(state.SelectedBedStatuses);
@@ -275,7 +275,7 @@ public sealed partial class CardReducer
 
         if (nextStatuses.SetEquals(state.SelectedBedStatuses))
         {
-            return MviReduceResult.State<CardState, CardEffect>(state);
+            return Unchanged(state);
         }
 
         int count = BedCatalog.CountCombined(state.CurrentBedFilter, state.SelectedBedTypes, nextStatuses);
@@ -286,7 +286,7 @@ public sealed partial class CardReducer
             FilteredBedCount = count,
             ActionLog = $"床位状态筛选：{BedRecordRow.ToStatusText(intent.BedStatus)} 已{verb}；当前匹配 {count} 张。",
         };
-        return MviReduceResult.State<CardState, CardEffect>(newState);
+        return Unchanged(newState);
     }
 
     private CardDefinition? ResolveDefinition(CardState state)

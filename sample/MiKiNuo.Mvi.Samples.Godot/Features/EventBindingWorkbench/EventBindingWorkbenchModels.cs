@@ -126,7 +126,7 @@ public sealed record EventBindingSearchState(
 }
 
 /// <summary>表示 Godot 搜索面板副作用分发器。</summary>
-public sealed class EventBindingSearchEffectDispatcher : IMviEffectDispatcher<EventBindingSearchEffect>
+public sealed class EventBindingSearchEffectDispatcher : MviEffectDispatcherBase<EventBindingSearchEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -137,12 +137,12 @@ public sealed class EventBindingSearchEffectDispatcher : IMviEffectDispatcher<Ev
     }
 
     /// <summary>
-    /// 分发副作用。
+    /// 分发具体副作用。
     /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="effect">副作用（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(EventBindingSearchEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(EventBindingSearchEffect effect, CancellationToken cancellationToken)
     {
         if (effect is EventBindingSearchEffect.NotifyQueryChanged queryChanged)
         {
@@ -205,7 +205,7 @@ public abstract partial record EventBindingSelectionEffect : IMviEffect
 }
 
 /// <summary>表示 Godot 选择面板副作用分发器。</summary>
-public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher<EventBindingSelectionEffect>
+public sealed class EventBindingSelectionEffectDispatcher : MviEffectDispatcherBase<EventBindingSelectionEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -216,12 +216,12 @@ public sealed class EventBindingSelectionEffectDispatcher : IMviEffectDispatcher
     }
 
     /// <summary>
-    /// 分发副作用。
+    /// 分发具体副作用。
     /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="effect">副作用（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(EventBindingSelectionEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(EventBindingSelectionEffect effect, CancellationToken cancellationToken)
     {
         if (effect is EventBindingSelectionEffect.NotifySelectionChanged selectionChanged)
         {
@@ -278,7 +278,7 @@ public abstract partial record EventBindingDetailEffect : IMviEffect
 }
 
 /// <summary>表示 Godot 详情面板副作用分发器。</summary>
-public sealed class EventBindingDetailEffectDispatcher : IMviEffectDispatcher<EventBindingDetailEffect>
+public sealed class EventBindingDetailEffectDispatcher : MviEffectDispatcherBase<EventBindingDetailEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -289,12 +289,12 @@ public sealed class EventBindingDetailEffectDispatcher : IMviEffectDispatcher<Ev
     }
 
     /// <summary>
-    /// 分发副作用。
+    /// 分发具体副作用。
     /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="effect">副作用（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(EventBindingDetailEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(EventBindingDetailEffect effect, CancellationToken cancellationToken)
     {
         if (effect is EventBindingDetailEffect.NotifyPrepare prepare)
         {

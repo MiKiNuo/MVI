@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -22,7 +22,7 @@ public sealed partial class EventBindingDetailReducer
             PrepareCount = state.PrepareCount + 1,
             StatusText = $"准备动作：{intent.Payload.SourceName ?? "Unknown"}",
         };
-        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
+        return WithEffect(
             newState,
             new EventBindingDetailEffect.NotifyPrepare(intent.Payload.SourceName ?? "Unknown"));
     }

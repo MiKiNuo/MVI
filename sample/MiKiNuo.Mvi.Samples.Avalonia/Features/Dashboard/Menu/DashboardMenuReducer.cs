@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -22,10 +22,10 @@ public sealed partial class DashboardMenuReducer
     {
         if (string.Equals(state.SelectedMenuKey, intent.SelectedMenuKey, StringComparison.Ordinal))
         {
-            return MviReduceResult.State<DashboardMenuState, DashboardMenuEffect>(state);
+            return Unchanged(state);
         }
 
-        return MviReduceResult.StateAndEffect<DashboardMenuState, DashboardMenuEffect>(
+        return WithEffect(
             state with
             {
                 SelectedMenuKey = intent.SelectedMenuKey,

@@ -4,7 +4,6 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
-using R3;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -13,9 +12,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// </summary>
 public sealed partial class BattlePrepViewModel : MviViewModelBase<BattlePrepState, BattlePrepIntent, BattlePrepEffect>
 {
-    private readonly IDisposable _missionSubscription;
-    private readonly IDisposable _heroRosterSubscription;
-    private readonly IDisposable _playerSubscription;
     private string _selectedMission = string.Empty;
     private int _heroTeamPower;
     private int _stamina;
@@ -40,17 +36,17 @@ public sealed partial class BattlePrepViewModel : MviViewModelBase<BattlePrepSta
         ArgumentNullException.ThrowIfNull(heroRosterStore);
         ArgumentNullException.ThrowIfNull(playerStore);
 
-        _missionSubscription = missionStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(missionStore, state =>
         {
-            vm.SelectedMission = state.SelectedMission;
+            SelectedMission = state.SelectedMission;
         });
-        _heroRosterSubscription = heroRosterStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(heroRosterStore, state =>
         {
-            vm.HeroTeamPower = state.HeroTeamPower;
+            HeroTeamPower = state.HeroTeamPower;
         });
-        _playerSubscription = playerStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(playerStore, state =>
         {
-            vm.Stamina = state.Stamina;
+            Stamina = state.Stamina;
         });
     }
 
@@ -82,13 +78,4 @@ public sealed partial class BattlePrepViewModel : MviViewModelBase<BattlePrepSta
     /// <summary>获取准备战斗命令。</summary>
     [MviCommand(typeof(BattlePrepIntent.PrepareBattle))]
     public partial IMviCommand PrepareBattleCommand { get; private set; }
-
-    /// <summary>释放跨 Store 订阅资源。</summary>
-    protected override void OnDispose()
-    {
-        _missionSubscription.Dispose();
-        _heroRosterSubscription.Dispose();
-        _playerSubscription.Dispose();
-        base.OnDispose();
-    }
 }

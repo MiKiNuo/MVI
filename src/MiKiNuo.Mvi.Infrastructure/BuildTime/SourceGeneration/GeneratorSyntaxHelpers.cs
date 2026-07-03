@@ -26,6 +26,90 @@ internal static class GeneratorSyntaxHelpers
         return symbol.ToDisplayString(FullyQualifiedNullableFormat);
     }
 
+    /// <summary>
+    /// 获取类型所在命名空间用于 emit 的字符串。
+    /// </summary>
+    /// <param name="typeSymbol">类型符号。</param>
+    /// <returns>命名空间全名；若类型位于全局命名空间则返回 null（emit 时应跳过 namespace 声明）。</returns>
+    public static string? GetNamespaceForEmit(INamedTypeSymbol typeSymbol)
+    {
+        if (typeSymbol is null)
+        {
+            throw new ArgumentNullException(nameof(typeSymbol));
+        }
+
+        INamespaceSymbol ns = typeSymbol.ContainingNamespace;
+        return ns.IsGlobalNamespace ? null : ns.ToDisplayString();
+    }
+
+    /// <summary>
+    /// 沿基类链查找指定的泛型基类型。
+    /// </summary>
+    /// <param name="typeSymbol">起始类型符号。</param>
+    /// <param name="originalDefinition">目标基类的原始定义符号。</param>
+    /// <returns>构造的基类型符号；未找到返回 null。</returns>
+    public static INamedTypeSymbol? FindGenericBaseInChain(
+        INamedTypeSymbol typeSymbol,
+        INamedTypeSymbol originalDefinition)
+    {
+        if (typeSymbol is null)
+        {
+            throw new ArgumentNullException(nameof(typeSymbol));
+        }
+
+        if (originalDefinition is null)
+        {
+            throw new ArgumentNullException(nameof(originalDefinition));
+        }
+
+        INamedTypeSymbol? current = typeSymbol.BaseType;
+        while (current is not null)
+        {
+            if (current.OriginalDefinition.Equals(originalDefinition, SymbolEqualityComparer.Default))
+            {
+                return current;
+            }
+
+            current = current.BaseType;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 把可访问性枚举转为 C# 关键字文本。
+    /// </summary>
+    /// <param name="accessibility">可访问性枚举。</param>
+    /// <returns>对应的 C# 关键字；未知返回 internal（源生成器合理默认）。</returns>
+    public static string GetAccessibilityText(Accessibility accessibility)
+    {
+        return accessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            Accessibility.ProtectedAndInternal => "private protected",
+            _ => "internal",
+        };
+    }
+
+    /// <summary>
+    /// 转义字符串字面量中的特殊字符。
+    /// </summary>
+    /// <param name="text">原始文本。</param>
+    /// <returns>转义后可放入双引号字面量的文本。</returns>
+    public static string EscapeStringLiteral(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+
+        return text.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
     /// <summary>将首字母转为小写。</summary>
     /// <param name="value">原始字符串。</param>
     /// <returns>首字母小写的字符串。</returns>

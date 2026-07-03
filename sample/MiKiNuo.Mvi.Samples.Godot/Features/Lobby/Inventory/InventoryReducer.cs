@@ -25,7 +25,7 @@ public sealed partial class InventoryReducer
                 case InventoryIntent.PotionUsed used:
                 {
                     InventoryState newState = state with { PotionCount = used.NewPotionCount };
-                    return MviReduceResult.StateAndEffects<InventoryState, InventoryEffect>(
+                    return WithEffects(
                         newState,
                         new InventoryEffect[]
                         {
@@ -37,7 +37,7 @@ public sealed partial class InventoryReducer
                 }
                 case InventoryIntent.PotionUseFailed failed:
                 {
-                    return MviReduceResult.StateAndEffects<InventoryState, InventoryEffect>(
+                    return WithEffects(
                         state,
                         new InventoryEffect[]
                         {
@@ -48,7 +48,7 @@ public sealed partial class InventoryReducer
             }
         }
 
-        return MviReduceResult.State<InventoryState, InventoryEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>处理药水使用成功意图。</summary>
@@ -59,7 +59,7 @@ public sealed partial class InventoryReducer
         IMviBusinessResult? result)
     {
         InventoryState newState = state with { PotionCount = intent.NewPotionCount };
-        return MviReduceResult.StateAndEffects<InventoryState, InventoryEffect>(
+        return WithEffects(
             newState,
             new InventoryEffect[]
             {
@@ -77,7 +77,7 @@ public sealed partial class InventoryReducer
         InventoryIntent.PotionUseFailed intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.StateAndEffects<InventoryState, InventoryEffect>(
+        return WithEffects(
             state,
             new InventoryEffect[]
             {
@@ -96,7 +96,7 @@ public sealed partial class InventoryReducer
         if (result is FollowUpIntentResult<InventoryIntent> fur
             && fur.Intent is InventoryIntent.GoldBoxOpened opened)
         {
-            return MviReduceResult.StateAndEffects<InventoryState, InventoryEffect>(
+            return WithEffects(
                 state,
                 new InventoryEffect[]
                 {
@@ -106,7 +106,7 @@ public sealed partial class InventoryReducer
                 });
         }
 
-        return MviReduceResult.State<InventoryState, InventoryEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>处理金币箱已打开意图。</summary>
@@ -116,7 +116,7 @@ public sealed partial class InventoryReducer
         InventoryIntent.GoldBoxOpened intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.StateAndEffects<InventoryState, InventoryEffect>(
+        return WithEffects(
             state,
             new InventoryEffect[]
             {
@@ -138,7 +138,7 @@ public sealed partial class InventoryReducer
             OreCount = Math.Max(0, state.OreCount - intent.OreCost),
             CrystalCount = Math.Max(0, state.CrystalCount - intent.CrystalCost),
         };
-        return MviReduceResult.StateAndEffect<InventoryState, InventoryEffect>(
+        return WithEffect(
             newState,
             new InventoryEffect.Trace("Inventory ConsumeMaterials"));
     }
@@ -151,7 +151,7 @@ public sealed partial class InventoryReducer
         IMviBusinessResult? result)
     {
         InventoryState newState = state with { ForgeScore = intent.ForgeScore };
-        return MviReduceResult.StateAndEffect<InventoryState, InventoryEffect>(
+        return WithEffect(
             newState,
             new InventoryEffect.Trace("Inventory UpdateForgeScore"));
     }

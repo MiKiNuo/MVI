@@ -8,7 +8,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示大厅导航副作用分发器。
 /// </summary>
-public sealed class NavigationEffectDispatcher : IMviEffectDispatcher<NavigationEffect>
+public sealed class NavigationEffectDispatcher : MviEffectDispatcherBase<NavigationEffect>
 {
     private readonly IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> _activityLogStore;
     private readonly ITraceEffectLogger _traceLogger;
@@ -36,11 +36,8 @@ public sealed class NavigationEffectDispatcher : IMviEffectDispatcher<Navigation
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(NavigationEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(NavigationEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case NavigationEffect.Trace trace:

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
@@ -26,7 +26,7 @@ public sealed partial class ClinicalReminderReducer
             ? (IReadOnlyList<string>)["胸痛中心绿色通道评估。", "建议 10 分钟内完成心电图。", "核查阿司匹林禁忌。"]
             : ["核查过敏史。", "复核既往用药。", "完善生命体征记录。"];
 
-        return MviReduceResult.State<ClinicalReminderState, UnitEffect>(
+        return Unchanged(
             state with
             {
                 PatientName = intent.PatientName,
@@ -45,7 +45,7 @@ public sealed partial class ClinicalReminderReducer
         ClinicalReminderIntent.ResolvePrimaryAlert intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<ClinicalReminderState, UnitEffect>(
+        return Unchanged(
             state with { PrimaryAlert = "首要提醒已处理。", HasAlert = false });
     }
 }

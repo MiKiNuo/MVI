@@ -7,7 +7,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.Patie
 /// <summary>
 /// 表示可复用患者检索 MVI 副作用分发器。
 /// </summary>
-public sealed class PatientSearchEffectDispatcher : IMviEffectDispatcher<PatientSearchEffect>
+public sealed class PatientSearchEffectDispatcher : MviEffectDispatcherBase<PatientSearchEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -28,10 +28,8 @@ public sealed class PatientSearchEffectDispatcher : IMviEffectDispatcher<Patient
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(PatientSearchEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(PatientSearchEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-
         if (effect is PatientSearchEffect.RequestPatientContext patientContext)
         {
             await _mediator.SendComponentInteractionAsync(

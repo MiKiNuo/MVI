@@ -26,10 +26,10 @@ public sealed partial class BattlePrepReducer
                 new BattlePrepEffect.LogActivity("战斗准备汇总任务、英雄、背包数据。"),
                 new BattlePrepEffect.Trace("BattlePrep Prepare"),
             };
-            return MviReduceResult.StateAndEffects<BattlePrepState, BattlePrepEffect>(newState, effects);
+            return WithEffects(newState, effects);
         }
 
-        return MviReduceResult.State<BattlePrepState, BattlePrepEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>处理战斗准备完成意图。</summary>
@@ -45,7 +45,7 @@ public sealed partial class BattlePrepReducer
             new BattlePrepEffect.LogActivity("战斗准备汇总任务、英雄、背包数据。"),
             new BattlePrepEffect.Trace("BattlePrep Prepare"),
         };
-        return MviReduceResult.StateAndEffects<BattlePrepState, BattlePrepEffect>(newState, effects);
+        return WithEffects(newState, effects);
     }
 
     /// <summary>处理更新战斗准备摘要意图。</summary>
@@ -56,7 +56,7 @@ public sealed partial class BattlePrepReducer
         IMviBusinessResult? result)
     {
         BattlePrepState newState = state with { BattleReadyText = intent.ReadyText };
-        return MviReduceResult.StateAndEffect<BattlePrepState, BattlePrepEffect>(
+        return WithEffect(
             newState,
             new BattlePrepEffect.Trace("BattlePrep UpdateReadyText"));
     }

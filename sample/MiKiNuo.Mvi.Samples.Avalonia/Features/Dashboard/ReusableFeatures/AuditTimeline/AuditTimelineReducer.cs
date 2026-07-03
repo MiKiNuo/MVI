@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
@@ -32,7 +32,7 @@ public sealed partial class AuditTimelineReducer
             EntriesText = entries,
             CanClear = true,
         };
-        return MviReduceResult.State<AuditTimelineState, UnitEffect>(newState);
+        return Unchanged(newState);
     }
 
     /// <summary>
@@ -51,6 +51,6 @@ public sealed partial class AuditTimelineReducer
             EntriesText = "暂无审计记录。",
             CanClear = false,
         };
-        return MviReduceResult.State<AuditTimelineState, UnitEffect>(newState);
+        return Unchanged(newState);
     }
 }

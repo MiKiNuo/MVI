@@ -1,4 +1,4 @@
-﻿namespace MiKiNuo.Mvi.Application.MVI.Command;
+namespace MiKiNuo.Mvi.Application.MVI.Command;
 
 /// <summary>
 /// 表示 MVI 异步命令。
@@ -6,9 +6,8 @@
 /// <remarks>
 /// 继承自 <see cref="IMviCommand"/> 以便平台层（Godot 绑定、Avalonia 内置 <c>Button.Command</c>）
 /// 接受任一种命令时不用关心同步/异步差异。
-/// 与 <see cref="System.Windows.Input.ICommand"/> 故意解耦：
-/// <see cref="ExecuteAsync"/> 暴露 MVI 的异步执行契约，平台无关；
-/// 平台层（如 Avalonia）通过 <c>MiKiNuo.Mvi.Presentation.Command.IMviCommandBridge</c> 适配器获取 <c>ICommand</c>。
+/// <see cref="IMviCommand"/> 已继承 <see cref="System.Windows.Input.ICommand"/>,
+/// <see cref="ExecuteAsync"/> 暴露 MVI 的异步执行契约,平台无关。
 /// </remarks>
 public interface IMviAsyncCommand : IMviCommand
 {

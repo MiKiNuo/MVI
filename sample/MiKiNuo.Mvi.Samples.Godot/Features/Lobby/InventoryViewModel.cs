@@ -4,7 +4,6 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
-using R3;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -13,7 +12,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// </summary>
 public sealed partial class InventoryViewModel : MviViewModelBase<InventoryState, InventoryIntent, InventoryEffect>
 {
-    private readonly IDisposable _playerSubscription;
     private int _gold;
     private int _stamina;
 
@@ -30,10 +28,10 @@ public sealed partial class InventoryViewModel : MviViewModelBase<InventoryState
         : base(store, uiDispatcher)
     {
         ArgumentNullException.ThrowIfNull(playerStore);
-        _playerSubscription = playerStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(playerStore, state =>
         {
-            vm.Gold = state.Gold;
-            vm.Stamina = state.Stamina;
+            Gold = state.Gold;
+            Stamina = state.Stamina;
         });
     }
 
@@ -70,11 +68,4 @@ public sealed partial class InventoryViewModel : MviViewModelBase<InventoryState
     /// <summary>获取打开金币箱命令。</summary>
     [MviCommand(typeof(InventoryIntent.OpenGoldBox))]
     public partial IMviCommand OpenGoldBoxCommand { get; private set; }
-
-    /// <summary>释放跨 Store 订阅资源。</summary>
-    protected override void OnDispose()
-    {
-        _playerSubscription.Dispose();
-        base.OnDispose();
-    }
 }

@@ -1,7 +1,6 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
-using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 
@@ -59,11 +58,11 @@ public sealed partial class ArchitectureValidationViewModel
         _panelFactory.CreatePatientSearchViewModel(contextName);
 
     /// <summary>
-    /// 解析复用患者检索子组件 ViewModel（使用当前 <see cref="ActiveContext"/> 作为上下文名称）。
+    /// 解析复用患者检索子组件 ViewModel（演示页固定上下文）。
     /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
     /// </summary>
     /// <returns>患者检索 <c>PatientSearchViewModel</c> 实例。</returns>
-    public object CreatePatientSearchViewModel() => CreatePatientSearchViewModel(ActiveContext);
+    public object CreatePatientSearchViewModel() => CreatePatientSearchViewModel("架构验证");
 
     /// <summary>
     /// 解析复用审计时间线子组件 ViewModel（经由 <see cref="IArchitectureValidationPanelFactory"/> 工厂缓存返回）。
@@ -74,11 +73,11 @@ public sealed partial class ArchitectureValidationViewModel
         _panelFactory.CreateAuditTimelineViewModel(contextName);
 
     /// <summary>
-    /// 解析复用审计时间线子组件 ViewModel（使用当前 <see cref="ActiveContext"/> 作为上下文名称）。
+    /// 解析复用审计时间线子组件 ViewModel（演示页固定上下文）。
     /// 供 <c>[MviSlot]</c> 源生成器 emit 的 <c>OnBindSlots</c> 钩子调用。
     /// </summary>
     /// <returns>审计时间线 <c>AuditTimelineViewModel</c> 实例。</returns>
-    public object CreateAuditTimelineViewModel() => CreateAuditTimelineViewModel(ActiveContext);
+    public object CreateAuditTimelineViewModel() => CreateAuditTimelineViewModel("架构验证");
 
     /// <summary>
     /// 解析中间件指标卡片 ViewModel（经由 <see cref="CardStoreFactory"/> 共享 store/VM 实例）。
@@ -105,20 +104,10 @@ public sealed partial class ArchitectureValidationViewModel
     public object CreateEffectMetricViewModel() => _cardStoreFactory.GetViewModel(PageKey.EffectMetric);
 
     /// <summary>
-    /// 获取当前业务上下文。
+    /// 演示页无运行时状态，留空实现以满足基类抽象契约。
     /// </summary>
-    [MviBind(nameof(ArchitectureValidationState.ActiveContext))]
-    public partial string ActiveContext { get; private set; }
-
-    /// <summary>
-    /// 获取当前流程状态。
-    /// </summary>
-    [MviBind(nameof(ArchitectureValidationState.FlowStatus))]
-    public partial string FlowStatus { get; private set; }
-
-    /// <summary>
-    /// 获取交互日志。
-    /// </summary>
-    [MviBind(nameof(ArchitectureValidationState.InteractionLog))]
-    public partial string InteractionLog { get; private set; }
+    /// <param name="state">新状态。</param>
+    protected override void ApplyStateCore(ArchitectureValidationState state)
+    {
+    }
 }

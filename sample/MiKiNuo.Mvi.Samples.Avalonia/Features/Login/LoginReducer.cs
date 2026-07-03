@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Shared.Features.Login;
@@ -20,7 +20,7 @@ public sealed partial class LoginReducer
         LoginIntent.ChangeUserName intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<LoginState, LoginEffect>(
+        return Unchanged(
             state with
             {
                 UserName = intent.UserName,
@@ -38,7 +38,7 @@ public sealed partial class LoginReducer
         LoginIntent.ChangePassword intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<LoginState, LoginEffect>(
+        return Unchanged(
             state with
             {
                 Password = intent.Password,
@@ -58,21 +58,21 @@ public sealed partial class LoginReducer
     {
         if (result is null)
         {
-            return MviReduceResult.State<LoginState, LoginEffect>(
+            return Unchanged(
                 state with { IsBusy = true, ErrorMessage = null });
         }
 
         if (result is LoginBusinessResult.Success success)
         {
             LoginState newState = state with { IsBusy = false, ErrorMessage = null, CanSubmit = true };
-            return MviReduceResult.StateAndEffect<LoginState, LoginEffect>(
+            return WithEffect(
                 newState,
                 new LoginEffect.NavigateToDashboard(success.Profile.DisplayName));
         }
 
         if (result is LoginBusinessResult.Failure failure)
         {
-            return MviReduceResult.State<LoginState, LoginEffect>(
+            return Unchanged(
                 state with
                 {
                     IsBusy = false,
@@ -81,7 +81,7 @@ public sealed partial class LoginReducer
                 });
         }
 
-        return MviReduceResult.State<LoginState, LoginEffect>(state);
+        return Unchanged(state);
     }
 
     private bool CanSubmitState(LoginState state) => state.CanSubmit || state.IsBusy;

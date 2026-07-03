@@ -7,7 +7,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
 /// <summary>
 /// 表示 Dashboard 菜单副作用分发器。
 /// </summary>
-public sealed class DashboardMenuEffectDispatcher : IMviEffectDispatcher<DashboardMenuEffect>
+public sealed class DashboardMenuEffectDispatcher : MviEffectDispatcherBase<DashboardMenuEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -28,10 +28,8 @@ public sealed class DashboardMenuEffectDispatcher : IMviEffectDispatcher<Dashboa
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(DashboardMenuEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(DashboardMenuEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-
         if (effect is DashboardMenuEffect.RequestNavigation requestNavigation)
         {
             await _mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(

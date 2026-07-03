@@ -18,7 +18,7 @@ public sealed partial class LoginReducer
         LoginIntent.ChangeUserName intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<LoginState, LoginEffect>(
+        return Unchanged(
             state with
             {
                 UserName = intent.UserName,
@@ -35,7 +35,7 @@ public sealed partial class LoginReducer
         LoginIntent.ChangePassword intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<LoginState, LoginEffect>(
+        return Unchanged(
             state with
             {
                 Password = intent.Password,
@@ -54,7 +54,7 @@ public sealed partial class LoginReducer
     {
         if (result is null)
         {
-            return MviReduceResult.State<LoginState, LoginEffect>(
+            return Unchanged(
                 state with { IsBusy = true, LoginStatus = "正在登录..." });
         }
 
@@ -67,7 +67,7 @@ public sealed partial class LoginReducer
                 ErrorMessage = null,
                 LoginStatus = $"登录成功：{profile.PlayerName}，准备进入游戏大厅。",
             };
-            return MviReduceResult.StateAndEffects<LoginState, LoginEffect>(
+            return WithEffects(
                 newState,
                 new LoginEffect[]
                 {
@@ -85,12 +85,12 @@ public sealed partial class LoginReducer
                 CanSubmit = CanSubmit(state.UserName, state.Password),
                 LoginStatus = "登录失败，请检查账号和密码。",
             };
-            return MviReduceResult.StateAndEffect<LoginState, LoginEffect>(
+            return WithEffect(
                 newState,
                 new LoginEffect.Trace("Login validation failed"));
         }
 
-        return MviReduceResult.State<LoginState, LoginEffect>(state);
+        return Unchanged(state);
     }
 
     private bool CanSubmitState(LoginState state) => CanSubmit(state.UserName, state.Password) || state.IsBusy;

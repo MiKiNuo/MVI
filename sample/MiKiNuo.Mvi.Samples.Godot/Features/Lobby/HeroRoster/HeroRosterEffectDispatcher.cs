@@ -9,7 +9,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示英雄队伍副作用分发器。
 /// </summary>
-public sealed class HeroRosterEffectDispatcher : IMviEffectDispatcher<HeroRosterEffect>
+public sealed class HeroRosterEffectDispatcher : MviEffectDispatcherBase<HeroRosterEffect>
 {
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
     private readonly IMviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect> _battlePrepStore;
@@ -41,11 +41,8 @@ public sealed class HeroRosterEffectDispatcher : IMviEffectDispatcher<HeroRoster
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(HeroRosterEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(HeroRosterEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case HeroRosterEffect.Trace trace:

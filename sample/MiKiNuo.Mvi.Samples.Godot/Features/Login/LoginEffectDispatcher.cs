@@ -13,7 +13,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Login;
 /// 处理 <see cref="LoginEffect.LoginSucceeded"/> 调用导航协调器进入大厅。
 /// </para>
 /// </summary>
-public sealed class LoginEffectDispatcher : IMviEffectDispatcher<LoginEffect>
+public sealed class LoginEffectDispatcher : MviEffectDispatcherBase<LoginEffect>
 {
     private readonly IGameShellNavigator _navigator;
     private readonly ITraceEffectLogger _traceLogger;
@@ -30,16 +30,13 @@ public sealed class LoginEffectDispatcher : IMviEffectDispatcher<LoginEffect>
     }
 
     /// <summary>
-    /// 分发副作用。
+    /// 分发具体副作用。
     /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="effect">副作用（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(LoginEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(LoginEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case LoginEffect.Trace trace:

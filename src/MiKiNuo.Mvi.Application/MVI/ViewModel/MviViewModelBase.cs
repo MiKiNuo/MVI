@@ -17,12 +17,31 @@ namespace MiKiNuo.Mvi.Application.MVI.ViewModel;
 /// <typeparam name="TIntent">意图类型。</typeparam>
 /// <typeparam name="TEffect">副作用类型。</typeparam>
 /// <remarks>
-/// 源生成器协议：
-/// <list type="number">
-/// <item><see cref="OnConstructed"/> 钩子由源生成器实现，自动初始化命令；子类无需手调。</item>
-/// <item><see cref="DisposeGeneratedCommands"/> 专留给源生成器释放命令；子类请重写 <see cref="OnDispose"/>。</item>
-/// <item><see cref="ApplyStateCore"/> 在声明 [MviBind] 时由源生成器实现，禁止手写重写。</item>
+/// 所有权矩阵（源生成器 vs 子类实现）：
+/// <list type="bullet">
+/// <item>有 [MviBind] + 有 [MviCommand]：
+///   全部钩子由生成器 emit。</item>
+/// <item>有 [MviBind] + 无 [MviCommand]：
+///   ApplyStateCore 由生成器 emit，
+///   OnConstructed/DisposeGeneratedCommands
+///   为基类空体。</item>
+/// <item>无 [MviBind] + 有 [MviCommand]：
+///   ApplyStateCore 由子类手写，
+///   OnConstructed/DisposeGeneratedCommands
+///   由生成器 emit。</item>
+/// <item>无 [MviBind] + 无 [MviCommand]：
+///   ApplyStateCore 由子类手写，
+///   其余为基类空体。</item>
 /// </list>
+/// <para>
+/// 混合模式（[MviCommand] + 手写命令）：
+/// 手写命令在构造函数初始化，
+/// 在 <see cref="OnDispose"/> 释放。
+/// </para>
+/// <para>
+/// 基类 <see cref="OnDispose"/> 无副作用，
+/// 调用 base.OnDispose() 可选。
+/// </para>
 /// </remarks>
 public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent, INotifyPropertyChanged
     where TState : IMviState
@@ -30,6 +49,7 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
     where TEffect : IMviEffect
 {
     private readonly IDisposable _stateSubscription;
+    private readonly List<IDisposable> _siblingSubscriptions = new();
     private readonly IMviUiDispatcher _uiDispatcher;
     private bool _isDisposed;
 
@@ -142,6 +162,31 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
     }
 
     /// <summary>
+    /// 绑定兄弟 Store 的状态到当前 ViewModel。
+    /// </summary>
+    /// <typeparam name="TSiblingState">兄弟状态类型。</typeparam>
+    /// <typeparam name="TSiblingIntent">兄弟意图类型。</typeparam>
+    /// <typeparam name="TSiblingEffect">兄弟副作用类型。</typeparam>
+    /// <param name="siblingStore">兄弟 Store。</param>
+    /// <param name="applySiblingState">状态应用回调。</param>
+    /// <returns>订阅句柄（自动由基类管理释放）。</returns>
+    protected IDisposable BindSiblingState<TSiblingState, TSiblingIntent, TSiblingEffect>(
+        IMviStore<TSiblingState, TSiblingIntent, TSiblingEffect> siblingStore,
+        Action<TSiblingState> applySiblingState)
+        where TSiblingState : IMviState
+        where TSiblingIntent : IMviIntent
+        where TSiblingEffect : IMviEffect
+    {
+        ArgumentNullException.ThrowIfNull(siblingStore);
+        ArgumentNullException.ThrowIfNull(applySiblingState);
+
+        IDisposable subscription = siblingStore.States
+            .Subscribe(applySiblingState);
+        _siblingSubscriptions.Add(subscription);
+        return subscription;
+    }
+
+    /// <summary>
     /// ViewModel 释放的最终扩展点，由 <see cref="Dispose"/> 在 <see cref="DisposeGeneratedCommands"/> 之后调用。
     /// </summary>
     /// <remarks>
@@ -189,6 +234,14 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
 
         _stateSubscription.Dispose();
         DisposeGeneratedCommands();
+
+        // 释放所有 sibling Store 订阅
+        foreach (IDisposable subscription in _siblingSubscriptions)
+        {
+            subscription.Dispose();
+        }
+        _siblingSubscriptions.Clear();
+
         OnDispose();
         base.Dispose();
         GC.SuppressFinalize(this);

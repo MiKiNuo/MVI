@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -32,7 +32,7 @@ public sealed partial class NavigationReducer
             CurrentPanel = intent.Panel,
             CurrentPanelTitle = title,
         };
-        return MviReduceResult.StateAndEffects<NavigationState, NavigationEffect>(
+        return WithEffects(
             newState,
             new NavigationEffect[]
             {
@@ -48,7 +48,7 @@ public sealed partial class NavigationReducer
         NavigationIntent.Logout intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.StateAndEffects<NavigationState, NavigationEffect>(
+        return WithEffects(
             state,
             new NavigationEffect[]
             {

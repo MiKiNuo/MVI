@@ -296,7 +296,7 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
 
             return new SlotGenerationModel(
                 namespaceName,
-                GetAccessibilityText(containingType.DeclaredAccessibility),
+                GeneratorSyntaxHelpers.GetAccessibilityText(containingType.DeclaredAccessibility),
                 containingType.Name,
                 platform,
                 viewModelType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),

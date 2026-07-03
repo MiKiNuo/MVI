@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -25,7 +25,7 @@ public sealed partial class EventBindingDetailReducer
             LastPointerText = pointerText,
             StatusText = "详情区域收到 PointerPressed。",
         };
-        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
+        return WithEffect(
             newState,
             new EventBindingDetailEffect.NotifyDetailEvent("PointerPressed", pointerText));
     }
@@ -46,7 +46,7 @@ public sealed partial class EventBindingDetailReducer
             RefreshCount = refreshCount,
             StatusText = $"刷新动作：{intent.Payload.SourceName}",
         };
-        return MviReduceResult.StateAndEffect<EventBindingDetailState, EventBindingDetailEffect>(
+        return WithEffect(
             newState,
             new EventBindingDetailEffect.NotifyDetailEvent("Action", sourceName));
     }

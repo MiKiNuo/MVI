@@ -33,7 +33,7 @@ public sealed partial class ForgeLabReducer
                         new ForgeLabEffect.LogActivity($"锻造{forged.ItemName}，评分 {forged.ForgeScore}，战力 +{forged.PowerBonus}。"),
                         new ForgeLabEffect.Trace($"Forge {forged.ItemName}"),
                     };
-                    return MviReduceResult.StateAndEffects<UnitState, ForgeLabEffect>(state, effects);
+                    return WithEffects(state, effects);
                 }
                 case ForgeLabIntent.ForgeFailed failed:
                 {
@@ -42,12 +42,12 @@ public sealed partial class ForgeLabReducer
                         new ForgeLabEffect.LogActivity(failed.ErrorMessage ?? "锻造失败。"),
                         new ForgeLabEffect.Trace("Forge Failed"),
                     };
-                    return MviReduceResult.StateAndEffects<UnitState, ForgeLabEffect>(state, effects);
+                    return WithEffects(state, effects);
                 }
             }
         }
 
-        return MviReduceResult.State<UnitState, ForgeLabEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>处理锻造成功意图。</summary>
@@ -66,7 +66,7 @@ public sealed partial class ForgeLabReducer
             new ForgeLabEffect.LogActivity($"锻造{intent.ItemName}，评分 {intent.ForgeScore}，战力 +{intent.PowerBonus}。"),
             new ForgeLabEffect.Trace($"Forge {intent.ItemName}"),
         };
-        return MviReduceResult.StateAndEffects<UnitState, ForgeLabEffect>(state, effects);
+        return WithEffects(state, effects);
     }
 
     /// <summary>处理锻造失败意图。</summary>
@@ -81,6 +81,6 @@ public sealed partial class ForgeLabReducer
             new ForgeLabEffect.LogActivity(intent.ErrorMessage ?? "锻造失败。"),
             new ForgeLabEffect.Trace("Forge Failed"),
         };
-        return MviReduceResult.StateAndEffects<UnitState, ForgeLabEffect>(state, effects);
+        return WithEffects(state, effects);
     }
 }

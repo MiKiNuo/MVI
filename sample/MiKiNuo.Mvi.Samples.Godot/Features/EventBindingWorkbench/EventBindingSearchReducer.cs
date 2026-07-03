@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
@@ -24,7 +24,7 @@ public sealed partial class EventBindingSearchReducer
             EventCount = state.EventCount + 1,
             StatusText = $"搜索文本变化：{intent.Payload.Text}",
         };
-        return MviReduceResult.StateAndEffect<EventBindingSearchState, EventBindingSearchEffect>(
+        return WithEffect(
             newState,
             new EventBindingSearchEffect.NotifyQueryChanged(intent.Payload.Text));
     }

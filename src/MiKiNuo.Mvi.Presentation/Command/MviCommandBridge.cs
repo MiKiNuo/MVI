@@ -1,15 +1,20 @@
 using System.Windows.Input;
+using MiKiNuo.Mvi.Application.MVI.Command;
 
 namespace MiKiNuo.Mvi.Presentation.Command;
 
 /// <summary>
-/// 提供 <see cref="IMviCommandBridge"/> 的默认实现，把 MVI 命令包装为
-/// 转发调用与事件的 <see cref="ICommand"/> 适配器。
+/// 提供 <see cref="IMviCommandBridge"/> 的默认实现。
 /// </summary>
+/// <remarks>
+/// <see cref="IMviCommand"/> 已继承 <see cref="ICommand"/>,
+/// <see cref="MviCommandBase"/> 直接实现两者,
+/// 故本桥接器无需包装,仅做 null 校验后原样返回。
+/// </remarks>
 public sealed class MviCommandBridge : IMviCommandBridge
 {
     /// <summary>
-    /// 获取进程级单例，避免在每次绑定时分配新的工厂实例。
+    /// 获取进程级单例。
     /// </summary>
     public static MviCommandBridge Instance { get; } = new();
 
@@ -18,68 +23,25 @@ public sealed class MviCommandBridge : IMviCommandBridge
     }
 
     /// <summary>
-    /// 将 MVI 命令包装为适配器。
+    /// 将 MVI 命令作为 <see cref="ICommand"/> 返回。
     /// </summary>
     /// <param name="command">MVI 命令实例。</param>
-    /// <returns>实现 <see cref="ICommand"/> 的包装器。</returns>
+    /// <returns>实现 <see cref="ICommand"/> 的命令实例。</returns>
     public ICommand Adapt(IMviCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return new MviCommandAdapter(command);
+        return command;
     }
 
     /// <summary>
-    /// 把指定的 MVI 命令包装为 <see cref="ICommand"/> 适配器，静态便捷入口。
+    /// 把指定的 MVI 命令作为 <see cref="ICommand"/> 返回,
     /// 等价于 <c>MviCommandBridge.Instance.Adapt(command)</c>。
     /// </summary>
     /// <param name="command">MVI 命令实例。</param>
-    /// <returns>实现 <see cref="ICommand"/> 的包装器。</returns>
+    /// <returns>实现 <see cref="ICommand"/> 的命令实例。</returns>
     public static ICommand ToICommand(IMviCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return new MviCommandAdapter(command);
-    }
-
-    /// <summary>
-    /// <see cref="ICommand"/> 适配器，把 <see cref="CanExecute(object?)"/>、
-    /// <see cref="Execute(object?)"/> 与 <see cref="CanExecuteChanged"/> 事件
-    /// 全部转发到底层 <see cref="IMviCommand"/>。
-    /// </summary>
-    private sealed class MviCommandAdapter : ICommand
-    {
-        private readonly IMviCommand _command;
-
-        public MviCommandAdapter(IMviCommand command)
-        {
-            _command = command;
-        }
-
-        /// <summary>
-        /// 判断命令是否可执行。
-        /// </summary>
-        /// <param name="parameter">命令参数。</param>
-        /// <returns>可执行返回 true。</returns>
-        public bool CanExecute(object? parameter)
-        {
-            return _command.CanExecute(parameter);
-        }
-
-        /// <summary>
-        /// 执行命令。
-        /// </summary>
-        /// <param name="parameter">命令参数。</param>
-        public void Execute(object? parameter)
-        {
-            _command.Execute(parameter);
-        }
-
-        /// <summary>
-        /// 当可执行状态变化时触发。
-        /// </summary>
-        public event EventHandler? CanExecuteChanged
-        {
-            add => _command.CanExecuteChanged += value;
-            remove => _command.CanExecuteChanged -= value;
-        }
+        return command;
     }
 }

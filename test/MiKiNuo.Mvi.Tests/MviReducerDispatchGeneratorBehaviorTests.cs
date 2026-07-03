@@ -83,6 +83,20 @@ public sealed class MviReducerDispatchGeneratorBehaviorTests
     }
 
     /// <summary>
+    /// 验证生成的 Reduce override 可成功编译并发射。
+    /// </summary>
+    [Test]
+    public async Task Generate_Should_ProduceCompilableCodeAsync()
+    {
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviReducerDispatchGenerator>(
+                StubDefinitions + "\n" + ReducerSource);
+
+        await Assert.That(runResult.GeneratedTrees.Length).IsGreaterThan(0);
+        await Assert.That(emitSuccess).IsTrue();
+    }
+
+    /// <summary>
     /// 桩类型定义：模拟 MVI 框架关键类型。
     /// </summary>
     private const string StubDefinitions = """

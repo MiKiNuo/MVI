@@ -35,7 +35,7 @@ public sealed record EventBindingSearchState(
 /// <summary>
 /// 表示事件绑定搜索面板副作用分发器。
 /// </summary>
-public sealed class EventBindingSearchEffectDispatcher : IMviEffectDispatcher<EventBindingSearchEffect>
+public sealed class EventBindingSearchEffectDispatcher : MviEffectDispatcherBase<EventBindingSearchEffect>
 {
     private readonly IMviMediator _mediator;
 
@@ -49,14 +49,13 @@ public sealed class EventBindingSearchEffectDispatcher : IMviEffectDispatcher<Ev
     }
 
     /// <summary>
-    /// 分发副作用。
+    /// 分发具体副作用。
     /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="effect">副作用（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(EventBindingSearchEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(EventBindingSearchEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
         if (effect is EventBindingSearchEffect.NotifyQueryChanged queryChanged)
         {
             await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(

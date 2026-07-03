@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
@@ -32,7 +32,7 @@ public sealed partial class EventBindingSearchReducer
             EventCount = eventCount,
             StatusText = statusText,
         };
-        return MviReduceResult.StateAndEffect<EventBindingSearchState, EventBindingSearchEffect>(
+        return WithEffect(
             newState,
             new EventBindingSearchEffect.NotifyQueryChanged(queryText));
     }

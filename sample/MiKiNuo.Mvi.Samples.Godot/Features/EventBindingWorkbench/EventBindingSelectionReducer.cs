@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -24,7 +24,7 @@ public sealed partial class EventBindingSelectionReducer
             EventCount = state.EventCount + 1,
             StatusText = $"选择任务：{intent.Payload.SelectedValue?.ToString() ?? "-"}",
         };
-        return MviReduceResult.StateAndEffect<EventBindingSelectionState, EventBindingSelectionEffect>(
+        return WithEffect(
             newState,
             new EventBindingSelectionEffect.NotifySelectionChanged(intent.Payload.SelectedValue?.ToString() ?? "-"));
     }

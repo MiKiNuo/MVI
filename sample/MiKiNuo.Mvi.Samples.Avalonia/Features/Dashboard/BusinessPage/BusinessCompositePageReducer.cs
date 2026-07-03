@@ -1,4 +1,4 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
+using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -20,7 +20,7 @@ public sealed partial class BusinessCompositePageReducer
         BusinessCompositePageIntent.RefreshPage intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<BusinessCompositePageState, UnitEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>
@@ -32,7 +32,7 @@ public sealed partial class BusinessCompositePageReducer
         BusinessCompositePageIntent.UpdateContext intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<BusinessCompositePageState, UnitEffect>(
+        return Unchanged(
             state with { ActiveContext = intent.ActiveContext, FlowStatus = intent.FlowStatus });
     }
 
@@ -45,7 +45,7 @@ public sealed partial class BusinessCompositePageReducer
         BusinessCompositePageIntent.AppendInteractionLog intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.State<BusinessCompositePageState, UnitEffect>(
+        return Unchanged(
             state with { InteractionLog = ComputeNextLog(state.InteractionLog, intent.Message) });
     }
 

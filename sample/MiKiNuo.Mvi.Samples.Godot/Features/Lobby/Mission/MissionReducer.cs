@@ -26,7 +26,7 @@ public sealed partial class MissionReducer
                     MissionState newMission = new(
                         accepted.MissionName,
                         $"已接受 {accepted.MissionName}，消耗体力 {accepted.StaminaCost}，预计奖励 {accepted.Reward}。");
-                    return MviReduceResult.StateAndEffects<MissionState, MissionEffect>(
+                    return WithEffects(
                         newMission,
                         new MissionEffect[]
                         {
@@ -38,7 +38,7 @@ public sealed partial class MissionReducer
                 }
                 case MissionIntent.AcceptFailed failed:
                 {
-                    return MviReduceResult.StateAndEffects<MissionState, MissionEffect>(
+                    return WithEffects(
                         state,
                         new MissionEffect[]
                         {
@@ -49,7 +49,7 @@ public sealed partial class MissionReducer
             }
         }
 
-        return MviReduceResult.State<MissionState, MissionEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>处理任务已接受结果。</summary>
@@ -62,7 +62,7 @@ public sealed partial class MissionReducer
         MissionState newMission = new(
             intent.MissionName,
             $"已接受 {intent.MissionName}，消耗体力 {intent.StaminaCost}，预计奖励 {intent.Reward}。");
-        return MviReduceResult.StateAndEffects<MissionState, MissionEffect>(
+        return WithEffects(
             newMission,
             new MissionEffect[]
             {
@@ -80,7 +80,7 @@ public sealed partial class MissionReducer
         MissionIntent.AcceptFailed intent,
         IMviBusinessResult? result)
     {
-        return MviReduceResult.StateAndEffects<MissionState, MissionEffect>(
+        return WithEffects(
             state,
             new MissionEffect[]
             {
@@ -103,7 +103,7 @@ public sealed partial class MissionReducer
             {
                 MissionProgress = $"{state.SelectedMission} 已完成，获得金币 {completed.Reward}。",
             };
-            return MviReduceResult.StateAndEffects<MissionState, MissionEffect>(
+            return WithEffects(
                 newMission,
                 new MissionEffect[]
                 {
@@ -114,7 +114,7 @@ public sealed partial class MissionReducer
                 });
         }
 
-        return MviReduceResult.State<MissionState, MissionEffect>(state);
+        return Unchanged(state);
     }
 
     /// <summary>处理任务已完成结果。</summary>
@@ -128,7 +128,7 @@ public sealed partial class MissionReducer
         {
             MissionProgress = $"{state.SelectedMission} 已完成，获得金币 {intent.Reward}。",
         };
-        return MviReduceResult.StateAndEffects<MissionState, MissionEffect>(
+        return WithEffects(
             newMission,
             new MissionEffect[]
             {

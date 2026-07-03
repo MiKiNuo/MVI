@@ -8,7 +8,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 /// 处理 <see cref="LoginEffect.NavigateToDashboard"/> 时调用导航服务跳转 Dashboard。
 /// </para>
 /// </summary>
-public sealed class LoginEffectDispatcher : IMviEffectDispatcher<LoginEffect>
+public sealed class LoginEffectDispatcher : MviEffectDispatcherBase<LoginEffect>
 {
     private readonly ILoginNavigationService _navigationService;
 
@@ -27,7 +27,7 @@ public sealed class LoginEffectDispatcher : IMviEffectDispatcher<LoginEffect>
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(LoginEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(LoginEffect effect, CancellationToken cancellationToken)
     {
         switch (effect)
         {

@@ -6,7 +6,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示锻造工坊副作用分发器。
 /// </summary>
-public sealed class ForgeLabEffectDispatcher : IMviEffectDispatcher<ForgeLabEffect>
+public sealed class ForgeLabEffectDispatcher : MviEffectDispatcherBase<ForgeLabEffect>
 {
     private readonly IMviStore<InventoryState, InventoryIntent, InventoryEffect> _inventoryStore;
     private readonly IMviStore<HeroRosterState, HeroRosterIntent, HeroRosterEffect> _heroRosterStore;
@@ -42,11 +42,8 @@ public sealed class ForgeLabEffectDispatcher : IMviEffectDispatcher<ForgeLabEffe
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(ForgeLabEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(ForgeLabEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case ForgeLabEffect.Trace trace:

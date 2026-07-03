@@ -14,8 +14,6 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// </summary>
 public sealed partial class ForgeLabViewModel : MviViewModelBase<UnitState, ForgeLabIntent, ForgeLabEffect>
 {
-    private readonly IDisposable _inventorySubscription;
-    private readonly IDisposable _heroRosterSubscription;
     private int _forgeScore;
     private int _oreCount;
     private int _crystalCount;
@@ -38,15 +36,15 @@ public sealed partial class ForgeLabViewModel : MviViewModelBase<UnitState, Forg
         ArgumentNullException.ThrowIfNull(inventoryStore);
         ArgumentNullException.ThrowIfNull(heroRosterStore);
 
-        _inventorySubscription = inventoryStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(inventoryStore, state =>
         {
-            vm.ForgeScore = state.ForgeScore;
-            vm.OreCount = state.OreCount;
-            vm.CrystalCount = state.CrystalCount;
+            ForgeScore = state.ForgeScore;
+            OreCount = state.OreCount;
+            CrystalCount = state.CrystalCount;
         });
-        _heroRosterSubscription = heroRosterStore.States.Subscribe(this, static (state, vm) =>
+        BindSiblingState(heroRosterStore, state =>
         {
-            vm.HeroTeamPower = state.HeroTeamPower;
+            HeroTeamPower = state.HeroTeamPower;
         });
 
         Observable<bool> canExecute = Store.States
@@ -96,11 +94,9 @@ public sealed partial class ForgeLabViewModel : MviViewModelBase<UnitState, Forg
     {
     }
 
-    /// <summary>释放跨 Store 订阅和手动命令资源。</summary>
+    /// <summary>释放手动命令资源。</summary>
     protected override void OnDispose()
     {
-        _inventorySubscription.Dispose();
-        _heroRosterSubscription.Dispose();
         ForgeWeaponCommand.Dispose();
         ForgeArmorCommand.Dispose();
         base.OnDispose();

@@ -9,7 +9,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// <summary>
 /// 表示背包仓库副作用分发器。
 /// </summary>
-public sealed class InventoryEffectDispatcher : IMviEffectDispatcher<InventoryEffect>
+public sealed class InventoryEffectDispatcher : MviEffectDispatcherBase<InventoryEffect>
 {
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
     private readonly IMviStore<BattlePrepState, BattlePrepIntent, BattlePrepEffect> _battlePrepStore;
@@ -41,11 +41,8 @@ public sealed class InventoryEffectDispatcher : IMviEffectDispatcher<InventoryEf
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(InventoryEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(InventoryEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        cancellationToken.ThrowIfCancellationRequested();
-
         switch (effect)
         {
             case InventoryEffect.Trace trace:

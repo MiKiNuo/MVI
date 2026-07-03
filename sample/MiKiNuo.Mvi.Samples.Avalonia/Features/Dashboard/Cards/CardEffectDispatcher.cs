@@ -20,7 +20,7 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 ///    随后向同 SourceKey 组内全部 4 张卡片(含自身)派发 <see cref="CardIntent.ApplyPatientAdmitted"/>,
 ///    让床位总览 / 护理任务 / 病区风险 / 入院登记 4 张卡片同时显示新患者。
 /// </summary>
-public sealed class CardEffectDispatcher : IMviEffectDispatcher<CardEffect>
+public sealed class CardEffectDispatcher : MviEffectDispatcherBase<CardEffect>
 {
     private const string PrimaryActionKey = "主业务动作";
     private const string SecondaryActionKey = "辅助业务动作";
@@ -60,10 +60,8 @@ public sealed class CardEffectDispatcher : IMviEffectDispatcher<CardEffect>
     /// <param name="effect">副作用。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步分发过程的任务。</returns>
-    public async ValueTask DispatchAsync(CardEffect effect, CancellationToken cancellationToken = default)
+    protected override async ValueTask DispatchCoreAsync(CardEffect effect, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-
         if (effect is CardEffect.RequestPrimaryWorkflow primaryWorkflow)
         {
             await NotifySiblingsAsync(primaryWorkflow.ContextText, cancellationToken).ConfigureAwait(false);

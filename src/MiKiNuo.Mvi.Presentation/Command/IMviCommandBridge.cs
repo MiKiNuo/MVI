@@ -7,11 +7,10 @@ namespace MiKiNuo.Mvi.Presentation.Command;
 /// （<see cref="ICommand"/>）的工厂抽象。
 /// </summary>
 /// <remarks>
-/// 平台控件（Avalonia <c>Button.Command</c>、MAUI/WPF 等）只识别 <see cref="ICommand"/>。
-/// 当 View 需要把 MVI 命令绑定到平台控件的 <c>Command</c> 属性时，
-/// 通过本接口获取 <see cref="ICommand"/> 适配器以完成绑定。
-/// Presentation 层提供默认实现 <see cref="MviCommandBridge"/>，
-/// 平台层亦可实现自定义的桥接策略（例如接入本地命令管理器）。</remarks>
+/// <see cref="IMviCommand"/> 已继承 <see cref="ICommand"/>,
+/// 默认实现 <see cref="MviCommandBridge"/> 仅做 null 校验后原样返回。
+/// 保留本接口以便平台层接入自定义命令管理逻辑。
+/// </remarks>
 public interface IMviCommandBridge
 {
     /// <summary>

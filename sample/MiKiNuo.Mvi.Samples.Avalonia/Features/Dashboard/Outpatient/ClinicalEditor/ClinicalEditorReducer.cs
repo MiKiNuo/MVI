@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -32,7 +32,7 @@ public sealed partial class ClinicalEditorReducer
             CanSave = false,
         };
 
-        return MviReduceResult.State<ClinicalEditorState, UnitEffect>(newState);
+        return Unchanged(newState);
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public sealed partial class ClinicalEditorReducer
             CanSave = canSave,
         };
 
-        return MviReduceResult.State<ClinicalEditorState, UnitEffect>(newState);
+        return Unchanged(newState);
     }
 
     /// <summary>
@@ -69,6 +69,6 @@ public sealed partial class ClinicalEditorReducer
 
         ClinicalEditorState newState = state with { SaveMessage = message };
 
-        return MviReduceResult.State<ClinicalEditorState, UnitEffect>(newState);
+        return Unchanged(newState);
     }
 }

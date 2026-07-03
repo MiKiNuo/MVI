@@ -54,6 +54,40 @@ internal static class GeneratorTestHost
     }
 
     /// <summary>
+    /// 驱动生成器并将生成代码合并回编译,
+    /// 验证生成产物可成功编译。
+    /// </summary>
+    /// <typeparam name="TGenerator">生成器类型。</typeparam>
+    /// <param name="source">测试源代码。</param>
+    /// <param name="extraReferences">额外元数据引用。</param>
+    /// <returns>生成器运行结果与发射是否成功。</returns>
+    public static (GeneratorDriverRunResult RunResult, bool EmitSuccess)
+        RunGeneratorAndCompile<TGenerator>(
+            string source, params MetadataReference[] extraReferences)
+        where TGenerator : IIncrementalGenerator, new()
+    {
+        TGenerator generator = new();
+        CSharpCompilation compilation = CreateCompilation(source, extraReferences);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        GeneratorDriverRunResult runResult = driver.RunGenerators(compilation).GetRunResult();
+
+        // 生成器产出的语法树语言版本可能与编译对象不一致,
+        // 需用相同解析选项重新解析后再合并。
+        CSharpParseOptions parseOptions = new(LanguageVersion.Preview);
+        List<SyntaxTree> recompiledTrees = new();
+        foreach (SyntaxTree tree in runResult.GeneratedTrees)
+        {
+            recompiledTrees.Add(CSharpSyntaxTree.ParseText(tree.GetText(), parseOptions));
+        }
+
+        CSharpCompilation finalCompilation = compilation.AddSyntaxTrees(recompiledTrees);
+        using MemoryStream stream = new();
+        bool emitSuccess = finalCompilation.Emit(stream).Success;
+
+        return (runResult, emitSuccess);
+    }
+
+    /// <summary>
     /// 获取基础元数据引用列表。
     /// </summary>
     private static IEnumerable<MetadataReference> GetBaseReferences()
