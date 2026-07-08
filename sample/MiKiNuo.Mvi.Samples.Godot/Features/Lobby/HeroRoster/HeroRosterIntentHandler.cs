@@ -11,7 +11,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// 表示英雄队伍意图处理器。
 /// </summary>
 public sealed class HeroRosterIntentHandler
-    : IMviIntentHandler<HeroRosterState, HeroRosterIntent, HeroRosterEffect>
+    : MviIntentHandlerBase<HeroRosterState, HeroRosterIntent, HeroRosterEffect>
 {
     private readonly ILobbyApiService _apiService;
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
@@ -38,20 +38,21 @@ public sealed class HeroRosterIntentHandler
     }
 
     /// <summary>
-    /// 处理意图并产生业务结果。
+    /// 处理具体业务逻辑。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="state">当前状态（已通过 null 检查）。</param>
+    /// <param name="intent">用户意图（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>业务结果;无业务时返回 null。</returns>
-    public async ValueTask<IMviBusinessResult?> HandleAsync(
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Design",
+        "CA1062:Validate arguments of public methods",
+        Justification = "由基类统一验证参数。")]
+    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
         HeroRosterState state,
         HeroRosterIntent intent,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
         switch (intent)
         {
             case HeroRosterIntent.Train train:

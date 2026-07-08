@@ -456,24 +456,22 @@ public abstract partial record EventCommandEffect : IMviEffect;
 /// 表示事件命令测试意图处理器。
 /// </summary>
 public sealed class EventCommandIntentHandler
-    : IMviIntentHandler<EventCommandState, EventCommandIntent, EventCommandEffect>
+    : MviIntentHandlerBase<EventCommandState, EventCommandIntent, EventCommandEffect>
 {
     /// <summary>
-    /// 处理意图产生业务结果。
+    /// 处理具体业务逻辑。
     /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <param name="cancellationToken">取消标记。</param>
+    /// <param name="state">当前状态（已通过 null 检查）。</param>
+    /// <param name="intent">用户意图（已通过 null 检查）。</param>
+    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>业务结果;无业务时返回 null。</returns>
-    public ValueTask<IMviBusinessResult?> HandleAsync(
+    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
         EventCommandState state,
         EventCommandIntent intent,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        return ValueTask.FromResult<IMviBusinessResult?>(null);
+        await Task.CompletedTask;
+        return null;
     }
 }
 
