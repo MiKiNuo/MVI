@@ -18,7 +18,8 @@ public abstract partial record ForgeLabIntent : IMviIntent
         /// <param name="spec">锻造规格。</param>
         public Forge(ForgeSpec spec)
         {
-            Spec = spec ?? throw new ArgumentNullException(nameof(spec));
+            ArgumentNullException.ThrowIfNull(spec);
+            Spec = spec;
         }
 
         /// <summary>

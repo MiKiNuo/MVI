@@ -77,7 +77,8 @@ public sealed class EventBindingDetailEffectDispatcher : MviEffectDispatcherBase
     /// <param name="mediator">中介者。</param>
     public EventBindingDetailEffectDispatcher(IMviMediator mediator)
     {
-        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+        ArgumentNullException.ThrowIfNull(mediator);
+        _mediator = mediator;
     }
 
     /// <summary>

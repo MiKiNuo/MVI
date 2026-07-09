@@ -12,7 +12,8 @@ public sealed class MviViewNotFoundException : Exception
     public MviViewNotFoundException(Type viewModelType)
         : base(CreateMessage(viewModelType))
     {
-        ViewModelType = viewModelType ?? throw new ArgumentNullException(nameof(viewModelType));
+        ArgumentNullException.ThrowIfNull(viewModelType);
+        ViewModelType = viewModelType;
     }
 
     /// <summary>

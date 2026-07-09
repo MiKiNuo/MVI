@@ -15,7 +15,8 @@ public abstract partial record PlayerIntent : IMviIntent
         /// <param name="profile">玩家资料。</param>
         public SetPlayer(PlayerProfile profile)
         {
-            Profile = profile ?? throw new ArgumentNullException(nameof(profile));
+            ArgumentNullException.ThrowIfNull(profile);
+            Profile = profile;
         }
 
         /// <summary>获取玩家资料。</summary>

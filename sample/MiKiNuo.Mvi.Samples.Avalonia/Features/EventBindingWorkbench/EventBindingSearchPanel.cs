@@ -1,5 +1,3 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
-using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
@@ -30,39 +28,6 @@ public sealed record EventBindingSearchState(
         string.Empty,
         0,
         "等待 TextChanged 事件。");
-}
-
-/// <summary>
-/// 表示事件绑定搜索面板副作用分发器。
-/// </summary>
-public sealed class EventBindingSearchEffectDispatcher : MviEffectDispatcherBase<EventBindingSearchEffect>
-{
-    private readonly IMviMediator _mediator;
-
-    /// <summary>
-    /// 初始化事件绑定搜索面板副作用分发器。
-    /// </summary>
-    /// <param name="mediator">中介者。</param>
-    public EventBindingSearchEffectDispatcher(IMviMediator mediator)
-    {
-        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
-    }
-
-    /// <summary>
-    /// 分发具体副作用。
-    /// </summary>
-    /// <param name="effect">副作用（已通过 null 检查）。</param>
-    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
-    /// <returns>表示异步分发过程的任务。</returns>
-    protected override async ValueTask DispatchCoreAsync(EventBindingSearchEffect effect, CancellationToken cancellationToken)
-    {
-        if (effect is EventBindingSearchEffect.NotifyQueryChanged queryChanged)
-        {
-            await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(
-                new EventBindingWorkbenchInteractionRequest("SearchPanel", "TextChanged", queryChanged.QueryText),
-                cancellationToken).ConfigureAwait(false);
-        }
-    }
 }
 
 /// <summary>

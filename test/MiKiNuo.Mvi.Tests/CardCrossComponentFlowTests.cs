@@ -2,7 +2,6 @@ using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
-using MiKiNuo.Mvi.Tests.TestSupport;
 using R3;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -127,7 +126,7 @@ file sealed class CardCrossComponentHarness
         {
             CardDefinition definition = DashboardCardRegistry.GetDefinition(key)
                 ?? throw new InvalidOperationException($"未注册 {key}");
-            NoopCardEffectDispatcher storeDispatcher = new();
+            NoopEffectDispatcher<CardEffect> storeDispatcher = new();
             MviStore<CardState, CardIntent, CardEffect> store = new(
                 CardState.FromDefinition(definition),
                 new CardIntentHandler(),
@@ -211,25 +210,5 @@ file sealed class CardCrossComponentHarness
     private void UpdateLatest(CardState snapshot)
     {
         _latestStates[snapshot.PageKey] = snapshot;
-    }
-}
-
-/// <summary>
-/// 仅作为构造 MviStore 用的占位 EffectDispatcher：不实际派发任何副作用；
-/// 测试中所有副作用都是通过 harness 手动构造的 <see cref="CardEffectDispatcher"/> 直接派发。
-/// </summary>
-file sealed class NoopCardEffectDispatcher : MiKiNuo.Mvi.Application.MVI.Effect.IMviEffectDispatcher<CardEffect>
-{
-    /// <summary>
-    /// 空实现：直接返回完成的 ValueTask，不派发任何副作用。
-    /// </summary>
-    /// <param name="effect">副作用（忽略）。</param>
-    /// <param name="cancellationToken">取消标记（忽略）。</param>
-    /// <returns>已完成的任务。</returns>
-    public ValueTask DispatchAsync(CardEffect effect, CancellationToken cancellationToken = default)
-    {
-        _ = effect;
-        _ = cancellationToken;
-        return ValueTask.CompletedTask;
     }
 }

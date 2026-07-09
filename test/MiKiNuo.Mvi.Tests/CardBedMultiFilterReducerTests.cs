@@ -1,4 +1,3 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
@@ -147,20 +146,6 @@ public sealed class CardBedMultiFilterReducerTests
             initial,
             new CardIntentHandler(),
             new CardReducer(DashboardCardRegistry.All),
-            new NoopCardEffectDispatcher());
-    }
-
-    private sealed class NoopCardEffectDispatcher : IMviEffectDispatcher<CardEffect>
-    {
-        /// <summary>
-        /// 分发副作用。
-        /// </summary>
-        /// <param name="effect">副作用。</param>
-        /// <param name="cancellationToken">取消标记。</param>
-        /// <returns>表示异步分发过程的任务。</returns>
-        public ValueTask DispatchAsync(CardEffect effect, CancellationToken cancellationToken = default)
-        {
-            return ValueTask.CompletedTask;
-        }
+            new NoopEffectDispatcher<CardEffect>());
     }
 }

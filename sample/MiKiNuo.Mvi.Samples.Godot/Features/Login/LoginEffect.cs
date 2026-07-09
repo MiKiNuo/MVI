@@ -20,7 +20,8 @@ public abstract partial record LoginEffect : IMviEffect
         /// <param name="profile">玩家资料。</param>
         public LoginSucceeded(PlayerProfile profile)
         {
-            Profile = profile ?? throw new ArgumentNullException(nameof(profile));
+            ArgumentNullException.ThrowIfNull(profile);
+            Profile = profile;
         }
 
         /// <summary>

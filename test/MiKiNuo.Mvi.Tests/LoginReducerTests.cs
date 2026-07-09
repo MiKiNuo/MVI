@@ -22,7 +22,7 @@ public sealed class LoginReducerTests
             LoginState.Initial,
             new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
-            new EmptyLoginEffectDispatcher());
+            new NoopEffectDispatcher<LoginEffect>());
 
         await store.DispatchAsync(new LoginIntent.ChangeUserName("admin"));
         await store.DispatchAsync(new LoginIntent.ChangePassword("123456"));
@@ -46,7 +46,7 @@ public sealed class LoginReducerTests
             initialState,
             new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
-            new EmptyLoginEffectDispatcher());
+            new NoopEffectDispatcher<LoginEffect>());
         List<LoginEffect> effects = [];
         IDisposable subscription = store.Effects.Subscribe(e => effects.Add(e));
 
@@ -74,26 +74,11 @@ public sealed class LoginReducerTests
             initialState,
             new LoginIntentHandler(new FakeAuthService()),
             new LoginReducer(),
-            new EmptyLoginEffectDispatcher());
+            new NoopEffectDispatcher<LoginEffect>());
 
         await store.DispatchAsync(new LoginIntent.Submit());
 
         await Assert.That(store.CurrentState.IsBusy).IsFalse();
         await Assert.That(store.CurrentState.ErrorMessage).IsNotNull();
-    }
-
-    private sealed class EmptyLoginEffectDispatcher
-        : MiKiNuo.Mvi.Application.MVI.Effect.IMviEffectDispatcher<LoginEffect>
-    {
-        /// <summary>
-        /// 分发副作用。
-        /// </summary>
-        /// <param name="effect">副作用。</param>
-        /// <param name="cancellationToken">取消标记。</param>
-        /// <returns>表示异步分发过程的任务。</returns>
-        public ValueTask DispatchAsync(LoginEffect effect, CancellationToken cancellationToken = default)
-        {
-            return ValueTask.CompletedTask;
-        }
     }
 }

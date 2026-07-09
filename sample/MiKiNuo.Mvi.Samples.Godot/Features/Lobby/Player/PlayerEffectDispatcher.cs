@@ -22,9 +22,12 @@ public sealed class PlayerEffectDispatcher : MviEffectDispatcherBase<PlayerEffec
         IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> activityLogStore,
         ITraceEffectLogger traceLogger)
     {
-        _battlePrepStore = battlePrepStore ?? throw new ArgumentNullException(nameof(battlePrepStore));
-        _activityLogStore = activityLogStore ?? throw new ArgumentNullException(nameof(activityLogStore));
-        _traceLogger = traceLogger ?? throw new ArgumentNullException(nameof(traceLogger));
+        ArgumentNullException.ThrowIfNull(battlePrepStore);
+        _battlePrepStore = battlePrepStore;
+        ArgumentNullException.ThrowIfNull(activityLogStore);
+        _activityLogStore = activityLogStore;
+        ArgumentNullException.ThrowIfNull(traceLogger);
+        _traceLogger = traceLogger;
     }
 
     /// <summary>分发副作用。</summary>

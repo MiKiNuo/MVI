@@ -29,11 +29,16 @@ public sealed class ForgeLabEffectDispatcher : MviEffectDispatcherBase<ForgeLabE
         IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> activityLogStore,
         ITraceEffectLogger traceLogger)
     {
-        _inventoryStore = inventoryStore ?? throw new ArgumentNullException(nameof(inventoryStore));
-        _heroRosterStore = heroRosterStore ?? throw new ArgumentNullException(nameof(heroRosterStore));
-        _battlePrepStore = battlePrepStore ?? throw new ArgumentNullException(nameof(battlePrepStore));
-        _activityLogStore = activityLogStore ?? throw new ArgumentNullException(nameof(activityLogStore));
-        _traceLogger = traceLogger ?? throw new ArgumentNullException(nameof(traceLogger));
+        ArgumentNullException.ThrowIfNull(inventoryStore);
+        _inventoryStore = inventoryStore;
+        ArgumentNullException.ThrowIfNull(heroRosterStore);
+        _heroRosterStore = heroRosterStore;
+        ArgumentNullException.ThrowIfNull(battlePrepStore);
+        _battlePrepStore = battlePrepStore;
+        ArgumentNullException.ThrowIfNull(activityLogStore);
+        _activityLogStore = activityLogStore;
+        ArgumentNullException.ThrowIfNull(traceLogger);
+        _traceLogger = traceLogger;
     }
 
     /// <summary>

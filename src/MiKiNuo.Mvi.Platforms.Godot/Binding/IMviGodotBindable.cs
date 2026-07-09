@@ -6,9 +6,14 @@ namespace MiKiNuo.Mvi.Platforms.Godot.Binding;
 /// 表示可以绑定和解绑 ViewModel 的 Godot MVI View。
 /// </summary>
 /// <typeparam name="TViewModel">ViewModel 类型。</typeparam>
-public interface IMviGodotBindable<TViewModel> : IMviGodotView<TViewModel>
+public interface IMviGodotBindable<TViewModel>
     where TViewModel : class
 {
+    /// <summary>
+    /// 获取当前绑定的 ViewModel。
+    /// </summary>
+    public TViewModel? ViewModel { get; }
+
     /// <summary>
     /// 绑定 ViewModel 与子组件解析容器。
     /// <para>

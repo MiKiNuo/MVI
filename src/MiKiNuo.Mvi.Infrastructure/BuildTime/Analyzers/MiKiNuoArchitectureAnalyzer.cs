@@ -129,7 +129,21 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         string projectName,
         string referenceName)
     {
-        if (!IsMiKiNuoProject(projectName) || !IsMiKiNuoProject(referenceName))
+        if (!IsMiKiNuoProject(projectName))
+        {
+            return;
+        }
+
+        // 平台包隔离规则检查外部 NuGet 包引用，
+        // 不要求引用本身是 MiKiNuo 项目。
+        if (IsPresentation(projectName) && IsConcretePlatformPackage(referenceName))
+        {
+            Report(context, PresentationPackageIsolationRule, projectName, referenceName);
+            return;
+        }
+
+        // 以下规则只针对 MiKiNuo 项目间的引用。
+        if (!IsMiKiNuoProject(referenceName))
         {
             return;
         }
@@ -155,12 +169,6 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         if (IsPresentation(projectName) && IsPlatform(referenceName))
         {
             Report(context, PresentationReferencePlatformRule, projectName, referenceName);
-            return;
-        }
-
-        if (IsPresentation(projectName) && IsConcretePlatformPackage(referenceName))
-        {
-            Report(context, PresentationPackageIsolationRule, projectName, referenceName);
             return;
         }
 

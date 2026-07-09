@@ -1,3 +1,8 @@
+using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
+using MiKiNuo.Mvi.Infrastructure.BuildTime.Analyzers;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -34,29 +39,68 @@ public sealed class ArchitecturePresentationPackageIsolationTests
     }
 
     /// <summary>
-    /// 验证 <c>MiKiNuoArchitectureAnalyzer</c> 的 <c>SupportedDiagnostics</c> 已经把
-    /// <c>ArchPresentationPackageIsolation</c> 规则挂在 <c>PresentationReferencePlatformRule</c> 之外。
+    /// 验证 Presentation 项目引用 Avalonia 平台包时，
+    /// 分析器产出 ARCH0009 诊断。
     /// </summary>
     [Test]
-    public async Task ArchitectureAnalyzer_Should_ExposePresentationPackageIsolationRuleAsync()
+    public async Task ArchitectureAnalyzer_ReportsArch0009_WhenPresentationReferencesAvaloniaAsync()
     {
-        string root = FindRepositoryRoot();
-        string analyzerPath = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
-            "Analyzers",
-            "MiKiNuoArchitectureAnalyzer.cs");
+        ImmutableArray<Diagnostic> diagnostics = await RunArchitectureAnalyzerAsync(
+            "MiKiNuo.Mvi.Presentation",
+            MetadataReference.CreateFromFile(typeof(global::Avalonia.AvaloniaObject).Assembly.Location));
 
-        string analyzer = await File.ReadAllTextAsync(analyzerPath);
+        bool hasArch0009 = diagnostics.Any(d => d.Id == "ARCH0009");
+        await Assert.That(hasArch0009).IsTrue();
+    }
 
-        // 规则 ID 来自 DiagnosticIdCatalog，而非裸字符串
-        await Assert.That(analyzer).Contains("DiagnosticIdCatalog.ArchPresentationPackageIsolation");
-        // 平台包判定逻辑（同时覆盖 Avalonia 与 Godot 两个家族）
-        await Assert.That(analyzer).Contains("IsConcretePlatformPackage");
-        await Assert.That(analyzer).Contains("\"Avalonia\"");
-        await Assert.That(analyzer).Contains("\"Godot\"");
+    /// <summary>
+    /// 验证 Presentation 项目不引用平台包时，
+    /// 分析器不产出 ARCH0009 诊断。
+    /// </summary>
+    [Test]
+    public async Task ArchitectureAnalyzer_DoesNotReportArch0009_WhenPresentationHasNoPlatformPackageAsync()
+    {
+        ImmutableArray<Diagnostic> diagnostics = await RunArchitectureAnalyzerAsync(
+            "MiKiNuo.Mvi.Presentation");
+
+        bool hasArch0009 = diagnostics.Any(d => d.Id == "ARCH0009");
+        await Assert.That(hasArch0009).IsFalse();
+    }
+
+    /// <summary>
+    /// 构造指定程序集名的编译并运行架构分析器，
+    /// 返回分析器产出的诊断集合。
+    /// </summary>
+    /// <param name="assemblyName">被分析项目的程序集名。</param>
+    /// <param name="extraReferences">额外的元数据引用。</param>
+    /// <returns>分析器产出的诊断集合。</returns>
+    private static async Task<ImmutableArray<Diagnostic>> RunArchitectureAnalyzerAsync(
+        string assemblyName,
+        params MetadataReference[] extraReferences)
+    {
+        CSharpParseOptions parseOptions = new(LanguageVersion.Preview);
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText("// empty", parseOptions);
+
+        List<MetadataReference> references = new()
+        {
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+        };
+        references.AddRange(extraReferences);
+
+        CSharpCompilationOptions options = new(
+            OutputKind.DynamicallyLinkedLibrary,
+            nullableContextOptions: NullableContextOptions.Enable);
+
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName,
+            new[] { syntaxTree },
+            references,
+            options);
+
+        CompilationWithAnalyzers analysis = compilation.WithAnalyzers(
+            ImmutableArray.Create<DiagnosticAnalyzer>(new MiKiNuoArchitectureAnalyzer()));
+
+        return await analysis.GetAnalyzerDiagnosticsAsync();
     }
 
     /// <summary>

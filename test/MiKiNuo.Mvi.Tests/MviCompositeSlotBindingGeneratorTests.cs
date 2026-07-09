@@ -19,52 +19,6 @@ namespace MiKiNuo.Mvi.Tests;
 public sealed class MviCompositeSlotBindingGeneratorTests
 {
     /// <summary>
-    /// 验证组合模式槽位源生成器源文件存在，类型入口与分析阶段合并到同一源文件（与现有
-    /// <c>MviViewModelGenerator</c> / <c>MviDiContainerGenerator</c> 风格一致）。
-    /// </summary>
-    [Test]
-    public async Task GeneratorFile_Should_ExistWithMergedEntryAndAnalysisAsync()
-    {
-        string root = FindRepositoryRoot();
-        string generatorPath = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
-            "SourceGeneration",
-            "MviCompositeSlotBindingGenerator.cs");
-
-        string content = await File.ReadAllTextAsync(generatorPath);
-
-        await Assert.That(File.Exists(generatorPath)).IsTrue();
-        await Assert.That(content).Contains("class MviCompositeSlotBindingGenerator");
-        await Assert.That(content).Contains("class Analysis");
-        await Assert.That(content).Contains("class Emission");
-    }
-
-    /// <summary>
-    /// 验证生成器入口注册了 <c>MviSlotAttribute</c> 全限定元数据名匹配，
-    /// 扫描类声明上挂载的 <c>[MviSlot]</c> / <c>[MviSlotAttribute]</c> 字段。
-    /// </summary>
-    [Test]
-    public async Task Generator_Should_DiscoverMviSlotAttributeOnFieldsAsync()
-    {
-        string root = FindRepositoryRoot();
-        string generatorPath = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
-            "SourceGeneration",
-            "MviCompositeSlotBindingGenerator.cs");
-
-        string content = await File.ReadAllTextAsync(generatorPath);
-
-        await Assert.That(content).Contains("MiKiNuo.Mvi.Presentation.Slot.MviSlotAttribute");
-        await Assert.That(content).Contains("MviSlotAttribute");
-    }
-
-    /// <summary>
     /// 验证生成器 emit 的 OnBindSlots override 同时支持 Avalonia（<c>slot.Content = view</c>）
     /// 与 Godot（<c>Clear + AddChild</c>）两种槽位字段挂载语义。
     /// </summary>
@@ -89,28 +43,6 @@ public sealed class MviCompositeSlotBindingGeneratorTests
         // Godot: Control 节点 Clear + AddChild
         await Assert.That(content).Contains("GetChildren");
         await Assert.That(content).Contains("AddChild");
-    }
-
-    /// <summary>
-    /// 验证生成器 emit 的 OnBindSlots override 会订阅父 ViewModel 的 <c>PropertyChanged</c> 事件，
-    /// 触发 <c>Observes</c> 中声明的属性重新解析槽位；这是"父 VM 状态变更驱动子 VM 重新渲染"的核心契约。
-    /// </summary>
-    [Test]
-    public async Task Emission_Should_SubscribePropertyChangedForObservedPropertiesAsync()
-    {
-        string root = FindRepositoryRoot();
-        string generatorPath = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
-            "SourceGeneration",
-            "MviCompositeSlotBindingGenerator.cs");
-
-        string content = await File.ReadAllTextAsync(generatorPath);
-
-        await Assert.That(content).Contains("PropertyChanged");
-        await Assert.That(content).Contains("PropertyChangedEventArgs");
     }
 
     /// <summary>

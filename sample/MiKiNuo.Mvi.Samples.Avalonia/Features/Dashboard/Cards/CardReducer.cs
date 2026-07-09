@@ -22,7 +22,8 @@ public sealed partial class CardReducer
     /// <param name="definitions">卡片定义字典。</param>
     public CardReducer(IReadOnlyDictionary<PageKey, CardDefinition> definitions)
     {
-        _definitions = definitions ?? throw new ArgumentNullException(nameof(definitions));
+        ArgumentNullException.ThrowIfNull(definitions);
+        _definitions = definitions;
     }
 
     /// <summary>

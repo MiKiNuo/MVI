@@ -21,7 +21,8 @@ public sealed class LoginIntentHandler
     /// <param name="authService">认证服务。</param>
     public LoginIntentHandler(IAuthService authService)
     {
-        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        ArgumentNullException.ThrowIfNull(authService);
+        _authService = authService;
     }
 
     /// <summary>

@@ -13,8 +13,10 @@ public sealed class MviMediatorRouteNotFoundException : Exception
     public MviMediatorRouteNotFoundException(Type requestType, Type responseType)
         : base(CreateMessage(requestType, responseType))
     {
-        RequestType = requestType ?? throw new ArgumentNullException(nameof(requestType));
-        ResponseType = responseType ?? throw new ArgumentNullException(nameof(responseType));
+        ArgumentNullException.ThrowIfNull(requestType);
+        RequestType = requestType;
+        ArgumentNullException.ThrowIfNull(responseType);
+        ResponseType = responseType;
     }
 
     /// <summary>

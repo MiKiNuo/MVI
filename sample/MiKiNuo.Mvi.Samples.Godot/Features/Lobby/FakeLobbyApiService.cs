@@ -18,7 +18,8 @@ public sealed class FakeLobbyApiService : ILobbyApiService
     /// <param name="gameLogicService">游戏逻辑服务。</param>
     public FakeLobbyApiService(GameLogicService gameLogicService)
     {
-        _gameLogicService = gameLogicService ?? throw new ArgumentNullException(nameof(gameLogicService));
+        ArgumentNullException.ThrowIfNull(gameLogicService);
+        _gameLogicService = gameLogicService;
     }
 
     /// <summary>

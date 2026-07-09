@@ -1,10 +1,8 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Cards;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Inpatient.BedCatalog;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.PatientRegistry;
-using MiKiNuo.Mvi.Tests.TestSupport;
 using TUnit.Assertions;
 using TUnit.Core;
 using ZLinq;
@@ -157,7 +155,7 @@ public sealed class CardReducerSmokeTest
             initial,
             new CardIntentHandler(),
             new CardReducer(DashboardCardRegistry.All),
-            new NoopCardEffectDispatcher());
+            new NoopEffectDispatcher<CardEffect>());
 
         await store.DispatchAsync(new CardIntent.SetFormField(firstKey, "TEST-VALUE"));
 
@@ -204,7 +202,7 @@ public sealed class CardReducerSmokeTest
             state,
             new CardIntentHandler(),
             new CardReducer(isolated),
-            new NoopCardEffectDispatcher());
+            new NoopEffectDispatcher<CardEffect>());
 
         await store.DispatchAsync(new CardIntent.SetFormField("ProbeKey", "Hello"));
 
@@ -215,19 +213,5 @@ public sealed class CardReducerSmokeTest
     private static Func<IReadOnlyList<CardFormValueEntry>, (bool CanSubmit, string StatusText, string ActionLog)> BuildAlwaysValidProbeValidator()
     {
         return values => (true, "Probe 资料已完整，可以提交", "Probe 提交 -> 探测流程。");
-    }
-
-    private sealed class NoopCardEffectDispatcher : IMviEffectDispatcher<CardEffect>
-    {
-        /// <summary>
-        /// 分发副作用。
-        /// </summary>
-        /// <param name="effect">副作用。</param>
-        /// <param name="cancellationToken">取消标记。</param>
-        /// <returns>表示异步分发过程的任务。</returns>
-        public ValueTask DispatchAsync(CardEffect effect, CancellationToken cancellationToken = default)
-        {
-            return ValueTask.CompletedTask;
-        }
     }
 }

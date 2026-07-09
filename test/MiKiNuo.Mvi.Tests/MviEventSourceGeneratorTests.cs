@@ -14,28 +14,6 @@ namespace MiKiNuo.Mvi.Tests;
 public sealed class MviEventSourceGeneratorTests
 {
     /// <summary>
-    /// 验证源生成器文件存在且包含基本结构。
-    /// </summary>
-    [Test]
-    public async Task GeneratorFile_Should_ExistWithBasicStructureAsync()
-    {
-        string root = FindRepositoryRoot();
-        string generatorPath = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
-            "SourceGeneration",
-            "MviEventSourceGenerator.cs");
-
-        string content = await File.ReadAllTextAsync(generatorPath);
-
-        await Assert.That(File.Exists(generatorPath)).IsTrue();
-        await Assert.That(content).Contains("class MviEventSourceGenerator");
-        await Assert.That(content).Contains("IIncrementalGenerator");
-    }
-
-    /// <summary>
     /// 验证生成器使用全量扫描而非硬编码白名单。
     /// </summary>
     [Test]
@@ -60,27 +38,6 @@ public sealed class MviEventSourceGeneratorTests
         // 不应包含硬编码白名单字段
         await Assert.That(content).DoesNotContain("AvaloniaWhitelist");
         await Assert.That(content).DoesNotContain("GodotWhitelist");
-    }
-
-    /// <summary>
-    /// 验证生成器包含通用委托类型解析逻辑。
-    /// </summary>
-    [Test]
-    public async Task Generator_Should_ContainDelegateInvokeMethodResolutionAsync()
-    {
-        string root = FindRepositoryRoot();
-        string generatorPath = Path.Combine(
-            root,
-            "src",
-            "MiKiNuo.Mvi.Infrastructure",
-            "BuildTime",
-            "SourceGeneration",
-            "MviEventSourceGenerator.cs");
-
-        string content = await File.ReadAllTextAsync(generatorPath);
-
-        // 应通过 DelegateInvokeMethod 通用解析委托参数
-        await Assert.That(content).Contains("DelegateInvokeMethod");
     }
 
     /// <summary>

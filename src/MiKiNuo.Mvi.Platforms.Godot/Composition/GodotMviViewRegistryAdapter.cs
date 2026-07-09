@@ -31,7 +31,8 @@ public class GodotMviViewRegistryAdapter : IMviViewRegistry
     /// <param name="inner">底层 Godot ViewRegistry（已注册所有 View）。</param>
     public GodotMviViewRegistryAdapter(IGodotMviViewRegistry inner)
     {
-        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        ArgumentNullException.ThrowIfNull(inner);
+        _inner = inner;
     }
 
     /// <summary>

@@ -1,5 +1,4 @@
 using MiKiNuo.Mvi.Application.MVI.Command;
-using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.EventBinding;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
@@ -13,7 +12,6 @@ using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
 using MiKiNuo.Mvi.Presentation.Binding;
-using MiKiNuo.Mvi.Presentation.Command;
 using MiKiNuo.Mvi.Presentation.Disposables;
 using MiKiNuo.Mvi.Presentation.Events;
 using TUnit.Assertions;
@@ -36,7 +34,7 @@ public sealed class ViewEventCommandBindingTests
             EventCommandState.Initial,
             new EventCommandIntentHandler(),
             new EventCommandReducer(),
-            new EmptyEventCommandEffectDispatcher());
+            new NoopEffectDispatcher<EventCommandEffect>());
         using EventCommandViewModel viewModel = new(store);
 
         viewModel.CaptureTextCommand.Execute(new MviTextChangedEventPayload(
@@ -201,65 +199,6 @@ public sealed class ViewEventCommandBindingTests
     }
 
     /// <summary>
-    /// 验证 <see cref="MviCommandBridge"/> 包装的 <c>ICommand</c> 适配器把
-    /// <see cref="System.Windows.Input.ICommand.CanExecute(object?)"/>、
-    /// <see cref="System.Windows.Input.ICommand.Execute(object?)"/> 与
-    /// <see cref="System.Windows.Input.ICommand.CanExecuteChanged"/> 事件
-    /// 正确转发到底层 <see cref="IMviCommand"/>。
-    /// </summary>
-    [Test]
-    public async Task CommandBridge_Should_ForwardCanExecuteExecuteAndEventToMviCommandAsync()
-    {
-        int executedCount = 0;
-        object? executedParameter = null;
-        RecordingMviCommand mviCommand = new(
-            canExecute: static _ => true,
-            execute: parameter =>
-            {
-                executedCount++;
-                executedParameter = parameter;
-            });
-
-        System.Windows.Input.ICommand adapter = MviCommandBridge.ToICommand(mviCommand);
-
-        await Assert.That(adapter.CanExecute("payload")).IsTrue();
-        adapter.Execute("payload");
-        await Assert.That(executedCount).IsEqualTo(1);
-        await Assert.That(executedParameter).IsEqualTo("payload");
-
-        int changedCount = 0;
-        EventHandler handler = (_, _) => changedCount++;
-        adapter.CanExecuteChanged += handler;
-        mviCommand.RaiseCanExecuteChanged();
-        await Assert.That(changedCount).IsEqualTo(1);
-        adapter.CanExecuteChanged -= handler;
-        mviCommand.RaiseCanExecuteChanged();
-        await Assert.That(changedCount).IsEqualTo(1);
-    }
-
-    /// <summary>
-    /// 验证 <see cref="MviCommandBridge.Adapt"/> 与 <see cref="MviCommandBridge.Instance"/> 行为一致。
-    /// </summary>
-    [Test]
-    public async Task CommandBridgeAdapt_Should_ReturnICommandImplAsync()
-    {
-        RecordingMviCommand mviCommand = new(static _ => true, static _ => { });
-        System.Windows.Input.ICommand adapter = MviCommandBridge.Instance.Adapt(mviCommand);
-
-        await Assert.That(adapter).IsNotNull();
-        await Assert.That(adapter.CanExecute(null)).IsTrue();
-    }
-
-    /// <summary>
-    /// 验证 <see cref="MviCommandBridge.ToICommand"/> 对 null 入参抛 <see cref="ArgumentNullException"/>。
-    /// </summary>
-    [Test]
-    public void CommandBridge_Should_ThrowOnNullCommand()
-    {
-        Assert.Throws<ArgumentNullException>(() => MviCommandBridge.ToICommand(null!));
-    }
-
-    /// <summary>
     /// 验证 Avalonia MVI View 基类提供 OnBind 钩子与可视树脱离清理。
     /// </summary>
     [Test]
@@ -352,73 +291,6 @@ public sealed class ViewEventCommandBindingTests
         /// </summary>
         /// <param name="intent">意图。</param>
         protected override void Dispatch(IMviIntent intent) => Dispatched.Add(intent);
-    }
-
-    private sealed class EmptyEventCommandEffectDispatcher
-        : IMviEffectDispatcher<EventCommandEffect>
-    {
-        /// <summary>
-        /// 分发副作用。
-        /// </summary>
-        /// <param name="effect">副作用。</param>
-        /// <param name="cancellationToken">取消标记。</param>
-        /// <returns>表示异步分发过程的任务。</returns>
-        public ValueTask DispatchAsync(EventCommandEffect effect, CancellationToken cancellationToken = default)
-        {
-            return ValueTask.CompletedTask;
-        }
-    }
-
-    /// <summary>
-    /// 平台无关的 IMviCommand 测试替身，模拟命令的 CanExecute/Execute/CanExecuteChanged 行为。
-    /// </summary>
-    private sealed class RecordingMviCommand : IMviCommand
-    {
-        private readonly Predicate<object?> _canExecute;
-        private readonly Action<object?> _execute;
-
-        /// <summary>
-        /// 初始化记录 MVI 命令。
-        /// </summary>
-        /// <param name="canExecute">可执行判断。</param>
-        /// <param name="execute">执行动作。</param>
-        public RecordingMviCommand(Predicate<object?> canExecute, Action<object?> execute)
-        {
-            _canExecute = canExecute;
-            _execute = execute;
-        }
-
-        /// <summary>
-        /// 获取已执行的载荷集合。
-        /// </summary>
-        public List<object?> ExecutedPayloads { get; } = [];
-
-        /// <summary>
-        /// 判断命令是否可执行。
-        /// </summary>
-        /// <param name="parameter">命令参数。</param>
-        /// <returns>可执行返回 true。</returns>
-        public bool CanExecute(object? parameter) => _canExecute(parameter);
-
-        /// <summary>
-        /// 执行命令。
-        /// </summary>
-        /// <param name="parameter">命令参数。</param>
-        public void Execute(object? parameter)
-        {
-            ExecutedPayloads.Add(parameter);
-            _execute(parameter);
-        }
-
-        /// <summary>
-        /// 当 CanExecute 结果可能变化时触发。
-        /// </summary>
-        public event EventHandler? CanExecuteChanged;
-
-        /// <summary>
-        /// 触发可执行状态变化。
-        /// </summary>
-        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 }
 

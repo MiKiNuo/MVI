@@ -31,10 +31,14 @@ public sealed class InventoryIntentHandler
         IMviStore<MissionState, MissionIntent, MissionEffect> missionStore,
         IMviStore<HeroRosterState, HeroRosterIntent, HeroRosterEffect> heroRosterStore)
     {
-        _apiService = apiService ?? throw new ArgumentNullException(nameof(apiService));
-        _playerStore = playerStore ?? throw new ArgumentNullException(nameof(playerStore));
-        _missionStore = missionStore ?? throw new ArgumentNullException(nameof(missionStore));
-        _heroRosterStore = heroRosterStore ?? throw new ArgumentNullException(nameof(heroRosterStore));
+        ArgumentNullException.ThrowIfNull(apiService);
+        _apiService = apiService;
+        ArgumentNullException.ThrowIfNull(playerStore);
+        _playerStore = playerStore;
+        ArgumentNullException.ThrowIfNull(missionStore);
+        _missionStore = missionStore;
+        ArgumentNullException.ThrowIfNull(heroRosterStore);
+        _heroRosterStore = heroRosterStore;
     }
 
     /// <summary>

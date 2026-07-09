@@ -29,10 +29,14 @@ public sealed class InventoryEffectDispatcher : MviEffectDispatcherBase<Inventor
         IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> activityLogStore,
         ITraceEffectLogger traceLogger)
     {
-        _playerStore = playerStore ?? throw new ArgumentNullException(nameof(playerStore));
-        _battlePrepStore = battlePrepStore ?? throw new ArgumentNullException(nameof(battlePrepStore));
-        _activityLogStore = activityLogStore ?? throw new ArgumentNullException(nameof(activityLogStore));
-        _traceLogger = traceLogger ?? throw new ArgumentNullException(nameof(traceLogger));
+        ArgumentNullException.ThrowIfNull(playerStore);
+        _playerStore = playerStore;
+        ArgumentNullException.ThrowIfNull(battlePrepStore);
+        _battlePrepStore = battlePrepStore;
+        ArgumentNullException.ThrowIfNull(activityLogStore);
+        _activityLogStore = activityLogStore;
+        ArgumentNullException.ThrowIfNull(traceLogger);
+        _traceLogger = traceLogger;
     }
 
     /// <summary>

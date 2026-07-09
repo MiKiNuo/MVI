@@ -46,7 +46,17 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
 
         ClearBindings();
         DataContext = viewModel;
-        OnBind(viewModel, EnsureBindings());
+        MviDisposableBag? bindingBag = new();
+        try
+        {
+            OnBind(viewModel, bindingBag);
+            _bindings = bindingBag;
+            bindingBag = null;
+        }
+        finally
+        {
+            bindingBag?.Dispose();
+        }
     }
 
     /// <summary>
@@ -54,6 +64,8 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
     /// <para>
     /// 走完整绑定流程：清空旧绑定、设置 <c>DataContext</c>、调用 <see cref="OnBind"/> 与 <see cref="OnBindSlots"/> 钩子；
     /// 源生成器会在子类中 <c>override</c> <see cref="OnBindSlots"/> 以驱动 [MviSlot] 字段绑定。
+    /// 绑定过程是原子的:若 <see cref="OnBind"/> 或 <see cref="OnBindSlots"/> 抛异常,
+    /// 已添加的部分绑定会被清理,不会留下半绑定状态。
     /// </para>
     /// </summary>
     /// <param name="viewModel">视图模型。</param>
@@ -65,12 +77,18 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
 
         ClearBindings();
         DataContext = viewModel;
-        MviDisposableBag bindings = EnsureBindings();
-        OnBind(viewModel, bindings);
-
-        // 触发组合模式槽位绑定钩子；源生成器会 emit override 实现
-        // —— 扫描子类的 [MviSlot] 字段，按需解析子 ViewModel 并写入 MviSlotHost。
-        OnBindSlots(viewModel, bindings, resolver);
+        MviDisposableBag? bindingBag = new();
+        try
+        {
+            OnBind(viewModel, bindingBag);
+            OnBindSlots(viewModel, bindingBag, resolver);
+            _bindings = bindingBag;
+            bindingBag = null;
+        }
+        finally
+        {
+            bindingBag?.Dispose();
+        }
     }
 
     /// <summary>
@@ -114,11 +132,6 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
     {
         ClearBindings();
         base.OnDetachedFromVisualTree(e);
-    }
-
-    private MviDisposableBag EnsureBindings()
-    {
-        return _bindings ??= new MviDisposableBag();
     }
 
     private void ClearBindings()

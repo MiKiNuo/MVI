@@ -24,8 +24,10 @@ public sealed class GameShellNavigator : IGameShellNavigator
         IMviStore<AppShellState, AppShellIntent, AppShellEffect> appShellStore,
         IMviStore<PlayerState, PlayerIntent, PlayerEffect> playerStore)
     {
-        _appShellStore = appShellStore ?? throw new ArgumentNullException(nameof(appShellStore));
-        _playerStore = playerStore ?? throw new ArgumentNullException(nameof(playerStore));
+        ArgumentNullException.ThrowIfNull(appShellStore);
+        _appShellStore = appShellStore;
+        ArgumentNullException.ThrowIfNull(playerStore);
+        _playerStore = playerStore;
     }
 
     /// <summary>

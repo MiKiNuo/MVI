@@ -24,7 +24,8 @@ public sealed class EventBindingRecordingMediator : IMviMediator
     public EventBindingRecordingMediator(
         IMviStore<EventBindingWorkbenchState, EventBindingWorkbenchIntent, UnitEffect> workbenchStore)
     {
-        _workbenchStore = workbenchStore ?? throw new ArgumentNullException(nameof(workbenchStore));
+        ArgumentNullException.ThrowIfNull(workbenchStore);
+        _workbenchStore = workbenchStore;
     }
 
     /// <summary>
@@ -45,6 +46,7 @@ public sealed class EventBindingRecordingMediator : IMviMediator
         CancellationToken cancellationToken = default)
         where TRequest : notnull
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (request is not EventBindingWorkbenchInteractionRequest interactionRequest)
         {
             throw new InvalidOperationException(

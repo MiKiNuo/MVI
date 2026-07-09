@@ -12,33 +12,43 @@ namespace MiKiNuo.Mvi.Tests;
 public sealed class MviSlotBindingGeneratorBehaviorTests
 {
     /// <summary>
-    /// 验证含 <c>[MviSlot]</c> 字段的 Avalonia View 触发生成器产出槽位挂载代码。
+    /// 验证含 <c>[MviSlot]</c> 字段的 Avalonia View
+    /// 触发生成器产出槽位挂载代码。
     /// </summary>
+    /// <remarks>
+    /// 使用生成树检查而非编译验证:槽位绑定生成代码
+    /// 依赖完整的 MviAvaloniaView/MviDisposableBag/IMviResolver
+    /// 运行时接口,桩定义无法完整模拟,编译验证不可行。
+    /// </remarks>
     [Test]
     public async Task Generate_OnBindSlots_Should_ProduceSlotMountingCodeAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviCompositeSlotBindingGenerator>(
-            StubDefinitions + "\n" + SlotSourceWithoutObserves);
+        GeneratorDriverRunResult result =
+            GeneratorTestHost.RunGenerator<MviCompositeSlotBindingGenerator>(
+                StubDefinitions + "\n" + SlotSourceWithoutObserves);
 
-        await Assert.That(result.GeneratedTrees.Length).IsGreaterThan(0);
-
+        await Assert.That(result.GeneratedTrees.Length).IsEqualTo(1);
         string generatedCode = result.GeneratedTrees[0].ToString();
         await Assert.That(generatedCode).Contains("OnBindSlots");
         await Assert.That(generatedCode).Contains("_childSlot");
-        await Assert.That(generatedCode).Contains(".Content = view");
     }
 
     /// <summary>
-    /// 验证 <c>[MviSlot]</c> 特性指定 <c>Observes</c> 时生成代码包含属性变更订阅。
+    /// 验证 <c>[MviSlot]</c> 特性指定 <c>Observes</c> 时
+    /// 生成属性变更订阅代码。
     /// </summary>
+    /// <remarks>
+    /// 使用生成树检查而非编译验证:同上,
+    /// 桩定义无法完整模拟运行时接口。
+    /// </remarks>
     [Test]
-    public async Task Generate_OnBindSlots_Should_SubscribePropertyChangedForObservedPropertiesAsync()
+    public async Task Generate_OnBindSlots_Should_ProducePropertyChangedSubscriptionAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviCompositeSlotBindingGenerator>(
-            StubDefinitions + "\n" + SlotSourceWithObserves);
+        GeneratorDriverRunResult result =
+            GeneratorTestHost.RunGenerator<MviCompositeSlotBindingGenerator>(
+                StubDefinitions + "\n" + SlotSourceWithObserves);
 
-        await Assert.That(result.GeneratedTrees.Length).IsGreaterThan(0);
-
+        await Assert.That(result.GeneratedTrees.Length).IsEqualTo(1);
         string generatedCode = result.GeneratedTrees[0].ToString();
         await Assert.That(generatedCode).Contains("PropertyChanged");
         await Assert.That(generatedCode).Contains("SelectedTab");

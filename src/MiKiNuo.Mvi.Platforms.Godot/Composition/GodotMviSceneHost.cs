@@ -10,31 +10,6 @@ public static class GodotMviSceneHost
     /// <summary>
     /// 把 View 挂载到指定 Slot。
     /// </summary>
-    /// <typeparam name="TView">View 类型。</typeparam>
-    /// <param name="slot">承载 Slot。</param>
-    /// <param name="view">要挂载的 View。</param>
-    /// <param name="clearExisting">是否清理原有子节点。</param>
-    /// <returns>已经挂载的 View。</returns>
-    public static TView Mount<TView>(TView slot, TView view, bool clearExisting = true)
-        where TView : Control
-    {
-        ArgumentNullException.ThrowIfNull(slot);
-        ArgumentNullException.ThrowIfNull(view);
-
-        if (clearExisting)
-        {
-            Clear(slot);
-        }
-
-        view.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        view.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-        slot.AddChild(view);
-        return view;
-    }
-
-    /// <summary>
-    /// 把 View 挂载到指定 Slot。
-    /// </summary>
     /// <param name="slot">承载 Slot。</param>
     /// <param name="view">要挂载的 View。</param>
     /// <param name="clearExisting">是否清理原有子节点。</param>
@@ -53,24 +28,6 @@ public static class GodotMviSceneHost
         view.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         slot.AddChild(view);
         return view;
-    }
-
-    /// <summary>
-    /// 根据注册表键创建 View 并挂载到指定 Slot。
-    /// </summary>
-    /// <param name="slot">承载 Slot。</param>
-    /// <param name="registry">View 注册表。</param>
-    /// <param name="key">View 注册键。</param>
-    /// <param name="clearExisting">是否清理原有子节点。</param>
-    /// <returns>已经挂载的 View。</returns>
-    public static Control MountRegistryView(
-        Control slot,
-        IGodotMviViewRegistry registry,
-        string key,
-        bool clearExisting = true)
-    {
-        ArgumentNullException.ThrowIfNull(registry);
-        return Mount(slot, registry.Create(key), clearExisting);
     }
 
     /// <summary>

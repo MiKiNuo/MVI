@@ -18,7 +18,8 @@ public sealed class AppShellEffectDispatcher : MviEffectDispatcherBase<AppShellE
     /// <param name="logger">追踪日志记录器。</param>
     public AppShellEffectDispatcher(ITraceEffectLogger logger)
     {
-        _traceLogger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(logger);
+        _traceLogger = logger;
     }
 
     /// <summary>

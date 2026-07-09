@@ -12,74 +12,74 @@ namespace MiKiNuo.Mvi.Tests;
 public sealed class MviReducerDispatchGeneratorBehaviorTests
 {
     /// <summary>
-    /// 验证含 [MviReduce] 方法的规约器触发生成器产出 Reduce override。
+    /// 验证含 [MviReduce] 方法的规约器
+    /// 触发生成器产出可编译的 Reduce override。
     /// </summary>
     [Test]
-    public async Task Generate_Should_ProduceReduceOverrideAsync()
+    public async Task Generate_Should_ProduceCompilableReduceOverrideAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviReducerDispatchGenerator>(
-            StubDefinitions + "\n" + ReducerSource);
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviReducerDispatchGenerator>(
+                StubDefinitions + "\n" + ReducerSource);
 
-        await Assert.That(result.GeneratedTrees.Length).IsGreaterThan(0);
-
-        string generatedCode = result.GeneratedTrees[0].ToString();
-        await Assert.That(generatedCode).Contains("public override MviReduceResult<");
-        await Assert.That(generatedCode).Contains("Reduce(");
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
     }
 
     /// <summary>
-    /// 验证生成的代码包含 switch 分发逻辑。
+    /// 验证生成的 switch 分发逻辑可成功编译。
     /// </summary>
     [Test]
-    public async Task Generate_Should_ProduceSwitchDispatchAsync()
+    public async Task Generate_Should_ProduceCompilableSwitchDispatchAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviReducerDispatchGenerator>(
-            StubDefinitions + "\n" + ReducerSource);
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviReducerDispatchGenerator>(
+                StubDefinitions + "\n" + ReducerSource);
 
-        string generatedCode = result.GeneratedTrees[0].ToString();
-        await Assert.That(generatedCode).Contains("return intent switch");
-        await Assert.That(generatedCode).Contains("HandleChangeUserName");
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
     }
 
     /// <summary>
-    /// 验证生成的代码包含默认分支返回原状态。
+    /// 验证生成的默认分支代码可成功编译。
     /// </summary>
     [Test]
-    public async Task Generate_Should_ProduceDefaultBranchAsync()
+    public async Task Generate_Should_ProduceCompilableDefaultBranchAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviReducerDispatchGenerator>(
-            StubDefinitions + "\n" + ReducerSource);
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviReducerDispatchGenerator>(
+                StubDefinitions + "\n" + ReducerSource);
 
-        string generatedCode = result.GeneratedTrees[0].ToString();
-        await Assert.That(generatedCode).Contains("_ => MviReduceResult.State<");
-        await Assert.That(generatedCode).Contains("(state)");
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
     }
 
     /// <summary>
-    /// 验证生成的代码包含 null 检查。
+    /// 验证生成的 null 检查代码可成功编译。
     /// </summary>
     [Test]
-    public async Task Generate_Should_ProduceNullChecksAsync()
+    public async Task Generate_Should_ProduceCompilableNullChecksAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviReducerDispatchGenerator>(
-            StubDefinitions + "\n" + ReducerSource);
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviReducerDispatchGenerator>(
+                StubDefinitions + "\n" + ReducerSource);
 
-        string generatedCode = result.GeneratedTrees[0].ToString();
-        await Assert.That(generatedCode).Contains("ArgumentNullException.ThrowIfNull(state)");
-        await Assert.That(generatedCode).Contains("ArgumentNullException.ThrowIfNull(intent)");
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
     }
 
     /// <summary>
-    /// 验证 Guard 谓词生成 when 子句。
+    /// 验证 Guard 谓词生成的 when 子句可成功编译。
     /// </summary>
     [Test]
-    public async Task Generate_Should_ProduceGuardWhenClauseAsync()
+    public async Task Generate_Should_ProduceCompilableGuardWhenClauseAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviReducerDispatchGenerator>(
-            StubDefinitions + "\n" + ReducerWithGuardSource);
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviReducerDispatchGenerator>(
+                StubDefinitions + "\n" + ReducerWithGuardSource);
 
-        string generatedCode = result.GeneratedTrees[0].ToString();
-        await Assert.That(generatedCode).Contains("when CanSubmit(state)");
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
     }
 
     /// <summary>

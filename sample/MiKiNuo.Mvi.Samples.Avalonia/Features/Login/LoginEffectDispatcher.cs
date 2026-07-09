@@ -18,7 +18,8 @@ public sealed class LoginEffectDispatcher : MviEffectDispatcherBase<LoginEffect>
     /// <param name="navigationService">登录导航服务。</param>
     public LoginEffectDispatcher(ILoginNavigationService navigationService)
     {
-        _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        ArgumentNullException.ThrowIfNull(navigationService);
+        _navigationService = navigationService;
     }
 
     /// <summary>

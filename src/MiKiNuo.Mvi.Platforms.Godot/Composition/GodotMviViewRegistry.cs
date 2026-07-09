@@ -15,7 +15,8 @@ public sealed class GodotMviViewRegistry : IGodotMviViewRegistry
     /// <param name="factories">View 工厂集合。</param>
     public GodotMviViewRegistry(IReadOnlyDictionary<string, Func<Control>> factories)
     {
-        _factories = factories ?? throw new ArgumentNullException(nameof(factories));
+        ArgumentNullException.ThrowIfNull(factories);
+        _factories = factories;
         Keys = new List<string>(_factories.Keys).AsReadOnly();
     }
 

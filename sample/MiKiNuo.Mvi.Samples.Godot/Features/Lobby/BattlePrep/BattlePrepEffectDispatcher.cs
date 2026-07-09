@@ -20,8 +20,10 @@ public sealed class BattlePrepEffectDispatcher : MviEffectDispatcherBase<BattleP
         IMviStore<ActivityLogState, ActivityLogIntent, ActivityLogEffect> activityLogStore,
         ITraceEffectLogger traceLogger)
     {
-        _activityLogStore = activityLogStore ?? throw new ArgumentNullException(nameof(activityLogStore));
-        _traceLogger = traceLogger ?? throw new ArgumentNullException(nameof(traceLogger));
+        ArgumentNullException.ThrowIfNull(activityLogStore);
+        _activityLogStore = activityLogStore;
+        ArgumentNullException.ThrowIfNull(traceLogger);
+        _traceLogger = traceLogger;
     }
 
     /// <summary>

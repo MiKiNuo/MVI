@@ -476,7 +476,7 @@ public abstract partial record LoginIntent : IMviIntent
 ```csharp
 public abstract partial record LoginEffect : IMviEffect
 {
-    public sealed partial record RequestLogin(string UserName, string Password) : LoginEffect;
+    public sealed partial record NavigateToDashboard(string DisplayName) : LoginEffect;
 }
 ```
 
@@ -486,42 +486,66 @@ public abstract partial record LoginEffect : IMviEffect
 public sealed partial class LoginReducer
     : MviReducerBase<LoginState, LoginIntent, LoginEffect>
 {
-    [MviReduce]
-    private MviReduceResult<LoginState, LoginEffect> ReduceChangeUserName(
+    [MviReduce(typeof(LoginIntent.ChangeUserName))]
+    private MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
         LoginState state,
-        LoginIntent.ChangeUserName intent)
+        LoginIntent.ChangeUserName intent,
+        IMviBusinessResult? result)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
         LoginState nextState = state with
         {
             UserName = intent.UserName,
-            CanSubmit = !string.IsNullOrWhiteSpace(intent.UserName)
-                && !string.IsNullOrWhiteSpace(state.Password)
+            ErrorMessage = null,
+            CanSubmit = CanSubmit(intent.UserName, state.Password)
         };
 
-        return MviReduceResult.State(nextState);
+        return Unchanged(nextState);
     }
 
-    [MviReduce]
-    private MviReduceResult<LoginState, LoginEffect> ReduceSubmit(
+    [MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmitState))]
+    private MviReduceResult<LoginState, LoginEffect> HandleSubmit(
         LoginState state,
-        LoginIntent.Submit intent)
+        LoginIntent.Submit intent,
+        IMviBusinessResult? result)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(intent);
-
-        LoginState nextState = state with
+        if (result is null)
         {
-            IsBusy = true,
-            ErrorMessage = null,
-            CanSubmit = false
-        };
+            return Unchanged(state with { IsBusy = true, ErrorMessage = null });
+        }
 
-        return MviReduceResult.StateAndEffect(
-            nextState,
-            new LoginEffect.RequestLogin(state.UserName, state.Password));
+        if (result is LoginBusinessResult.Success success)
+        {
+            LoginState nextState = state with
+            {
+                IsBusy = false,
+                ErrorMessage = null,
+                CanSubmit = true
+            };
+
+            return WithEffect(
+                nextState,
+                new LoginEffect.NavigateToDashboard(success.Profile.DisplayName));
+        }
+
+        if (result is LoginBusinessResult.Failure failure)
+        {
+            return Unchanged(state with
+            {
+                IsBusy = false,
+                ErrorMessage = failure.ErrorMessage,
+                CanSubmit = CanSubmit(state.UserName, state.Password)
+            });
+        }
+
+        return Unchanged(state);
+    }
+
+    private bool CanSubmitState(LoginState state) => state.CanSubmit || state.IsBusy;
+
+    private bool CanSubmit(string userName, string password)
+    {
+        return !string.IsNullOrWhiteSpace(userName)
+            && !string.IsNullOrWhiteSpace(password);
     }
 }
 ```
@@ -538,46 +562,49 @@ public sealed partial class LoginViewModel
     }
 
     [MviBind(
-        StateProperty = nameof(LoginState.UserName),
+        nameof(LoginState.UserName),
         BindingMode = MviBindingMode.TwoWay,
         IntentType = typeof(LoginIntent.ChangeUserName))]
     public partial string UserName { get; set; }
 
     [MviBind(
-        StateProperty = nameof(LoginState.Password),
+        nameof(LoginState.Password),
         BindingMode = MviBindingMode.TwoWay,
         IntentType = typeof(LoginIntent.ChangePassword))]
     public partial string Password { get; set; }
 
-    [MviBind(StateProperty = nameof(LoginState.CanSubmit))]
-    public partial bool CanSubmit { get; }
+    [MviBind(nameof(LoginState.CanSubmit))]
+    public partial bool CanSubmit { get; private set; }
 
     [MviCommand(
-        IntentType = typeof(LoginIntent.Submit),
+        typeof(LoginIntent.Submit),
         CanExecuteProperty = nameof(CanSubmit),
         IsAsync = true)]
-    public partial IMviAsyncCommand SubmitCommand { get; }
+    public partial IMviAsyncCommand SubmitCommand { get; private set; }
 }
 ```
 
 ### 6. 编写 EffectDispatcher
 
 ```csharp
-public sealed class LoginEffectDispatcher
-    : IMviEffectDispatcher<LoginState, LoginIntent, LoginEffect>
+public sealed class LoginEffectDispatcher : MviEffectDispatcherBase<LoginEffect>
 {
-    public async ValueTask DispatchAsync(
+    private readonly ILoginNavigationService _navigationService;
+
+    public LoginEffectDispatcher(ILoginNavigationService navigationService)
+    {
+        _navigationService = navigationService
+            ?? throw new ArgumentNullException(nameof(navigationService));
+    }
+
+    protected override async ValueTask DispatchCoreAsync(
         LoginEffect effect,
-        IMviStore<LoginState, LoginIntent, LoginEffect> store,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(effect);
-        ArgumentNullException.ThrowIfNull(store);
-
-        if (effect is LoginEffect.RequestLogin)
+        if (effect is LoginEffect.NavigateToDashboard navigateToDashboard)
         {
-            await store.DispatchAsync(
-                new LoginIntent.LoginSucceeded("系统管理员"),
+            await _navigationService.NavigateToDashboardAsync(
+                navigateToDashboard.DisplayName,
                 cancellationToken);
         }
     }

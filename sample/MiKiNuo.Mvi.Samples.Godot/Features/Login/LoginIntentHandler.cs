@@ -21,7 +21,8 @@ public sealed class LoginIntentHandler
     /// <param name="authService">认证服务。</param>
     public LoginIntentHandler(IAuthService authService)
     {
-        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        ArgumentNullException.ThrowIfNull(authService);
+        _authService = authService;
     }
 
     /// <summary>
@@ -40,7 +41,7 @@ public sealed class LoginIntentHandler
         LoginIntent intent,
         CancellationToken cancellationToken)
     {
-        if (intent is LoginIntent.Submit && CanSubmit(state.UserName, state.Password))
+        if (intent is LoginIntent.Submit && state.CanSubmit)
         {
             LoginResult result = await _authService
                 .LoginAsync(state.UserName, state.Password, cancellationToken)
@@ -55,12 +56,5 @@ public sealed class LoginIntentHandler
         }
 
         return null;
-    }
-
-    private static bool CanSubmit(string userName, string password)
-    {
-        return !string.IsNullOrWhiteSpace(userName)
-            && !string.IsNullOrWhiteSpace(password)
-            && password.Length >= 3;
     }
 }
