@@ -159,6 +159,41 @@ internal static class GeneratorSyntaxHelpers
     }
 
     /// <summary>
+    /// 遍历编译中所有语法树的类与记录声明，返回对应的 <see cref="INamedTypeSymbol"/>。
+    /// 与 <see cref="EnumerateClassSymbols"/> 的区别是同时覆盖 record 声明，
+    /// 供状态路径、状态切片等以 record 为主的生成器使用。
+    /// </summary>
+    /// <param name="compilation">编译对象。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>所有命名类型符号。</returns>
+    public static IEnumerable<INamedTypeSymbol> EnumerateTypeSymbols(
+        Compilation compilation,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        if (compilation is null)
+        {
+            throw new ArgumentNullException(nameof(compilation));
+        }
+
+        foreach (SyntaxTree tree in compilation.SyntaxTrees)
+        {
+            SyntaxNode root = tree.GetRoot(cancellationToken);
+            SemanticModel semanticModel = compilation.GetSemanticModel(tree);
+
+            foreach (TypeDeclarationSyntax declaration in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (declaration is ClassDeclarationSyntax or RecordDeclarationSyntax
+                    && semanticModel.GetDeclaredSymbol(declaration, cancellationToken) is INamedTypeSymbol symbol)
+                {
+                    yield return symbol;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// 判断类声明上是否挂载了 <paramref name="candidateAttributeShortNames"/> 中任一名称的特性。
     /// 名称匹配忽略 "<c>Attribute</c>" 后缀，例如传入 "<c>DiService</c>" 可匹配 <c>[DiService]</c> 与 <c>[DiServiceAttribute]</c>。
     /// </summary>

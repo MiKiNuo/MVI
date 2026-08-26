@@ -102,6 +102,21 @@ public static class DiagnosticIdCatalog
     /// <summary>声明 [MviBind] 时禁止手写 ApplyStateCore 重写。</summary>
     public const string MviApplyStateCoreConflict = "MVI0009";
 
+    /// <summary>状态属性图存在循环引用，无法展开 StatePath。</summary>
+    public const string MviStatePathGraphCycle = "MVI0010";
+
+    /// <summary>泛型状态类型跳过 StatePath 生成。</summary>
+    public const string MviStatePathGenericStateSkipped = "MVI0011";
+
+    /// <summary>切片构造参数无法解析到状态属性路径。</summary>
+    public const string MviStateSliceParameterUnresolved = "MVI0012";
+
+    /// <summary>切片构造参数匹配到多个状态属性路径。</summary>
+    public const string MviStateSliceParameterAmbiguous = "MVI0013";
+
+    /// <summary>切片声明不符合约定。</summary>
+    public const string MviStateSliceDeclarationInvalid = "MVI0014";
+
     /// <summary>
     /// 获取全部已发布的诊断 ID 列表。
     /// 列表顺序与诊断类别（ARCH → DOC → CODE → MVI）保持一致，便于人工审查。
@@ -136,5 +151,10 @@ public static class DiagnosticIdCatalog
         MviReduceHandlerSignatureInvalid,
         MviReduceGuardInvalid,
         MviApplyStateCoreConflict,
+        MviStatePathGraphCycle,
+        MviStatePathGenericStateSkipped,
+        MviStateSliceParameterUnresolved,
+        MviStateSliceParameterAmbiguous,
+        MviStateSliceDeclarationInvalid,
     ];
 }
