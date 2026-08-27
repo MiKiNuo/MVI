@@ -21,3 +21,4 @@ MVI0013 | MviStateSlice | Error | 切片构造参数在状态中匹配到多个�
 MVI0014 | MviStateSlice | Error | 切片必须声明位置参数主构造函数，且 StateType 必须是实现 IMviState 的非泛型类型。
 MVI0015 | MviComposition | Error | 功能模块状态缺少 public static Initial 成员，无法生成 Store 装配。
 MVI0016 | MviComposition | Error | 功能模块组件（Reducer/IntentHandler/EffectDispatcher）未找到唯一具体实现，无法生成 Store 装配。
+MVI0017 | MviStatePath | Warning | 禁止使用 StatePath 默认实例（default 字面量 / default(T) / 无参 new），默认实例访问 Getter 会抛 InvalidOperationException。

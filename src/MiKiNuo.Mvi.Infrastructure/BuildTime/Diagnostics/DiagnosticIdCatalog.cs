@@ -123,6 +123,9 @@ public static class DiagnosticIdCatalog
     /// <summary>功能模块组件（Reducer/IntentHandler/EffectDispatcher）无法唯一解析。</summary>
     public const string MviFeatureComponentNotResolvable = "MVI0016";
 
+    /// <summary>禁止使用 StatePath 默认实例（default 字面量 / default(T) / 无参 new）。</summary>
+    public const string MviStatePathDefaultInstance = "MVI0017";
+
     /// <summary>
     /// 获取全部已发布的诊断 ID 列表。
     /// 列表顺序与诊断类别（ARCH → DOC → CODE → MVI）保持一致，便于人工审查。
@@ -164,5 +167,6 @@ public static class DiagnosticIdCatalog
         MviStateSliceDeclarationInvalid,
         MviFeatureStateMissingInitial,
         MviFeatureComponentNotResolvable,
+        MviStatePathDefaultInstance,
     ];
 }
