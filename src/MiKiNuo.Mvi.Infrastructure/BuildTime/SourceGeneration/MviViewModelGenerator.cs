@@ -88,8 +88,8 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
 
         private static readonly DiagnosticDescriptor ApplyStateCoreConflictRule = new(
             id: DiagnosticIdCatalog.MviApplyStateCoreConflict,
-            title: "声明 [MviBind] 时禁止手写 ApplyStateCore 重写",
-            messageFormat: "类型“{0}”同时声明 [MviBind] 特性和手写 ApplyStateCore 重写；有 [MviBind] 时 ApplyStateCore 由源生成器实现，请删除手写重写。",
+            title: "生成器接管的 ViewModel 禁止手写 ApplyStateCore 重写",
+            messageFormat: "类型“{0}”声明了 [MviBind] 或 [MviCommand] 特性且手写 ApplyStateCore 重写；生成器接管后 ApplyStateCore 一律由源生成器 emit，请删除手写重写。",
             category: "MviBinding",
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -119,8 +119,9 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
                 return null;
             }
 
-            // MVI0009: 声明 [MviBind] 时禁止手写 ApplyStateCore 重写
-            if (bindProperties.Count > 0 && HasManualApplyStateCoreOverride(viewModelSymbol))
+            // MVI0009: 生成器接管（[MviBind] 或 [MviCommand] 任一存在）即禁止手写 ApplyStateCore 重写，
+            // 否则仅命令场景会与生成器 emit 的空体 ApplyStateCore 产生 CS0111 重复定义。
+            if (HasManualApplyStateCoreOverride(viewModelSymbol))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     ApplyStateCoreConflictRule,

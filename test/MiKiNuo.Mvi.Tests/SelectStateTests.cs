@@ -3,6 +3,7 @@ using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
+using MiKiNuo.Mvi.Domain.MVI.Feature;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.State;
@@ -92,7 +93,13 @@ public sealed class SelectStateTests
 /// </summary>
 /// <param name="Count">计数值。</param>
 /// <param name="Label">标签。</param>
-public sealed record CounterState(int Count, string Label) : IMviState;
+public sealed record CounterState(int Count, string Label) : IMviState
+{
+    /// <summary>
+    /// 获取初始状态（Feature Store 装配约定）。
+    /// </summary>
+    public static CounterState Initial { get; } = new(0, string.Empty);
+}
 
 /// <summary>
 /// 表示 SelectState 测试用计数意图。
@@ -114,6 +121,7 @@ public abstract record CounterIntent : IMviIntent
 /// <summary>
 /// 表示 SelectState 测试用规约器。
 /// </summary>
+[MviFeatureModule("Counter")]
 public sealed class CounterReducer : IMviReducer<CounterState, CounterIntent, UnitEffect>
 {
     /// <summary>

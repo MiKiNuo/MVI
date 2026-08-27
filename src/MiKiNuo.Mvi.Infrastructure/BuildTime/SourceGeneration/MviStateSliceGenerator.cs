@@ -213,6 +213,8 @@ public sealed class MviStateSliceGenerator : IIncrementalGenerator
             if (stateType is null
                 || IsGeneric(stateType)
                 || IsGeneric(sliceSymbol)
+                || !StatePathGraph.IsNamespaceAccessible(stateType)
+                || !StatePathGraph.IsNamespaceAccessible(sliceSymbol)
                 || !stateType.AllInterfaces.Any(i => i.Equals(stateMarker, SymbolEqualityComparer.Default))
                 || primaryConstructor is null)
             {

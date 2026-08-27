@@ -82,6 +82,11 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     /// <summary>
     /// 派发意图,执行两次 Reduce 与异步业务。
     /// </summary>
+    /// <remarks>
+    /// 派发门（SemaphoreSlim）只保护 Reduce 管线与状态更新；
+    /// 副作用在门释放后统一派发，因此 EffectDispatcher 可以安全地向
+    /// 同一 Store 再派发后续 Intent（重入安全），不会形成死锁。
+    /// </remarks>
     /// <param name="intent">意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步派发过程的任务。</returns>
@@ -90,6 +95,8 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         ArgumentNullException.ThrowIfNull(intent);
 
+        List<TEffect> pendingEffects = new();
+
         await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -97,16 +104,18 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
 
             MviReduceResult<TState, TEffect> finalResult = await _pipeline.InvokeAsync(
                 context,
-                ExecuteCoreAsync,
+                (pipelineContext, token) => ExecuteCoreAsync(pipelineContext, pendingEffects, token),
                 cancellationToken).ConfigureAwait(false);
 
             _state.Value = finalResult.State;
-            await DispatchEffectsAsync(finalResult.Effects, cancellationToken).ConfigureAwait(false);
+            pendingEffects.AddRange(finalResult.Effects);
         }
         finally
         {
             _ = _dispatchGate.Release();
         }
+
+        await DispatchEffectsAsync(pendingEffects, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -128,12 +137,16 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
 
     /// <summary>
     /// 执行核心调度:两次 Reduce 与异步业务。
+    /// 副作用不直接派发，统一收集到 <paramref name="pendingEffects"/>，
+    /// 由 <see cref="DispatchAsync"/> 在派发门释放后统一派发。
     /// </summary>
     /// <param name="context">中间件上下文。</param>
+    /// <param name="pendingEffects">待派发副作用收集器。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>最终规约结果。</returns>
     private async ValueTask<MviReduceResult<TState, TEffect>> ExecuteCoreAsync(
         MviMiddlewareContext<TState, TIntent, TEffect> context,
+        List<TEffect> pendingEffects,
         CancellationToken cancellationToken)
     {
         TState state = context.State;
@@ -144,7 +157,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
 
         // 立即更新中间状态,让 IntentHandler 看到中间状态
         _state.Value = intermediate.State;
-        await DispatchEffectsAsync(intermediate.Effects, cancellationToken).ConfigureAwait(false);
+        pendingEffects.AddRange(intermediate.Effects);
 
         // 异步业务
         IMviBusinessResult? businessResult = await _intentHandler

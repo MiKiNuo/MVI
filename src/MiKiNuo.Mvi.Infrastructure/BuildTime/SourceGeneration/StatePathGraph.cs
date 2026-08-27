@@ -144,6 +144,25 @@ internal static class StatePathGraph
     }
 
     /// <summary>
+    /// 判断类型是否可被命名空间级别的生成类引用（全链 public/internal）。
+    /// 私有或受保护的嵌套类型无法被生成代码引用，生成器应直接跳过。
+    /// </summary>
+    /// <param name="symbol">类型符号。</param>
+    /// <returns>可被生成代码引用返回 true。</returns>
+    public static bool IsNamespaceAccessible(INamedTypeSymbol symbol)
+    {
+        for (INamedTypeSymbol? current = symbol; current is not null; current = current.ContainingType)
+        {
+            if (current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// 解析状态顶层属性名到生成的 StatePaths 类成员访问表达式。
     /// 供 ViewModel 生成器把 CanExecute 观察流改接到生成的 StatePath 上。
     /// </summary>

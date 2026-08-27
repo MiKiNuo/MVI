@@ -99,7 +99,7 @@ public static class DiagnosticIdCatalog
     /// <summary>守卫谓词方法不存在或签名不匹配。</summary>
     public const string MviReduceGuardInvalid = "MVI0008";
 
-    /// <summary>声明 [MviBind] 时禁止手写 ApplyStateCore 重写。</summary>
+    /// <summary>生成器接管的 ViewModel 禁止手写 ApplyStateCore 重写。</summary>
     public const string MviApplyStateCoreConflict = "MVI0009";
 
     /// <summary>状态属性图存在循环引用，无法展开 StatePath。</summary>
@@ -116,6 +116,12 @@ public static class DiagnosticIdCatalog
 
     /// <summary>切片声明不符合约定。</summary>
     public const string MviStateSliceDeclarationInvalid = "MVI0014";
+
+    /// <summary>功能模块状态缺少 public static Initial 成员。</summary>
+    public const string MviFeatureStateMissingInitial = "MVI0015";
+
+    /// <summary>功能模块组件（Reducer/IntentHandler/EffectDispatcher）无法唯一解析。</summary>
+    public const string MviFeatureComponentNotResolvable = "MVI0016";
 
     /// <summary>
     /// 获取全部已发布的诊断 ID 列表。
@@ -156,5 +162,7 @@ public static class DiagnosticIdCatalog
         MviStateSliceParameterUnresolved,
         MviStateSliceParameterAmbiguous,
         MviStateSliceDeclarationInvalid,
+        MviFeatureStateMissingInitial,
+        MviFeatureComponentNotResolvable,
     ];
 }

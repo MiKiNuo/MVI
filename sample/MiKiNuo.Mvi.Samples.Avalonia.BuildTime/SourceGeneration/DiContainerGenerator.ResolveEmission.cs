@@ -106,6 +106,10 @@ public sealed partial class AvaloniaSampleDiContainerGenerator
     {
         string ns = "global::MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator.";
 
+        builder.AppendLine("    private global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediator? _mediator;");
+        builder.AppendLine();
+        builder.AppendLine("    private global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediator Mediator => _mediator ??= CreateMediator();");
+        builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    /// 发送请求并返回响应。");
         builder.AppendLine("    /// </summary>");
@@ -114,16 +118,25 @@ public sealed partial class AvaloniaSampleDiContainerGenerator
         builder.AppendLine("    /// <param name=\"request\">请求对象。</param>");
         builder.AppendLine("    /// <param name=\"cancellationToken\">取消标记。</param>");
         builder.AppendLine("    /// <returns>响应对象。</returns>");
-        builder.AppendLine("    public async ValueTask<TResponse> SendAsync<TRequest, TResponse>(");
+        builder.AppendLine("    public ValueTask<TResponse> SendAsync<TRequest, TResponse>(");
         builder.AppendLine("        TRequest request,");
         builder.AppendLine("        CancellationToken cancellationToken = default)");
         builder.AppendLine("        where TRequest : notnull");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(request);");
+        builder.AppendLine("        return Mediator.SendAsync<TRequest, TResponse>(request, cancellationToken);");
+        builder.AppendLine("    }");
         builder.AppendLine();
-        EmitMediatorRequestBranches(builder, ns, dashboard, clinicalEditor, clinicalReminder, businessPage);
-        builder.AppendLine();
-        builder.AppendLine("        throw new InvalidOperationException($\"未注册中介者路由：{typeof(TRequest).FullName} -> {typeof(TResponse).FullName}\");");
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// 创建中介者并注册全部请求路由。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <returns>注册完成的中介者实例。</returns>");
+        builder.AppendLine("    private global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediator CreateMediator()");
+        builder.AppendLine("    {");
+        builder.AppendLine("        return new global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediator()");
+        EmitMediatorRouteRegistrations(builder, ns, dashboard, clinicalEditor, clinicalReminder, businessPage);
+        builder.AppendLine(";");
         builder.AppendLine("    }");
         builder.AppendLine();
 
@@ -133,8 +146,8 @@ public sealed partial class AvaloniaSampleDiContainerGenerator
         }
     }
 
-    /// <summary>生成 Mediator 的 3 个请求类型 if 分支。</summary>
-    private static void EmitMediatorRequestBranches(
+    /// <summary>生成 Mediator 的 3 个请求路由注册。</summary>
+    private static void EmitMediatorRouteRegistrations(
         StringBuilder builder,
         string ns,
         FeatureInfo? dashboard,
@@ -142,50 +155,53 @@ public sealed partial class AvaloniaSampleDiContainerGenerator
         FeatureInfo? clinicalReminder,
         FeatureInfo? businessPage)
     {
-        builder.Append("        if (request is ").Append(ns).AppendLine("NavigateDashboardPageRequest navigateRequest)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            string pageKey = navigateRequest.PageKey;");
+        builder.Append("            .Register<").Append(ns).Append("NavigateDashboardPageRequest, ")
+            .Append(ns).AppendLine("DashboardNavigationResponse>(");
+        builder.AppendLine("                async (navigateRequest, cancellationToken) =>");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    string pageKey = navigateRequest.PageKey;");
         if (dashboard is not null)
         {
-            builder.AppendLine("            return (TResponse)(object)await NavigateDashboardPageAsync(pageKey, cancellationToken).ConfigureAwait(false);");
+            builder.AppendLine("                    return await NavigateDashboardPageAsync(pageKey, cancellationToken).ConfigureAwait(false);");
         }
         else
         {
-            builder.Append("            return (TResponse)(object)new ").Append(ns).AppendLine("DashboardNavigationResponse(pageKey, true);");
+            builder.Append("                    return new ").Append(ns).AppendLine("DashboardNavigationResponse(pageKey, true);");
         }
-
-        builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.Append("        if (request is ").Append(ns).AppendLine("OpenPatientEncounterRequest encounterRequest)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            string patientName = encounterRequest.PatientName;");
+        builder.AppendLine("                })");
+        builder.Append("            .Register<").Append(ns).Append("OpenPatientEncounterRequest, ")
+            .Append(ns).AppendLine("PatientEncounterResponse>(");
+        builder.AppendLine("                async (encounterRequest, cancellationToken) =>");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    string patientName = encounterRequest.PatientName;");
         if (clinicalEditor is not null)
         {
-            builder.Append("            if (_clinicalEditorStore is not null) await _clinicalEditorStore.DispatchAsync(new ")
+            builder.Append("                    if (_clinicalEditorStore is not null) await _clinicalEditorStore.DispatchAsync(new ")
                 .Append(clinicalEditor.IntentTypeName)
                 .AppendLine(".LoadPatient(patientName), cancellationToken).ConfigureAwait(false);");
         }
         if (clinicalReminder is not null)
         {
-            builder.Append("            if (_clinicalReminderStore is not null) await _clinicalReminderStore.DispatchAsync(new ")
+            builder.Append("                    if (_clinicalReminderStore is not null) await _clinicalReminderStore.DispatchAsync(new ")
                 .Append(clinicalReminder.IntentTypeName)
                 .AppendLine(".LoadPatient(patientName), cancellationToken).ConfigureAwait(false);");
         }
-        builder.Append("            return (TResponse)(object)new ").Append(ns).AppendLine("PatientEncounterResponse(patientName, true);");
-        builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.Append("        if (request is ").Append(ns).AppendLine("DashboardComponentInteractionRequest interactionRequest)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            string source = interactionRequest.SourceComponent;");
-        builder.AppendLine("            string action = interactionRequest.ActionKey;");
+        builder.Append("                    return new ").Append(ns).AppendLine("PatientEncounterResponse(patientName, true);");
+        builder.AppendLine("                })");
+        builder.Append("            .Register<").Append(ns).Append("DashboardComponentInteractionRequest, ")
+            .Append(ns).AppendLine("DashboardComponentInteractionResponse>(");
+        builder.AppendLine("                async (interactionRequest, cancellationToken) =>");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    string source = interactionRequest.SourceComponent;");
+        builder.AppendLine("                    string action = interactionRequest.ActionKey;");
         if (businessPage is not null)
         {
-            builder.Append("            if (_businessCompositePageStore is not null) await _businessCompositePageStore.DispatchAsync(new ")
+            builder.Append("                    if (_businessCompositePageStore is not null) await _businessCompositePageStore.DispatchAsync(new ")
                 .Append(businessPage.IntentTypeName)
                 .AppendLine(".AppendInteractionLog($\"子组件 {source} 触发 {action}\"), cancellationToken).ConfigureAwait(false);");
         }
-        builder.Append("            return (TResponse)(object)new ").Append(ns).AppendLine("DashboardComponentInteractionResponse(source + \":\" + action, true);");
-        builder.AppendLine("        }");
+        builder.Append("                    return new ").Append(ns).AppendLine("DashboardComponentInteractionResponse(source + \":\" + action, true);");
+        builder.AppendLine("                })");
     }
 
     /// <summary>

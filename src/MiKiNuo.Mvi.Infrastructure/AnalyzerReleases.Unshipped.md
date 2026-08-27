@@ -13,9 +13,11 @@ MVI0005 | MviReducer | Warning | 意图子类型缺少对应的 [MviReduce] 方�
 MVI0006 | MviReducer | Error | 多个规约方法标记同一意图子类型，每个意图子类型只能有一个规约方法。
 MVI0007 | MviReducer | Error | 规约方法签名不符合约定，必须是 (TState, TIntent.Xxx) => MviReduceResult<TState, TEffect>。
 MVI0008 | MviReducer | Error | 守卫谓词方法不存在或签名不是 (TState state) => bool。
-MVI0009 | MviBinding | Error | 声明 [MviBind] 时禁止手写 ApplyStateCore 重写，由源生成器实现。
+MVI0009 | MviBinding | Error | 生成器接管的 ViewModel（声明 [MviBind] 或 [MviCommand]）禁止手写 ApplyStateCore 重写，由源生成器实现。
 MVI0010 | MviStatePath | Error | 状态属性图存在循环引用，无法展开 StatePath，已跳过该分支。
 MVI0011 | MviStatePath | Warning | 泛型状态类型跳过 StatePath 生成。
 MVI0012 | MviStateSlice | Error | 切片构造参数在状态中找不到名称与类型均匹配的属性路径。
 MVI0013 | MviStateSlice | Error | 切片构造参数在状态中匹配到多个属性路径，需重命名参数消除歧义。
 MVI0014 | MviStateSlice | Error | 切片必须声明位置参数主构造函数，且 StateType 必须是实现 IMviState 的非泛型类型。
+MVI0015 | MviComposition | Error | 功能模块状态缺少 public static Initial 成员，无法生成 Store 装配。
+MVI0016 | MviComposition | Error | 功能模块组件（Reducer/IntentHandler/EffectDispatcher）未找到唯一具体实现，无法生成 Store 装配。

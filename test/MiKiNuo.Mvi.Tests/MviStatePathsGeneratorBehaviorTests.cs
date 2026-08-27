@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
+using MiKiNuo.Mvi.Tests.TestSupport;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -92,31 +93,10 @@ public sealed class MviStatePathsGeneratorBehaviorTests
     }
 
     /// <summary>
-    /// 桩类型定义：模拟 MVI 框架关键类型。
+    /// 桩类型定义：共享桩核（MVI 状态契约 + StatePath 运行时）。
     /// </summary>
-    private const string StubDefinitions = """
-        namespace MiKiNuo.Mvi.Domain.MVI.State
-        {
-            public interface IMviState { }
-
-            public readonly struct StatePath<TState, TValue> where TState : IMviState
-            {
-                public StatePath(string displayPath, System.Func<TState, TValue> getter)
-                {
-                    DisplayPath = displayPath;
-                    Getter = getter;
-                }
-
-                public string DisplayPath { get; }
-
-                public System.Func<TState, TValue> Getter { get; }
-
-                public static StatePath<TState, TValue> Create(
-                    string displayPath,
-                    System.Func<TState, TValue> getter) => new(displayPath, getter);
-            }
-        }
-        """;
+    private const string StubDefinitions =
+        GeneratorTestStubs.StateContracts + "\n" + GeneratorTestStubs.StatePathRuntime;
 
     /// <summary>
     /// 含嵌套 record 的状态源码。

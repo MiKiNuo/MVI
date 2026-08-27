@@ -16,23 +16,15 @@ namespace MiKiNuo.Mvi.Application.MVI.ViewModel;
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
 /// <typeparam name="TEffect">副作用类型。</typeparam>
-/// <remarks>
-/// 所有权矩阵（源生成器 vs 子类实现）：
-/// <list type="bullet">
-/// <item>有 [MviBind] + 有 [MviCommand]：
-///   全部钩子由生成器 emit。</item>
-/// <item>有 [MviBind] + 无 [MviCommand]：
-///   ApplyStateCore 由生成器 emit，
-///   OnConstructed/DisposeGeneratedCommands
-///   为基类空体。</item>
-/// <item>无 [MviBind] + 有 [MviCommand]：
-///   ApplyStateCore 由子类手写，
-///   OnConstructed/DisposeGeneratedCommands
-///   由生成器 emit。</item>
-/// <item>无 [MviBind] + 无 [MviCommand]：
-///   ApplyStateCore 由子类手写，
-///   其余为基类空体。</item>
-/// </list>
+    /// <remarks>
+    /// 所有权模型（两档，不再有矩阵）：
+    /// <list type="bullet">
+    /// <item>声明 [MviBind] 或 [MviCommand] 任一特性：
+    ///   ApplyStateCore、OnConstructed、DisposeGeneratedCommands
+    ///   全部由源生成器 emit，子类禁止手写 ApplyStateCore（MVI0009）。</item>
+    /// <item>不声明任何 MVI 特性：全部钩子由子类手写，
+    ///   基类仅提供空体扩展点。</item>
+    /// </list>
 /// <para>
 /// 混合模式（[MviCommand] + 手写命令）：
 /// 手写命令在构造函数初始化，

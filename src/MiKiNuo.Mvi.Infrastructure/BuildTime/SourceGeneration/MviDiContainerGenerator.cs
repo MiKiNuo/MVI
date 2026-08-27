@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -33,10 +34,12 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
         }
 
         List<Models.DiServiceInfo> services = Analysis.Discover(compilation, context.CancellationToken);
+        List<Models.FeatureStoreInfo> features = Analysis.DiscoverFeatures(compilation, context);
 
         string source = Emission.GenerateContainerSource(
             compilation.AssemblyName ?? string.Empty,
-            services);
+            services,
+            features);
         context.AddSource("GeneratedMviContainer.g.cs", SourceText.From(source, Encoding.UTF8));
     }
 
@@ -182,6 +185,220 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
 
             return (arguments, parameterTypeNames);
         }
+
+        /// <summary>功能模块状态缺少 static Initial 成员。</summary>
+        private static readonly DiagnosticDescriptor FeatureStateMissingInitialRule = new(
+            id: Diagnostics.DiagnosticIdCatalog.MviFeatureStateMissingInitial,
+            title: "功能模块状态缺少 static Initial 成员",
+            messageFormat: "功能模块“{0}”的状态类型“{1}”缺少 public static Initial 成员，无法生成 Store 装配。",
+            category: "MviComposition",
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        /// <summary>功能模块组件无法唯一解析。</summary>
+        private static readonly DiagnosticDescriptor FeatureComponentNotResolvableRule = new(
+            id: Diagnostics.DiagnosticIdCatalog.MviFeatureComponentNotResolvable,
+            title: "功能模块组件无法唯一解析",
+            messageFormat: "功能模块“{0}”的 {1} 未找到唯一具体实现（实际 {2} 个），无法生成 Store 装配。",
+            category: "MviComposition",
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        /// <summary>
+        /// 发现所有标记 [MviFeatureModule] 的 Reducer，解析出可装配的 Feature Store 信息。
+        /// </summary>
+        /// <param name="compilation">编译对象。</param>
+        /// <param name="context">源生成上下文。</param>
+        /// <returns>可装配的 Feature Store 信息列表。</returns>
+        public static List<Models.FeatureStoreInfo> DiscoverFeatures(
+            Compilation compilation,
+            SourceProductionContext context)
+        {
+            List<Models.FeatureStoreInfo> result = new();
+
+            INamedTypeSymbol? reducerInterface = compilation.GetTypeByMetadataName(
+                "MiKiNuo.Mvi.Application.MVI.Reducer.IMviReducer`3");
+            INamedTypeSymbol? handlerInterface = compilation.GetTypeByMetadataName(
+                "MiKiNuo.Mvi.Application.MVI.IntentHandler.IMviIntentHandler`3");
+            INamedTypeSymbol? dispatcherInterface = compilation.GetTypeByMetadataName(
+                "MiKiNuo.Mvi.Application.MVI.Effect.IMviEffectDispatcher`1");
+
+            if (reducerInterface is null || handlerInterface is null || dispatcherInterface is null)
+            {
+                return result;
+            }
+
+            List<INamedTypeSymbol> allTypes = GeneratorSyntaxHelpers
+                .EnumerateClassSymbols(compilation, context.CancellationToken)
+                .ToList();
+
+            foreach (INamedTypeSymbol classSymbol in allTypes)
+            {
+                AttributeData? featureAttribute = GeneratorSyntaxHelpers.FindAttribute(
+                    classSymbol,
+                    "MviFeatureModule");
+                if (featureAttribute is null)
+                {
+                    continue;
+                }
+
+                string featureKey = featureAttribute.ConstructorArguments.Length > 0
+                    ? featureAttribute.ConstructorArguments[0].Value as string ?? classSymbol.Name
+                    : classSymbol.Name;
+
+                if (!StatePathGraph.IsNamespaceAccessible(classSymbol))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        FeatureComponentNotResolvableRule,
+                        classSymbol.Locations.FirstOrDefault(),
+                        featureKey,
+                        "Reducer（特性宿主为私有或受保护类型，无法被容器引用）",
+                        0));
+                    continue;
+                }
+
+                INamedTypeSymbol? reducerImpl = classSymbol.AllInterfaces.FirstOrDefault(
+                    i => i.OriginalDefinition.Equals(reducerInterface, SymbolEqualityComparer.Default));
+                if (reducerImpl is null)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        FeatureComponentNotResolvableRule,
+                        classSymbol.Locations.FirstOrDefault(),
+                        featureKey,
+                        "Reducer（特性宿主未实现 IMviReducer<TState, TIntent, TEffect>）",
+                        0));
+                    continue;
+                }
+
+                INamedTypeSymbol stateType = (INamedTypeSymbol)reducerImpl.TypeArguments[0];
+                INamedTypeSymbol intentType = (INamedTypeSymbol)reducerImpl.TypeArguments[1];
+                INamedTypeSymbol effectType = (INamedTypeSymbol)reducerImpl.TypeArguments[2];
+
+                if (!HasStaticInitial(stateType))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        FeatureStateMissingInitialRule,
+                        classSymbol.Locations.FirstOrDefault(),
+                        featureKey,
+                        stateType.Name));
+                    continue;
+                }
+
+                List<INamedTypeSymbol> handlers = FindUniqueImplementation(
+                    allTypes,
+                    handlerInterface,
+                    reducerImpl.TypeArguments);
+                if (handlers.Count != 1)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        FeatureComponentNotResolvableRule,
+                        classSymbol.Locations.FirstOrDefault(),
+                        featureKey,
+                        "IntentHandler",
+                        handlers.Count));
+                    continue;
+                }
+
+                List<INamedTypeSymbol> dispatchers = FindUniqueImplementation(
+                    allTypes,
+                    dispatcherInterface,
+                    ImmutableArray.Create(reducerImpl.TypeArguments[2]));
+                if (dispatchers.Count != 1)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        FeatureComponentNotResolvableRule,
+                        classSymbol.Locations.FirstOrDefault(),
+                        featureKey,
+                        "EffectDispatcher",
+                        dispatchers.Count));
+                    continue;
+                }
+
+                result.Add(new Models.FeatureStoreInfo(
+                    featureKey,
+                    GeneratorSyntaxHelpers.FormatFullyQualified(stateType),
+                    GeneratorSyntaxHelpers.FormatFullyQualified(intentType),
+                    GeneratorSyntaxHelpers.FormatFullyQualified(effectType),
+                    GeneratorSyntaxHelpers.FormatFullyQualified(classSymbol),
+                    GeneratorSyntaxHelpers.FormatFullyQualified(handlers[0]),
+                    GeneratorSyntaxHelpers.FormatFullyQualified(dispatchers[0]),
+                    BuildConstructorArguments(classSymbol).Expressions,
+                    BuildConstructorArguments(handlers[0]).Expressions,
+                    BuildConstructorArguments(dispatchers[0]).Expressions));
+            }
+
+            return result;
+        }
+
+        private static bool HasStaticInitial(INamedTypeSymbol stateType)
+        {
+            foreach (ISymbol member in stateType.GetMembers("Initial"))
+            {
+                if (!member.IsStatic || member.DeclaredAccessibility != Accessibility.Public)
+                {
+                    continue;
+                }
+
+                if (member is IPropertySymbol property
+                    && property.Type.Equals(stateType, SymbolEqualityComparer.Default))
+                {
+                    return true;
+                }
+
+                if (member is IFieldSymbol field
+                    && field.Type.Equals(stateType, SymbolEqualityComparer.Default))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static List<INamedTypeSymbol> FindUniqueImplementation(
+            List<INamedTypeSymbol> allTypes,
+            INamedTypeSymbol interfaceDefinition,
+            System.Collections.Immutable.ImmutableArray<ITypeSymbol> typeArguments)
+        {
+            List<INamedTypeSymbol> matches = new();
+            foreach (INamedTypeSymbol candidate in allTypes)
+            {
+                if (candidate.IsAbstract || candidate.IsGenericType)
+                {
+                    continue;
+                }
+
+                foreach (INamedTypeSymbol implemented in candidate.AllInterfaces)
+                {
+                    if (!implemented.OriginalDefinition.Equals(
+                        interfaceDefinition,
+                        SymbolEqualityComparer.Default))
+                    {
+                        continue;
+                    }
+
+                    bool typeArgumentsMatch = true;
+                    for (int index = 0; index < typeArguments.Length; index++)
+                    {
+                        if (!implemented.TypeArguments[index].Equals(
+                            typeArguments[index],
+                            SymbolEqualityComparer.Default))
+                        {
+                            typeArgumentsMatch = false;
+                            break;
+                        }
+                    }
+
+                    if (typeArgumentsMatch)
+                    {
+                        matches.Add(candidate);
+                        break;
+                    }
+                }
+            }
+
+            return matches;
+        }
     }
 
     /// <summary>
@@ -275,6 +492,94 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
             /// <summary>瞬态生命周期。</summary>
             Transient = 2,
         }
+
+        /// <summary>
+        /// 表示一个可装配的 Feature Store 信息。
+        /// </summary>
+        internal sealed class FeatureStoreInfo
+        {
+            /// <summary>
+            /// 初始化 Feature Store 信息。
+            /// </summary>
+            /// <param name="featureKey">功能模块键。</param>
+            /// <param name="stateTypeName">状态类型（完整限定名）。</param>
+            /// <param name="intentTypeName">意图类型（完整限定名）。</param>
+            /// <param name="effectTypeName">副作用类型（完整限定名）。</param>
+            /// <param name="reducerTypeName">规约器类型（完整限定名）。</param>
+            /// <param name="handlerTypeName">意图处理器类型（完整限定名）。</param>
+            /// <param name="dispatcherTypeName">副作用分发器类型（完整限定名）。</param>
+            /// <param name="reducerConstructorArguments">规约器构造实参表达式。</param>
+            /// <param name="handlerConstructorArguments">意图处理器构造实参表达式。</param>
+            /// <param name="dispatcherConstructorArguments">副作用分发器构造实参表达式。</param>
+            public FeatureStoreInfo(
+                string featureKey,
+                string stateTypeName,
+                string intentTypeName,
+                string effectTypeName,
+                string reducerTypeName,
+                string handlerTypeName,
+                string dispatcherTypeName,
+                IReadOnlyList<string> reducerConstructorArguments,
+                IReadOnlyList<string> handlerConstructorArguments,
+                IReadOnlyList<string> dispatcherConstructorArguments)
+            {
+                FeatureKey = featureKey;
+                StateTypeName = stateTypeName;
+                IntentTypeName = intentTypeName;
+                EffectTypeName = effectTypeName;
+                ReducerTypeName = reducerTypeName;
+                HandlerTypeName = handlerTypeName;
+                DispatcherTypeName = dispatcherTypeName;
+                ReducerConstructorArguments = reducerConstructorArguments;
+                HandlerConstructorArguments = handlerConstructorArguments;
+                DispatcherConstructorArguments = dispatcherConstructorArguments;
+            }
+
+            /// <summary>功能模块键。</summary>
+            public string FeatureKey { get; }
+
+            /// <summary>状态类型（完整限定名）。</summary>
+            public string StateTypeName { get; }
+
+            /// <summary>意图类型（完整限定名）。</summary>
+            public string IntentTypeName { get; }
+
+            /// <summary>副作用类型（完整限定名）。</summary>
+            public string EffectTypeName { get; }
+
+            /// <summary>规约器类型（完整限定名）。</summary>
+            public string ReducerTypeName { get; }
+
+            /// <summary>意图处理器类型（完整限定名）。</summary>
+            public string HandlerTypeName { get; }
+
+            /// <summary>副作用分发器类型（完整限定名）。</summary>
+            public string DispatcherTypeName { get; }
+
+            /// <summary>规约器构造实参表达式。</summary>
+            public IReadOnlyList<string> ReducerConstructorArguments { get; }
+
+            /// <summary>意图处理器构造实参表达式。</summary>
+            public IReadOnlyList<string> HandlerConstructorArguments { get; }
+
+            /// <summary>副作用分发器构造实参表达式。</summary>
+            public IReadOnlyList<string> DispatcherConstructorArguments { get; }
+
+            /// <summary>
+            /// 获取可作为方法名片段的功能模块键（仅保留字母数字与下划线）。
+            /// </summary>
+            /// <returns>安全的方法名片段。</returns>
+            public string GetSafeMethodKey()
+            {
+                StringBuilder builder = new();
+                foreach (char character in FeatureKey)
+                {
+                    builder.Append(char.IsLetterOrDigit(character) || character == '_' ? character : '_');
+                }
+
+                return builder.Length == 0 ? "Feature" : builder.ToString();
+            }
+        }
     }
 
     /// <summary>
@@ -288,17 +593,20 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
         /// </summary>
         /// <param name="assemblyName">目标程序集名称（用作容器命名空间）。</param>
         /// <param name="services">分析得到的 DI 服务信息。</param>
+        /// <param name="features">分析得到的 Feature Store 装配信息。</param>
         /// <returns>生成的 C# 源码。</returns>
         public static string GenerateContainerSource(
             string assemblyName,
-            IReadOnlyList<Models.DiServiceInfo> services)
+            IReadOnlyList<Models.DiServiceInfo> services,
+            IReadOnlyList<Models.FeatureStoreInfo> features)
         {
             StringBuilder builder = new();
             string containerNamespace = string.IsNullOrEmpty(assemblyName) ? "GeneratedContainer" : assemblyName;
 
             EmitFileHeader(builder, containerNamespace, services);
             EmitConstructor(builder, services);
-            EmitResolveMethods(builder, services);
+            EmitResolveMethods(builder, services, features);
+            EmitFeatureStoreFactories(builder, features);
             EmitCreateScope(builder);
             EmitCreateWith(builder, services);
             EmitScopeClass(builder);
@@ -382,10 +690,13 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
         /// <summary>
         /// 生成 Resolve&lt;T&gt; 与 Resolve(Type) 方法。
         /// </summary>
-        private static void EmitResolveMethods(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        private static void EmitResolveMethods(
+            StringBuilder builder,
+            IReadOnlyList<Models.DiServiceInfo> services,
+            IReadOnlyList<Models.FeatureStoreInfo> features)
         {
             EmitResolveGeneric(builder);
-            EmitResolveByType(builder, services);
+            EmitResolveByType(builder, services, features);
         }
 
         /// <summary>
@@ -409,7 +720,10 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
         /// <summary>
         /// 生成 Resolve(Type) 非泛型方法。
         /// </summary>
-        private static void EmitResolveByType(StringBuilder builder, IReadOnlyList<Models.DiServiceInfo> services)
+        private static void EmitResolveByType(
+            StringBuilder builder,
+            IReadOnlyList<Models.DiServiceInfo> services,
+            IReadOnlyList<Models.FeatureStoreInfo> features)
         {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 解析指定类型的服务。");
@@ -449,10 +763,63 @@ public sealed class MviDiContainerGenerator : IIncrementalGenerator
                     builder.AppendLine(");");
                 }
             }
+
+            foreach (Models.FeatureStoreInfo feature in features)
+            {
+                builder.Append("        if (serviceType == typeof(global::MiKiNuo.Mvi.Application.MVI.Store.IMviStore<")
+                    .Append(feature.StateTypeName).Append(", ")
+                    .Append(feature.IntentTypeName).Append(", ")
+                    .Append(feature.EffectTypeName).AppendLine(">))");
+                builder.AppendLine("        {");
+                builder.Append("            object created = Create").Append(feature.GetSafeMethodKey()).AppendLine("FeatureStore();");
+                builder.AppendLine("            _singletons[serviceType] = created;");
+                builder.AppendLine("            return created;");
+                builder.AppendLine("        }");
+                builder.AppendLine();
+            }
+
             builder.AppendLine();
             builder.AppendLine("        throw new InvalidOperationException($\"未注册服务：{serviceType.FullName}\");");
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成 Feature Store 工厂方法。
+        /// </summary>
+        private static void EmitFeatureStoreFactories(
+            StringBuilder builder,
+            IReadOnlyList<Models.FeatureStoreInfo> features)
+        {
+            foreach (Models.FeatureStoreInfo feature in features)
+            {
+                string storeType = "global::MiKiNuo.Mvi.Application.MVI.Store.IMviStore<"
+                    + feature.StateTypeName + ", "
+                    + feature.IntentTypeName + ", "
+                    + feature.EffectTypeName + ">";
+
+                builder.AppendLine("    /// <summary>");
+                builder.Append("    /// 创建功能模块“").Append(feature.FeatureKey).AppendLine("”的 Store（由 [MviFeatureModule] 驱动生成）。");
+                builder.AppendLine("    /// </summary>");
+                builder.Append("    /// <returns>功能模块 Store 实例。</returns>");
+                builder.AppendLine();
+                builder.Append("    private ").Append(storeType).Append(" Create")
+                    .Append(feature.GetSafeMethodKey()).AppendLine("FeatureStore()");
+                builder.AppendLine("    {");
+                builder.Append("        return new global::MiKiNuo.Mvi.Application.MVI.Store.MviStore<")
+                    .Append(feature.StateTypeName).Append(", ")
+                    .Append(feature.IntentTypeName).Append(", ")
+                    .Append(feature.EffectTypeName).AppendLine(">(");
+                builder.Append("            ").Append(feature.StateTypeName).AppendLine(".Initial,");
+                builder.Append("            new ").Append(feature.HandlerTypeName).Append('(')
+                    .Append(string.Join(", ", feature.HandlerConstructorArguments)).AppendLine("),");
+                builder.Append("            new ").Append(feature.ReducerTypeName).Append('(')
+                    .Append(string.Join(", ", feature.ReducerConstructorArguments)).AppendLine("),");
+                builder.Append("            new ").Append(feature.DispatcherTypeName).Append('(')
+                    .Append(string.Join(", ", feature.DispatcherConstructorArguments)).AppendLine("));");
+                builder.AppendLine("    }");
+                builder.AppendLine();
+            }
         }
 
         /// <summary>

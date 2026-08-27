@@ -344,6 +344,13 @@ internal static class GeneratorSyntaxHelpers
 
     private static bool IsAttributeMatch(string attributeName, string candidateShortName)
     {
+        // 兼容全限定写法（如 [MiKiNuo.Mvi.Domain.MVI.Feature.MviFeatureModule]）：只比较最后一段。
+        int lastDotIndex = attributeName.LastIndexOf('.');
+        if (lastDotIndex >= 0)
+        {
+            attributeName = attributeName.Substring(lastDotIndex + 1);
+        }
+
         if (string.Equals(attributeName, candidateShortName, System.StringComparison.Ordinal))
         {
             return true;

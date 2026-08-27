@@ -46,6 +46,11 @@ public sealed class MviStatePathsGenerator : IIncrementalGenerator
                 continue;
             }
 
+            if (!StatePathGraph.IsNamespaceAccessible(typeSymbol))
+            {
+                continue;
+            }
+
             if (!typeSymbol.AllInterfaces.Any(i => i.Equals(stateMarker, SymbolEqualityComparer.Default)))
             {
                 continue;
