@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -17,8 +16,7 @@ public sealed partial class DashboardReducer
     [MviReduce(typeof(DashboardIntent.ShowPage))]
     private MviReduceResult<DashboardState, UnitEffect> HandleShowPage(
         DashboardState state,
-        DashboardIntent.ShowPage intent,
-        IMviBusinessResult? result)
+        DashboardIntent.ShowPage intent)
     {
         return Unchanged(
             state with

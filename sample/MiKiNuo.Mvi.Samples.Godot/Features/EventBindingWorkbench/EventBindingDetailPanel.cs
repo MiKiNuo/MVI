@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
@@ -60,7 +60,7 @@ public sealed class EventBindingDetailEffectDispatcher : MviEffectDispatcherBase
     {
         if (effect is EventBindingDetailEffect.NotifyPrepare prepare)
         {
-            await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(
+            await _mediator.SendAsync<EventBindingWorkbenchInteractionResponse>(
                 new EventBindingWorkbenchInteractionRequest("DetailPanel", "Pressed", prepare.SourceName),
                 cancellationToken).ConfigureAwait(false);
         }

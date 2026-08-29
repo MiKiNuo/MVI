@@ -1,5 +1,3 @@
-using MiKiNuo.Mvi.Domain.MVI.Business;
-using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.State;
 
@@ -16,21 +14,19 @@ namespace MiKiNuo.Mvi.Application.MVI.IntentHandler;
 /// </remarks>
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
-/// <typeparam name="TEffect">副作用类型。</typeparam>
-public abstract class MviIntentHandlerBase<TState, TIntent, TEffect>
-    : IMviIntentHandler<TState, TIntent, TEffect>
+public abstract class MviIntentHandlerBase<TState, TIntent>
+    : IMviIntentHandler<TState, TIntent>
     where TState : IMviState
     where TIntent : IMviIntent
-    where TEffect : IMviEffect
 {
     /// <summary>
-    /// 处理意图并产生业务结果。
+    /// 处理意图并产生后续意图。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>业务结果,无异步业务时返回 null。</returns>
-    public async ValueTask<IMviBusinessResult?> HandleAsync(
+    /// <returns>后续意图,无后续工作时返回 null。</returns>
+    public async ValueTask<TIntent?> HandleAsync(
         TState state,
         TIntent intent,
         CancellationToken cancellationToken = default)
@@ -47,8 +43,8 @@ public abstract class MviIntentHandlerBase<TState, TIntent, TEffect>
     /// <param name="state">当前状态（已通过 null 检查）。</param>
     /// <param name="intent">用户意图（已通过 null 检查）。</param>
     /// <param name="cancellationToken">取消标记（已通过检查）。</param>
-    /// <returns>业务结果,无异步业务时返回 null。</returns>
-    protected abstract ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    /// <returns>后续意图,无后续工作时返回 null。</returns>
+    protected abstract ValueTask<TIntent?> HandleCoreAsync(
         TState state,
         TIntent intent,
         CancellationToken cancellationToken);

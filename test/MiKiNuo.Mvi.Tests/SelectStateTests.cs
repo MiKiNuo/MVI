@@ -129,12 +129,10 @@ public sealed class CounterReducer : IMviReducer<CounterState, CounterIntent, Un
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
-    /// <param name="result">业务结果。</param>
     /// <returns>规约结果。</returns>
     public MviReduceResult<CounterState, UnitEffect> Reduce(
         CounterState state,
-        CounterIntent intent,
-        IMviBusinessResult? result = null)
+        CounterIntent intent)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(intent);
@@ -153,16 +151,16 @@ public sealed class CounterReducer : IMviReducer<CounterState, CounterIntent, Un
 /// <summary>
 /// 表示 SelectState 测试用空意图处理器。
 /// </summary>
-public sealed class NullCounterIntentHandler : IMviIntentHandler<CounterState, CounterIntent, UnitEffect>
+public sealed class NullCounterIntentHandler : IMviIntentHandler<CounterState, CounterIntent>
 {
     /// <summary>
-    /// 处理意图(空操作,返回无业务结果)。
+    /// 处理意图(空操作,返回无后续意图)。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
     /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>无业务结果。</returns>
-    public async ValueTask<IMviBusinessResult?> HandleAsync(
+    /// <returns>无后续意图。</returns>
+    public async ValueTask<CounterIntent?> HandleAsync(
         CounterState state,
         CounterIntent intent,
         CancellationToken cancellationToken = default)

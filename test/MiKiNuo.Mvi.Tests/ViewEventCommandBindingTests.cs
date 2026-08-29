@@ -328,7 +328,7 @@ public abstract partial record EventCommandEffect : IMviEffect;
 /// 表示事件命令测试意图处理器。
 /// </summary>
 public sealed class EventCommandIntentHandler
-    : MviIntentHandlerBase<EventCommandState, EventCommandIntent, EventCommandEffect>
+    : MviIntentHandlerBase<EventCommandState, EventCommandIntent>
 {
     /// <summary>
     /// 处理具体业务逻辑。
@@ -336,8 +336,8 @@ public sealed class EventCommandIntentHandler
     /// <param name="state">当前状态（已通过 null 检查）。</param>
     /// <param name="intent">用户意图（已通过 null 检查）。</param>
     /// <param name="cancellationToken">取消标记（已通过检查）。</param>
-    /// <returns>业务结果;无业务时返回 null。</returns>
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    /// <returns>后续意图;无后续工作时返回 null。</returns>
+    protected override async ValueTask<EventCommandIntent?> HandleCoreAsync(
         EventCommandState state,
         EventCommandIntent intent,
         CancellationToken cancellationToken)
@@ -358,13 +358,11 @@ public sealed partial class EventCommandReducer
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">捕获文本意图。</param>
-    /// <param name="result">业务结果。</param>
     /// <returns>规约结果。</returns>
     [MviReduce(typeof(EventCommandIntent.CaptureText))]
     private MviReduceResult<EventCommandState, EventCommandEffect> HandleCaptureText(
         EventCommandState state,
-        EventCommandIntent.CaptureText intent,
-        IMviBusinessResult? result)
+        EventCommandIntent.CaptureText intent)
     {
         return MviReduceResult.State<EventCommandState, EventCommandEffect>(
             state with { Text = intent.Payload.Text, WasUserInitiated = intent.Payload.IsUserInitiated });

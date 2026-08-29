@@ -1,5 +1,6 @@
-using MiKiNuo.Mvi.Application.MVI.Mediator;
+﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
 using TUnit.Assertions;
+using MiKiNuo.Mvi.Domain.MVI.Mediator;
 using TUnit.Core;
 namespace MiKiNuo.Mvi.Tests;
 /// <summary>
@@ -15,7 +16,7 @@ public sealed class MviMediatorTests
     {
         MviMediator mediator = new();
         mediator.Register<PingRequest, PongResponse>(new PingHandler());
-        PongResponse response = await mediator.SendAsync<PingRequest, PongResponse>(new PingRequest("hello"));
+        PongResponse response = await mediator.SendAsync<PongResponse>(new PingRequest("hello"));
         await Assert.That(response.Message).IsEqualTo("pong:hello");
     }
     /// <summary>
@@ -27,7 +28,7 @@ public sealed class MviMediatorTests
         MviMediator mediator = new();
         mediator.Register<PingRequest, PongResponse>(
             (request, _) => ValueTask.FromResult(new PongResponse("direct:" + request.Message)));
-        PongResponse response = await mediator.SendAsync<PingRequest, PongResponse>(new PingRequest("x"));
+        PongResponse response = await mediator.SendAsync<PongResponse>(new PingRequest("x"));
         await Assert.That(response.Message).IsEqualTo("direct:x");
     }
     /// <summary>
@@ -38,7 +39,7 @@ public sealed class MviMediatorTests
     {
         MviMediator mediator = new();
         await Assert.That(async () =>
-            await mediator.SendAsync<PingRequest, PongResponse>(new PingRequest("x")))
+            await mediator.SendAsync<PongResponse>(new PingRequest("x")))
             .Throws<MviMediatorRouteNotFoundException>();
     }
     /// <summary>
@@ -56,7 +57,7 @@ public sealed class MviMediatorTests
     /// 表示测试用 Ping 请求。
     /// </summary>
     /// <param name="Message">消息内容。</param>
-    private sealed record PingRequest(string Message);
+    private sealed record PingRequest(string Message) : IMviRequest<PongResponse>;
     /// <summary>
     /// 表示测试用 Pong 响应。
     /// </summary>

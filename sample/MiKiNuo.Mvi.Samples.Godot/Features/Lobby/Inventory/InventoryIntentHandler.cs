@@ -1,9 +1,8 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -11,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// 表示背包仓库意图处理器。
 /// </summary>
 public sealed class InventoryIntentHandler
-    : MviIntentHandlerBase<InventoryState, InventoryIntent, InventoryEffect>
+    : MviIntentHandlerBase<InventoryState, InventoryIntent>
 {
     private readonly ILobbyApiService _apiService;
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
@@ -52,7 +51,7 @@ public sealed class InventoryIntentHandler
         "Design",
         "CA1062:Validate arguments of public methods",
         Justification = "由基类统一验证参数。")]
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    protected override async ValueTask<InventoryIntent?> HandleCoreAsync(
         InventoryState state,
         InventoryIntent intent,
         CancellationToken cancellationToken)
@@ -68,7 +67,7 @@ public sealed class InventoryIntentHandler
         }
     }
 
-    private async ValueTask<IMviBusinessResult?> HandleUsePotionAsync(
+    private async ValueTask<InventoryIntent?> HandleUsePotionAsync(
         InventoryState state,
         CancellationToken cancellationToken)
     {
@@ -79,8 +78,7 @@ public sealed class InventoryIntentHandler
 
         if (!result.Success)
         {
-            return new FollowUpIntentResult<InventoryIntent>(
-                new InventoryIntent.PotionUseFailed(result.ErrorMessage ?? "使用药水失败。"));
+            return new InventoryIntent.PotionUseFailed(result.ErrorMessage ?? "使用药水失败。");
         }
 
         string selectedMission = _missionStore.CurrentState.SelectedMission;
@@ -88,13 +86,12 @@ public sealed class InventoryIntentHandler
         string readyText = await _apiService
             .BuildBattleReadyTextAsync(selectedMission, heroPower, result.NewStamina, result.NewPotionCount, cancellationToken)
             .ConfigureAwait(false);
-        return new FollowUpIntentResult<InventoryIntent>(
-            new InventoryIntent.PotionUsed(result.NewPotionCount, result.NewStamina, readyText));
+        return new InventoryIntent.PotionUsed(result.NewPotionCount, result.NewStamina, readyText);
     }
 
-    private async ValueTask<IMviBusinessResult?> HandleOpenGoldBoxAsync(CancellationToken cancellationToken)
+    private async ValueTask<InventoryIntent?> HandleOpenGoldBoxAsync(CancellationToken cancellationToken)
     {
         int gold = await _apiService.OpenGoldBoxAsync(cancellationToken).ConfigureAwait(false);
-        return new FollowUpIntentResult<InventoryIntent>(new InventoryIntent.GoldBoxOpened(gold));
+        return new InventoryIntent.GoldBoxOpened(gold);
     }
 }

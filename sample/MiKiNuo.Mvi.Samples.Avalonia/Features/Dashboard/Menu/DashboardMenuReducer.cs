@@ -1,6 +1,5 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Menu;
@@ -17,8 +16,7 @@ public sealed partial class DashboardMenuReducer
     [MviReduce(typeof(DashboardMenuIntent.SelectMenuKey))]
     private MviReduceResult<DashboardMenuState, DashboardMenuEffect> HandleSelectMenuKey(
         DashboardMenuState state,
-        DashboardMenuIntent.SelectMenuKey intent,
-        IMviBusinessResult? result)
+        DashboardMenuIntent.SelectMenuKey intent)
     {
         if (string.Equals(state.SelectedMenuKey, intent.SelectedMenuKey, StringComparison.Ordinal))
         {

@@ -34,7 +34,7 @@ public static class EventBindingExtensions
         ArgumentNullException.ThrowIfNull(bindings);
 
         EventBinding<TEvent> binding = new(source, mapper);
-        IDisposable subscription = binding.Attach(dispatcher.Dispatch);
+        IDisposable subscription = binding.Attach(dispatcher);
         bindings.Add(subscription);
     }
 }

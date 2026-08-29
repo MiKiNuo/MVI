@@ -1,7 +1,6 @@
-using System;
+﻿using System;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -9,7 +8,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// 表示玩家资料意图处理器。
 /// </summary>
 public sealed class PlayerIntentHandler
-    : MviIntentHandlerBase<PlayerState, PlayerIntent, PlayerEffect>
+    : MviIntentHandlerBase<PlayerState, PlayerIntent>
 {
     private readonly ILobbyApiService _apiService;
     private readonly IMviStore<MissionState, MissionIntent, MissionEffect> _missionStore;
@@ -44,7 +43,7 @@ public sealed class PlayerIntentHandler
     /// <param name="intent">用户意图（已通过 null 检查）。</param>
     /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>业务结果;无业务时返回 null。</returns>
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    protected override async ValueTask<PlayerIntent?> HandleCoreAsync(
         PlayerState state,
         PlayerIntent intent,
         CancellationToken cancellationToken)
@@ -58,7 +57,7 @@ public sealed class PlayerIntentHandler
         }
     }
 
-    private async ValueTask<IMviBusinessResult?> HandleSetPlayerAsync(
+    private async ValueTask<PlayerIntent?> HandleSetPlayerAsync(
         PlayerIntent.SetPlayer intent,
         CancellationToken cancellationToken)
     {
@@ -73,6 +72,6 @@ public sealed class PlayerIntentHandler
                 potionCount,
                 cancellationToken)
             .ConfigureAwait(false);
-        return new FollowUpIntentResult<PlayerIntent>(new PlayerIntent.PlayerSet(readyText));
+        return new PlayerIntent.PlayerSet(readyText);
     }
 }

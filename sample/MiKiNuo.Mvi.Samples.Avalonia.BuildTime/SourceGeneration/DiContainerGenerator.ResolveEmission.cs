@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -113,18 +113,16 @@ public sealed partial class AvaloniaSampleDiContainerGenerator
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    /// 发送请求并返回响应。");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    /// <typeparam name=\"TRequest\">请求类型。</typeparam>");
         builder.AppendLine("    /// <typeparam name=\"TResponse\">响应类型。</typeparam>");
         builder.AppendLine("    /// <param name=\"request\">请求对象。</param>");
         builder.AppendLine("    /// <param name=\"cancellationToken\">取消标记。</param>");
         builder.AppendLine("    /// <returns>响应对象。</returns>");
-        builder.AppendLine("    public ValueTask<TResponse> SendAsync<TRequest, TResponse>(");
-        builder.AppendLine("        TRequest request,");
+        builder.AppendLine("    public ValueTask<TResponse> SendAsync<TResponse>(");
+        builder.AppendLine("        global::MiKiNuo.Mvi.Domain.MVI.Mediator.IMviRequest<TResponse> request,");
         builder.AppendLine("        CancellationToken cancellationToken = default)");
-        builder.AppendLine("        where TRequest : notnull");
         builder.AppendLine("    {");
         builder.AppendLine("        ArgumentNullException.ThrowIfNull(request);");
-        builder.AppendLine("        return Mediator.SendAsync<TRequest, TResponse>(request, cancellationToken);");
+        builder.AppendLine("        return Mediator.SendAsync<TResponse>(request, cancellationToken);");
         builder.AppendLine("    }");
         builder.AppendLine();
 

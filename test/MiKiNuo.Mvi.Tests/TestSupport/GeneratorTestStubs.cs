@@ -141,11 +141,6 @@ internal static class GeneratorTestStubs
             }
         }
 
-        namespace MiKiNuo.Mvi.Domain.MVI.Business
-        {
-            public interface IMviBusinessResult { }
-        }
-
         namespace MiKiNuo.Mvi.Domain.MVI.Reducer
         {
             public sealed class MviReduceResult<TState, TEffect>
@@ -162,16 +157,15 @@ internal static class GeneratorTestStubs
             {
                 MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<TState, TEffect> Reduce(
                     TState state,
-                    TIntent intent,
-                    MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult? result = null);
+                    TIntent intent);
             }
         }
 
         namespace MiKiNuo.Mvi.Application.MVI.IntentHandler
         {
-            public interface IMviIntentHandler<TState, TIntent, TEffect>
+            public interface IMviIntentHandler<TState, TIntent>
             {
-                System.Threading.Tasks.ValueTask<MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult?> HandleAsync(
+                System.Threading.Tasks.ValueTask<TIntent?> HandleAsync(
                     TState state,
                     TIntent intent,
                     System.Threading.CancellationToken cancellationToken = default);
@@ -196,7 +190,7 @@ internal static class GeneratorTestStubs
             {
                 public MviStore(
                     TState initialState,
-                    MiKiNuo.Mvi.Application.MVI.IntentHandler.IMviIntentHandler<TState, TIntent, TEffect> intentHandler,
+                    MiKiNuo.Mvi.Application.MVI.IntentHandler.IMviIntentHandler<TState, TIntent> intentHandler,
                     MiKiNuo.Mvi.Application.MVI.Reducer.IMviReducer<TState, TIntent, TEffect> reducer,
                     MiKiNuo.Mvi.Application.MVI.Effect.IMviEffectDispatcher<TEffect> effectDispatcher)
                 {

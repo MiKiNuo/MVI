@@ -1,5 +1,7 @@
 namespace MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
+using MiKiNuo.Mvi.Domain.MVI.Mediator;
+
 /// <summary>
 /// 表示事件绑定组合示例内的组件交互请求。
 /// </summary>
@@ -9,7 +11,7 @@ namespace MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 public sealed record EventBindingWorkbenchInteractionRequest(
     string SourceComponent,
     string ActionKey,
-    string ContextText);
+    string ContextText) : IMviRequest<EventBindingWorkbenchInteractionResponse>;
 
 /// <summary>
 /// 表示事件绑定组合示例内的组件交互响应。

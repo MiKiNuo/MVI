@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Mediator;
+﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
@@ -85,7 +85,7 @@ public sealed class OutpatientWorkstationMediatorTests
 
         // 直接通过中介者发送请求
         IMviMediator mediator = container.Resolve<IMviMediator>();
-        await mediator.SendAsync<OpenPatientEncounterRequest, PatientEncounterResponse>(
+        await mediator.SendAsync<PatientEncounterResponse>(
             new OpenPatientEncounterRequest("张三 · 男 · 35岁 · 发热"));
         await Task.Delay(200);
 

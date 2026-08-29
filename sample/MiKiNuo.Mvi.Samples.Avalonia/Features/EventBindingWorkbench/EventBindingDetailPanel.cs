@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
+﻿using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -91,7 +91,7 @@ public sealed class EventBindingDetailEffectDispatcher : MviEffectDispatcherBase
     {
         if (effect is EventBindingDetailEffect.NotifyDetailEvent detailEvent)
         {
-            await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(
+            await _mediator.SendAsync<EventBindingWorkbenchInteractionResponse>(
                 new EventBindingWorkbenchInteractionRequest("DetailPanel", detailEvent.ActionKey, detailEvent.ContextText),
                 cancellationToken).ConfigureAwait(false);
         }

@@ -115,11 +115,6 @@ public sealed class MviReducerDispatchGeneratorBehaviorTests
             public interface IMviEffect { }
         }
 
-        namespace MiKiNuo.Mvi.Domain.MVI.Business
-        {
-            public interface IMviBusinessResult { }
-        }
-
         namespace MiKiNuo.Mvi.Domain.MVI.Reducer
         {
             public sealed record MviReduceResult<TState, TEffect>(
@@ -153,7 +148,7 @@ public sealed class MviReducerDispatchGeneratorBehaviorTests
                 where TEffect : MiKiNuo.Mvi.Domain.MVI.Effect.IMviEffect
             {
                 public abstract MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<TState, TEffect> Reduce(
-                    TState state, TIntent intent, MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult? result);
+                    TState state, TIntent intent);
             }
         }
         """;
@@ -177,7 +172,7 @@ public sealed class MviReducerDispatchGeneratorBehaviorTests
             {
                 [MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduce(typeof(LoginIntent.ChangeUserName))]
                 private MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
-                    LoginState state, LoginIntent.ChangeUserName intent, MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult? result)
+                    LoginState state, LoginIntent.ChangeUserName intent)
                 {
                     return MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult.State<LoginState, LoginEffect>(
                         state with { UserName = intent.UserName });
@@ -205,7 +200,7 @@ public sealed class MviReducerDispatchGeneratorBehaviorTests
             {
                 [MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmit))]
                 private MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<LoginState, LoginEffect> HandleSubmit(
-                    LoginState state, LoginIntent.Submit intent, MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult? result)
+                    LoginState state, LoginIntent.Submit intent)
                 {
                     return MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult.State<LoginState, LoginEffect>(state);
                 }

@@ -138,7 +138,7 @@ public sealed class GeneratedContainerTests
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
         IMviMediator mediator = container.Resolve<IMviMediator>();
 
-        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+        await mediator.SendAsync<DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("住院床位"));
 
         await Assert.That(dashboard.CreateCurrentPageViewModel()).IsTypeOf<BusinessCompositePageViewModel>();
@@ -166,7 +166,7 @@ public sealed class GeneratedContainerTests
 
         foreach ((string menuKey, string expectedLayout) in expectations)
         {
-            await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+            await mediator.SendAsync<DashboardNavigationResponse>(
                 new NavigateDashboardPageRequest(menuKey));
 
             BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel()!;
@@ -185,7 +185,7 @@ public sealed class GeneratedContainerTests
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
         IMviMediator mediator = container.Resolve<IMviMediator>();
 
-        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+        await mediator.SendAsync<DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("门诊工作站"));
 
         await Assert.That(dashboard.CreateCurrentPageViewModel()).IsNotTypeOf<BusinessCompositePageViewModel>();
@@ -207,7 +207,7 @@ public sealed class GeneratedContainerTests
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
         IMviMediator mediator = container.Resolve<IMviMediator>();
 
-        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+        await mediator.SendAsync<DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("架构验证中心"));
 
         await Assert.That(dashboard.CreateCurrentPageViewModel())
@@ -296,7 +296,7 @@ public sealed class GeneratedContainerTests
         IMviMediator mediator = container.Resolve<IMviMediator>();
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
 
-        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+        await mediator.SendAsync<DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("住院床位"));
         BusinessCompositePageViewModel page = (BusinessCompositePageViewModel)dashboard.CreateCurrentPageViewModel()!;
 
@@ -326,7 +326,7 @@ public sealed class GeneratedContainerTests
         IMviMediator mediator = container.Resolve<IMviMediator>();
         DashboardViewModel dashboard = container.Resolve<DashboardViewModel>();
 
-        await mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+        await mediator.SendAsync<DashboardNavigationResponse>(
             new NavigateDashboardPageRequest("门诊工作站"));
 
         OutpatientWorkstationViewModel outpatientPage = (OutpatientWorkstationViewModel)dashboard.CreateCurrentPageViewModel()!;
@@ -335,7 +335,7 @@ public sealed class GeneratedContainerTests
         string patientBefore = clinicalEditor.PatientName;
         bool canSaveBefore = clinicalEditor.CanSave;
 
-        await mediator.SendAsync<OpenPatientEncounterRequest, PatientEncounterResponse>(
+        await mediator.SendAsync<PatientEncounterResponse>(
             new OpenPatientEncounterRequest("测试患者·张"));
 
         string patientAfter = clinicalEditor.PatientName;

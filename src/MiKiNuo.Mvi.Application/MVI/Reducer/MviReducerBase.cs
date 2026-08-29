@@ -1,4 +1,3 @@
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -12,26 +11,6 @@ namespace MiKiNuo.Mvi.Application.MVI.Reducer;
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
 /// <typeparam name="TEffect">副作用类型。</typeparam>
-/// <remarks>
-/// 双阶段 Reduce 协议：
-/// <para>
-/// <c>MviStore</c> 在单次 Intent 派发中对同一 Reducer 调用两次 Reduce。
-/// </para>
-/// <list type="number">
-/// <item>第一次：传入 <c>result</c> 为 null，
-/// 产中间状态（如 IsBusy=true）。</item>
-/// <item>第二次：传入 IntentHandler 返回的业务结果，
-/// 产最终状态与副作用。</item>
-/// </list>
-/// <para>
-/// 若 IntentHandler 返回 null 则跳过第二次。
-/// Handle* 方法内用 <c>if (result is null)</c> 区分两阶段。
-/// </para>
-/// <para>
-/// Guard 谓词在两阶段各求值一次；
-/// 需写 <c>CanSubmit || IsBusy</c> 允许第二阶段通过。
-/// </para>
-/// </remarks>
 public abstract class MviReducerBase<TState, TIntent, TEffect>
     : IMviReducer<TState, TIntent, TEffect>
     where TState : IMviState
@@ -39,16 +18,14 @@ public abstract class MviReducerBase<TState, TIntent, TEffect>
     where TEffect : IMviEffect
 {
     /// <summary>
-    /// 将意图与业务结果规约为新状态与副作用。
+    /// 将意图规约为新状态与副作用。
     /// </summary>
     /// <param name="state">当前状态。</param>
     /// <param name="intent">用户意图。</param>
-    /// <param name="result">业务结果,无异步业务时为 null。</param>
     /// <returns>规约结果。</returns>
     public abstract MviReduceResult<TState, TEffect> Reduce(
         TState state,
-        TIntent intent,
-        IMviBusinessResult? result = null);
+        TIntent intent);
 
     /// <summary>
     /// 返回状态不变的规约结果（无副作用）。

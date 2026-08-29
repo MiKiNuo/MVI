@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
+﻿using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 
@@ -32,7 +32,7 @@ public sealed class PatientQueueEffectDispatcher : MviEffectDispatcherBase<Patie
     {
         if (effect is PatientQueueEffect.PatientSelected selected)
         {
-            await _mediator.SendAsync<OpenPatientEncounterRequest, PatientEncounterResponse>(
+            await _mediator.SendAsync<PatientEncounterResponse>(
                 new OpenPatientEncounterRequest(selected.PatientName),
                 cancellationToken).ConfigureAwait(false);
         }

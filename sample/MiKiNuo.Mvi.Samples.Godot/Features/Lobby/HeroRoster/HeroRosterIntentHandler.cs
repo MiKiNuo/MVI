@@ -1,9 +1,8 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -11,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// 表示英雄队伍意图处理器。
 /// </summary>
 public sealed class HeroRosterIntentHandler
-    : MviIntentHandlerBase<HeroRosterState, HeroRosterIntent, HeroRosterEffect>
+    : MviIntentHandlerBase<HeroRosterState, HeroRosterIntent>
 {
     private readonly ILobbyApiService _apiService;
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
@@ -52,7 +51,7 @@ public sealed class HeroRosterIntentHandler
         "Design",
         "CA1062:Validate arguments of public methods",
         Justification = "由基类统一验证参数。")]
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    protected override async ValueTask<HeroRosterIntent?> HandleCoreAsync(
         HeroRosterState state,
         HeroRosterIntent intent,
         CancellationToken cancellationToken)
@@ -66,7 +65,7 @@ public sealed class HeroRosterIntentHandler
         }
     }
 
-    private async ValueTask<IMviBusinessResult?> HandleTrainAsync(
+    private async ValueTask<HeroRosterIntent?> HandleTrainAsync(
         HeroRosterState state,
         HeroRosterIntent.Train train,
         CancellationToken cancellationToken)
@@ -92,8 +91,7 @@ public sealed class HeroRosterIntentHandler
 
         if (!result.Success)
         {
-            return new FollowUpIntentResult<HeroRosterIntent>(
-                new HeroRosterIntent.TrainFailed(result.ErrorMessage ?? "训练失败。"));
+            return new HeroRosterIntent.TrainFailed(result.ErrorMessage ?? "训练失败。");
         }
 
         HeroRosterState leveledRoster = ApplyHeroLevel(state, train.Kind, result.NewLevel);
@@ -104,8 +102,7 @@ public sealed class HeroRosterIntentHandler
         string readyText = await _apiService
             .BuildBattleReadyTextAsync(selectedMission, nextPower, stamina, potionCount, cancellationToken)
             .ConfigureAwait(false);
-        return new FollowUpIntentResult<HeroRosterIntent>(
-            new HeroRosterIntent.Trained(train.Kind, heroName, result.NewLevel, result.Cost, readyText));
+        return new HeroRosterIntent.Trained(train.Kind, heroName, result.NewLevel, result.Cost, readyText);
     }
 
     private static HeroRosterState ApplyHeroLevel(HeroRosterState roster, HeroKind kind, int newLevel)

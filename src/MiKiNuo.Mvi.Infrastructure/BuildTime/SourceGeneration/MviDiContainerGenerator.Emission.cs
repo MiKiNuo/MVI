@@ -36,7 +36,7 @@ public sealed partial class MviDiContainerGenerator
             EmitFeatureStoreFactories(builder, features);
             EmitCreateScope(builder);
             EmitCreateWith(builder, services);
-            EmitScopeClass(builder);
+            EmitScopeClass(builder, services);
 
             return builder.ToString();
         }
@@ -334,7 +334,9 @@ public sealed partial class MviDiContainerGenerator
         /// <summary>
         /// 生成作用域嵌套类。
         /// </summary>
-        private static void EmitScopeClass(StringBuilder builder)
+        private static void EmitScopeClass(
+            StringBuilder builder,
+            IReadOnlyList<Models.DiServiceInfo> services)
         {
             builder.AppendLine("}");
             builder.AppendLine();
@@ -345,16 +347,77 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine();
             builder.AppendLine("{");
             builder.AppendLine("    private readonly GeneratedMviContainer _container;");
+            builder.AppendLine("    private readonly Dictionary<Type, object> _scoped = new();");
+            builder.AppendLine("    private bool _isDisposed;");
             builder.AppendLine();
             builder.AppendLine("    public GeneratedMviScope(GeneratedMviContainer container)");
             builder.AppendLine("    {");
             builder.AppendLine("        _container = container;");
             builder.AppendLine("    }");
             builder.AppendLine();
-            builder.AppendLine("    public TService Resolve<TService>() where TService : notnull => _container.Resolve<TService>();");
-            builder.AppendLine("    public object Resolve(Type serviceType) => _container.Resolve(serviceType);");
+            builder.AppendLine("    public TService Resolve<TService>() where TService : notnull => (TService)Resolve(typeof(TService));");
+            builder.AppendLine();
+            builder.AppendLine("    public object Resolve(Type serviceType)");
+            builder.AppendLine("    {");
+            builder.AppendLine("        ObjectDisposedException.ThrowIf(_isDisposed, this);");
+            builder.AppendLine("        ArgumentNullException.ThrowIfNull(serviceType);");
+            builder.AppendLine();
+            builder.AppendLine("        if (_scoped.TryGetValue(serviceType, out object? existing))");
+            builder.AppendLine("        {");
+            builder.AppendLine("            return existing;");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+
+            foreach (Models.DiServiceInfo service in services)
+            {
+                builder.Append("        if (serviceType == typeof(").Append(service.ServiceTypeName)
+                    .AppendLine("))");
+                builder.AppendLine("        {");
+
+                if (service.Lifetime == Models.GeneratedLifetime.Singleton)
+                {
+                    builder.AppendLine("            return _container.Resolve(serviceType);");
+                }
+                else
+                {
+                    builder.Append("            object created = new ").Append(service.ImplementationTypeName).Append('(');
+                    builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
+                    builder.AppendLine(");");
+                    if (service.Lifetime == Models.GeneratedLifetime.Scoped)
+                    {
+                        builder.AppendLine("            _scoped[serviceType] = created;");
+                    }
+
+                    builder.AppendLine("            return created;");
+                }
+
+                builder.AppendLine("        }");
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("        throw new InvalidOperationException($\"未注册服务：{serviceType.FullName}\");");
+            builder.AppendLine("    }");
+            builder.AppendLine();
             builder.AppendLine("    public TService CreateWith<TService>(params object[] args) where TService : notnull => _container.CreateWith<TService>(args);");
-            builder.AppendLine("    public void Dispose() { }");
+            builder.AppendLine();
+            builder.AppendLine("    public void Dispose()");
+            builder.AppendLine("    {");
+            builder.AppendLine("        if (_isDisposed)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            return;");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        foreach (object instance in _scoped.Values)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            if (instance is IDisposable disposable)");
+            builder.AppendLine("            {");
+            builder.AppendLine("                disposable.Dispose();");
+            builder.AppendLine("            }");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        _scoped.Clear();");
+            builder.AppendLine("        _isDisposed = true;");
+            builder.AppendLine("    }");
             builder.AppendLine("}");
         }
     }

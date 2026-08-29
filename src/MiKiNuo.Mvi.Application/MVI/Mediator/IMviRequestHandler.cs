@@ -1,12 +1,14 @@
 ﻿namespace MiKiNuo.Mvi.Application.MVI.Mediator;
 
+using MiKiNuo.Mvi.Domain.MVI.Mediator;
+
 /// <summary>
 /// 表示中介者请求处理器。
 /// </summary>
 /// <typeparam name="TRequest">请求类型。</typeparam>
 /// <typeparam name="TResponse">响应类型。</typeparam>
 public interface IMviRequestHandler<in TRequest, TResponse>
-    where TRequest : notnull
+    where TRequest : notnull, IMviRequest<TResponse>
 {
     /// <summary>
     /// 处理请求。

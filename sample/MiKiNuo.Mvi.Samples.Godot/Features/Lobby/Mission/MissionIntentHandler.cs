@@ -1,6 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+﻿using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 
@@ -8,7 +7,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// 表示任务意图处理器。
 /// </summary>
 public sealed class MissionIntentHandler
-    : MviIntentHandlerBase<MissionState, MissionIntent, MissionEffect>
+    : MviIntentHandlerBase<MissionState, MissionIntent>
 {
     private readonly ILobbyApiService _apiService;
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
@@ -49,7 +48,7 @@ public sealed class MissionIntentHandler
         "Design",
         "CA1062:Validate arguments of public methods",
         Justification = "由基类统一验证参数。")]
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    protected override async ValueTask<MissionIntent?> HandleCoreAsync(
         MissionState state,
         MissionIntent intent,
         CancellationToken cancellationToken)
@@ -65,7 +64,7 @@ public sealed class MissionIntentHandler
         }
     }
 
-    private async ValueTask<IMviBusinessResult?> HandleAcceptAsync(
+    private async ValueTask<MissionIntent?> HandleAcceptAsync(
         MissionState state,
         MissionIntent.Accept accept,
         CancellationToken cancellationToken)
@@ -86,8 +85,7 @@ public sealed class MissionIntentHandler
 
         if (!result.Success)
         {
-            return new FollowUpIntentResult<MissionIntent>(
-                new MissionIntent.AcceptFailed(result.ErrorMessage ?? "接受任务失败。"));
+            return new MissionIntent.AcceptFailed(result.ErrorMessage ?? "接受任务失败。");
         }
 
         string readyText = await _apiService
@@ -98,16 +96,15 @@ public sealed class MissionIntentHandler
                 potionCount,
                 cancellationToken)
             .ConfigureAwait(false);
-        return new FollowUpIntentResult<MissionIntent>(
-            new MissionIntent.Accepted(
-                accept.Spec.MissionName,
-                accept.Spec.StaminaCost,
-                result.Reward,
-                result.NewStamina,
-                readyText));
+        return new MissionIntent.Accepted(
+            accept.Spec.MissionName,
+            accept.Spec.StaminaCost,
+            result.Reward,
+            result.NewStamina,
+            readyText);
     }
 
-    private async ValueTask<IMviBusinessResult?> HandleCompleteAsync(
+    private async ValueTask<MissionIntent?> HandleCompleteAsync(
         MissionState state,
         CancellationToken cancellationToken)
     {
@@ -127,6 +124,6 @@ public sealed class MissionIntentHandler
                 potionCount,
                 cancellationToken)
             .ConfigureAwait(false);
-        return new FollowUpIntentResult<MissionIntent>(new MissionIntent.Completed(reward, readyText));
+        return new MissionIntent.Completed(reward, readyText);
     }
 }

@@ -8,7 +8,7 @@ using MiKiNuo.Mvi.Domain.MVI.State;
 namespace MiKiNuo.Mvi.Application.MVI.Middleware;
 
 /// <summary>
-/// 表示用于统计 Intent 规约耗时的 MVI 性能中间件。
+/// 表示用于统计 Intent 管线耗时的 MVI 性能中间件。
 /// </summary>
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
@@ -58,7 +58,7 @@ public sealed class MviPerformanceMiddleware<TState, TIntent, TEffect> : IMviMid
             DateTimeOffset.Now,
             _componentName,
             "Middleware",
-            $"{typeof(TIntent).Name} 规约耗时",
+            $"{typeof(TIntent).Name} 管线耗时",
             stopwatch.ElapsedMilliseconds));
 
         return result;

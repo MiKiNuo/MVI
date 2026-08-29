@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
+﻿using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
@@ -90,7 +90,7 @@ public sealed class EventBindingSelectionEffectDispatcher : MviEffectDispatcherB
     {
         if (effect is EventBindingSelectionEffect.NotifySelectionChanged selectionChanged)
         {
-            await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(
+            await _mediator.SendAsync<EventBindingWorkbenchInteractionResponse>(
                 new EventBindingWorkbenchInteractionRequest("SelectionPanel", "SelectionChanged", selectionChanged.PatientId),
                 cancellationToken).ConfigureAwait(false);
         }

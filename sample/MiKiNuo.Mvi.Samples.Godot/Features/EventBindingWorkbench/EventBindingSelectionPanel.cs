@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
@@ -66,7 +66,7 @@ public sealed class EventBindingSelectionEffectDispatcher : MviEffectDispatcherB
     {
         if (effect is EventBindingSelectionEffect.NotifySelectionChanged selectionChanged)
         {
-            await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(
+            await _mediator.SendAsync<EventBindingWorkbenchInteractionResponse>(
                 new EventBindingWorkbenchInteractionRequest("SelectionPanel", "ItemSelected", selectionChanged.MissionId),
                 cancellationToken).ConfigureAwait(false);
         }

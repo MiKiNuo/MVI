@@ -1,5 +1,6 @@
-using MiKiNuo.Mvi.Application.MVI.Mediator;
+﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
+using MiKiNuo.Mvi.Domain.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -51,15 +52,13 @@ public sealed class ReusableMviFeatureTests
         /// <summary>
         /// 异步发送请求并返回响应。
         /// </summary>
-        /// <typeparam name="TRequest">请求类型。</typeparam>
         /// <typeparam name="TResponse">响应类型。</typeparam>
         /// <param name="request">请求实例。</param>
         /// <param name="cancellationToken">取消标记。</param>
         /// <returns>响应实例。</returns>
-        public ValueTask<TResponse> SendAsync<TRequest, TResponse>(
-            TRequest request,
+        public ValueTask<TResponse> SendAsync<TResponse>(
+            IMviRequest<TResponse> request,
             CancellationToken cancellationToken = default)
-            where TRequest : notnull
         {
             ArgumentNullException.ThrowIfNull(request);
             cancellationToken.ThrowIfCancellationRequested();
@@ -68,7 +67,10 @@ public sealed class ReusableMviFeatureTests
             {
                 LastRequest = interactionRequest;
                 object response = new DashboardComponentInteractionResponse("已记录患者上下文", true);
-                return ValueTask.FromResult((TResponse)response);
+                if (response is TResponse typedResponse)
+                {
+                    return ValueTask.FromResult(typedResponse);
+                }
             }
 
             throw new InvalidOperationException("测试中介者未注册该请求。");

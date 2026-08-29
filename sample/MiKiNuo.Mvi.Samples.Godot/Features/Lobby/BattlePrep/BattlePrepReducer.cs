@@ -1,5 +1,4 @@
 ﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -14,21 +13,8 @@ public sealed partial class BattlePrepReducer
     [MviReduce(typeof(BattlePrepIntent.PrepareBattle))]
     private MviReduceResult<BattlePrepState, BattlePrepEffect> HandlePrepareBattle(
         BattlePrepState state,
-        BattlePrepIntent.PrepareBattle intent,
-        IMviBusinessResult? result)
+        BattlePrepIntent.PrepareBattle intent)
     {
-        if (result is FollowUpIntentResult<BattlePrepIntent> fur
-            && fur.Intent is BattlePrepIntent.BattlePrepared prepared)
-        {
-            BattlePrepState newState = state with { BattleReadyText = prepared.BattleReadyText };
-            BattlePrepEffect[] effects = new BattlePrepEffect[]
-            {
-                new BattlePrepEffect.LogActivity("战斗准备汇总任务、英雄、背包数据。"),
-                new BattlePrepEffect.Trace("BattlePrep Prepare"),
-            };
-            return WithEffects(newState, effects);
-        }
-
         return Unchanged(state);
     }
 
@@ -36,8 +22,7 @@ public sealed partial class BattlePrepReducer
     [MviReduce(typeof(BattlePrepIntent.BattlePrepared))]
     private MviReduceResult<BattlePrepState, BattlePrepEffect> HandleBattlePrepared(
         BattlePrepState state,
-        BattlePrepIntent.BattlePrepared intent,
-        IMviBusinessResult? result)
+        BattlePrepIntent.BattlePrepared intent)
     {
         BattlePrepState newState = state with { BattleReadyText = intent.BattleReadyText };
         BattlePrepEffect[] effects = new BattlePrepEffect[]
@@ -52,8 +37,7 @@ public sealed partial class BattlePrepReducer
     [MviReduce(typeof(BattlePrepIntent.UpdateReadyText))]
     private MviReduceResult<BattlePrepState, BattlePrepEffect> HandleUpdateReadyText(
         BattlePrepState state,
-        BattlePrepIntent.UpdateReadyText intent,
-        IMviBusinessResult? result)
+        BattlePrepIntent.UpdateReadyText intent)
     {
         BattlePrepState newState = state with { BattleReadyText = intent.ReadyText };
         return WithEffect(

@@ -2,7 +2,6 @@ using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -15,8 +14,8 @@ namespace MiKiNuo.Mvi.Application.MVI.Store;
 /// 表示经典 MVI 状态存储。
 /// </summary>
 /// <remarks>
-/// 数据流：Intent → Middleware → 第一次 Reduce(产中间状态) → IntentHandler(异步业务,产业务结果) → 第二次 Reduce(消费业务结果,产最终状态+Effects) → EffectDispatcher。
-/// 无异步业务的 Intent 仅执行第一次 Reduce。
+/// 数据流：Intent → Middleware → Reduce → IntentHandler → 可选后续 Intent 的 Reduce → EffectDispatcher。
+/// 每个 Intent 只规约一次，Store 负责合并完整的副作用序列。
 /// </remarks>
 /// <typeparam name="TState">状态类型。</typeparam>
 /// <typeparam name="TIntent">意图类型。</typeparam>
@@ -28,7 +27,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
 {
     private readonly ReactiveProperty<TState> _state;
     private readonly Subject<TEffect> _effects;
-    private readonly IMviIntentHandler<TState, TIntent, TEffect> _intentHandler;
+    private readonly IMviIntentHandler<TState, TIntent> _intentHandler;
     private readonly IMviReducer<TState, TIntent, TEffect> _reducer;
     private readonly IMviEffectDispatcher<TEffect> _effectDispatcher;
     private readonly MviMiddlewarePipeline<TState, TIntent, TEffect> _pipeline;
@@ -45,7 +44,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     /// <param name="middlewares">中间件集合。</param>
     public MviStore(
         TState initialState,
-        IMviIntentHandler<TState, TIntent, TEffect> intentHandler,
+        IMviIntentHandler<TState, TIntent> intentHandler,
         IMviReducer<TState, TIntent, TEffect> reducer,
         IMviEffectDispatcher<TEffect> effectDispatcher,
         IReadOnlyList<IMviMiddleware<TState, TIntent, TEffect>>? middlewares = null)
@@ -80,7 +79,7 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     public Observable<TEffect> Effects => _effects;
 
     /// <summary>
-    /// 派发意图,执行两次 Reduce 与异步业务。
+    /// 派发意图并执行异步业务与可选的后续意图。
     /// </summary>
     /// <remarks>
     /// 派发门（SemaphoreSlim）只保护 Reduce 管线与状态更新；
@@ -95,27 +94,26 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         ArgumentNullException.ThrowIfNull(intent);
 
-        List<TEffect> pendingEffects = new();
+        MviReduceResult<TState, TEffect> finalResult;
 
         await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             MviMiddlewareContext<TState, TIntent, TEffect> context = new(CurrentState, intent);
 
-            MviReduceResult<TState, TEffect> finalResult = await _pipeline.InvokeAsync(
+            finalResult = await _pipeline.InvokeAsync(
                 context,
-                (pipelineContext, token) => ExecuteCoreAsync(pipelineContext, pendingEffects, token),
+                ExecuteCoreAsync,
                 cancellationToken).ConfigureAwait(false);
 
             _state.Value = finalResult.State;
-            pendingEffects.AddRange(finalResult.Effects);
         }
         finally
         {
             _ = _dispatchGate.Release();
         }
 
-        await DispatchEffectsAsync(pendingEffects, cancellationToken).ConfigureAwait(false);
+        await DispatchEffectsAsync(finalResult.Effects, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -136,42 +134,55 @@ public sealed class MviStore<TState, TIntent, TEffect> : IMviStore<TState, TInte
     }
 
     /// <summary>
-    /// 执行核心调度:两次 Reduce 与异步业务。
-    /// 副作用不直接派发，统一收集到 <paramref name="pendingEffects"/>，
-    /// 由 <see cref="DispatchAsync"/> 在派发门释放后统一派发。
+    /// 执行核心调度并返回包含完整副作用序列的最终规约结果。
     /// </summary>
     /// <param name="context">中间件上下文。</param>
-    /// <param name="pendingEffects">待派发副作用收集器。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>最终规约结果。</returns>
     private async ValueTask<MviReduceResult<TState, TEffect>> ExecuteCoreAsync(
         MviMiddlewareContext<TState, TIntent, TEffect> context,
-        List<TEffect> pendingEffects,
         CancellationToken cancellationToken)
     {
         TState state = context.State;
         TIntent intent = context.Intent;
 
-        // 第一次 Reduce:无业务结果,产中间状态(如 IsBusy)
-        MviReduceResult<TState, TEffect> intermediate = _reducer.Reduce(state, intent, null);
+        MviReduceResult<TState, TEffect> initial = _reducer.Reduce(state, intent);
 
-        // 立即更新中间状态,让 IntentHandler 看到中间状态
-        _state.Value = intermediate.State;
-        pendingEffects.AddRange(intermediate.Effects);
+        // 立即发布初始状态，让异步处理器和状态观察者看到处理中状态。
+        _state.Value = initial.State;
 
-        // 异步业务
-        IMviBusinessResult? businessResult = await _intentHandler
-            .HandleAsync(intermediate.State, intent, cancellationToken)
+        TIntent? followUpIntent = await _intentHandler
+            .HandleAsync(initial.State, intent, cancellationToken)
             .ConfigureAwait(false);
 
-        // 无业务结果:中间状态即最终状态,返回空 Effects 避免外层重复派发
-        if (businessResult is null)
+        if (followUpIntent is null)
         {
-            return MviReduceResult.State<TState, TEffect>(intermediate.State);
+            return initial;
         }
 
-        // 第二次 Reduce:有业务结果,产最终状态与副作用
-        return _reducer.Reduce(intermediate.State, intent, businessResult);
+        MviReduceResult<TState, TEffect> followUp = _reducer.Reduce(initial.State, followUpIntent);
+        if (initial.Effects.Count == 0)
+        {
+            return followUp;
+        }
+
+        if (followUp.Effects.Count == 0)
+        {
+            return new MviReduceResult<TState, TEffect>(followUp.State, initial.Effects);
+        }
+
+        TEffect[] effects = new TEffect[initial.Effects.Count + followUp.Effects.Count];
+        for (int i = 0; i < initial.Effects.Count; i++)
+        {
+            effects[i] = initial.Effects[i];
+        }
+
+        for (int i = 0; i < followUp.Effects.Count; i++)
+        {
+            effects[initial.Effects.Count + i] = followUp.Effects[i];
+        }
+
+        return new MviReduceResult<TState, TEffect>(followUp.State, effects);
     }
 
     /// <summary>

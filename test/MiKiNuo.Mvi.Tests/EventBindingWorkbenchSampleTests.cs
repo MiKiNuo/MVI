@@ -1,4 +1,4 @@
-using AvaloniaWorkbench = MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
+﻿using AvaloniaWorkbench = MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
 using SharedWorkbench = MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 using MiKiNuo.Mvi.Platforms.Avalonia.Events;
 using MiKiNuo.Mvi.Presentation.Events;
@@ -159,7 +159,7 @@ public sealed class EventBindingWorkbenchSampleTests
 
         InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await composition.Mediator.SendAsync<string, SharedWorkbench.EventBindingWorkbenchInteractionResponse>("bad-request");
+            await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionResponse>("bad-request");
         });
 
         await Assert.That(ex!.Message).Contains("不支持请求类型");
@@ -175,7 +175,7 @@ public sealed class EventBindingWorkbenchSampleTests
 
         InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionRequest, string>(
+            await composition.Mediator.SendAsync<string>(
                 new SharedWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
         });
 
@@ -190,7 +190,7 @@ public sealed class EventBindingWorkbenchSampleTests
     {
         await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
 
-        await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionRequest, SharedWorkbench.EventBindingWorkbenchInteractionResponse>(
+        await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionResponse>(
             new SharedWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
         await Task.Delay(50);
 

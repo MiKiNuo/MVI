@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +8,7 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
+using MiKiNuo.Mvi.Domain.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
@@ -29,20 +30,18 @@ public sealed class EventBindingRecordingMediator : IMviMediator
     /// <summary>
     /// 发送请求并返回响应。
     /// </summary>
-    /// <typeparam name="TRequest">请求类型。</typeparam>
     /// <typeparam name="TResponse">响应类型。</typeparam>
     /// <param name="request">请求对象。</param>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>响应对象。</returns>
-    public async ValueTask<TResponse> SendAsync<TRequest, TResponse>(
-        TRequest request,
+    public async ValueTask<TResponse> SendAsync<TResponse>(
+        IMviRequest<TResponse> request,
         CancellationToken cancellationToken = default)
-        where TRequest : notnull
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (request is not EventBindingWorkbenchInteractionRequest interactionRequest)
         {
-            throw new InvalidOperationException($"Godot 事件绑定示例中介者不支持请求类型：{typeof(TRequest).FullName}");
+            throw new InvalidOperationException($"Godot 事件绑定示例中介者不支持请求类型：{request.GetType().FullName}");
         }
 
         RecordedRequests.Add(interactionRequest);
@@ -59,7 +58,12 @@ public sealed class EventBindingRecordingMediator : IMviMediator
         object response = new EventBindingWorkbenchInteractionResponse(
             $"{interactionRequest.SourceComponent}:{interactionRequest.ActionKey}",
             true);
-        return (TResponse)response;
+        if (response is TResponse typedResponse)
+        {
+            return typedResponse;
+        }
+
+        throw new InvalidOperationException($"Godot 事件绑定示例中介者无法返回 {typeof(TResponse).FullName}。");
     }
 }
 

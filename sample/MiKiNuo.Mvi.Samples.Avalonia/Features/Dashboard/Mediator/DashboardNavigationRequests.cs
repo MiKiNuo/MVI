@@ -1,10 +1,12 @@
 ﻿namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 
+using MiKiNuo.Mvi.Domain.MVI.Mediator;
+
 /// <summary>
 /// 表示请求导航到 Dashboard 业务页面。
 /// </summary>
 /// <param name="PageKey">页面键。</param>
-public sealed record NavigateDashboardPageRequest(string PageKey);
+public sealed record NavigateDashboardPageRequest(string PageKey) : IMviRequest<DashboardNavigationResponse>;
 
 /// <summary>
 /// 表示 Dashboard 页面导航响应。
@@ -17,7 +19,7 @@ public sealed record DashboardNavigationResponse(string PageTitle, bool Changed)
 /// 表示请求打开患者就诊上下文。
 /// </summary>
 /// <param name="PatientName">患者姓名。</param>
-public sealed record OpenPatientEncounterRequest(string PatientName);
+public sealed record OpenPatientEncounterRequest(string PatientName) : IMviRequest<PatientEncounterResponse>;
 
 /// <summary>
 /// 表示患者就诊上下文打开响应。
@@ -37,7 +39,7 @@ public sealed record DashboardComponentInteractionRequest(
     string PageKey,
     string SourceComponent,
     string ActionKey,
-    string ContextText);
+    string ContextText) : IMviRequest<DashboardComponentInteractionResponse>;
 
 /// <summary>
 /// 表示 Dashboard 子组件交互响应。

@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -15,8 +14,7 @@ public sealed partial class EventBindingWorkbenchReducer
     [MviReduce(typeof(EventBindingWorkbenchIntent.RecordInteraction))]
     private MviReduceResult<EventBindingWorkbenchState, UnitEffect> HandleRecordInteraction(
         EventBindingWorkbenchState state,
-        EventBindingWorkbenchIntent.RecordInteraction intent,
-        IMviBusinessResult? result)
+        EventBindingWorkbenchIntent.RecordInteraction intent)
     {
         string interactionText = $"{intent.SourceComponent}/{intent.ActionKey}: {intent.ContextText}";
         EventBindingWorkbenchState newState = state with

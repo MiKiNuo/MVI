@@ -1,6 +1,5 @@
-using MiKiNuo.Mvi.Application.MVI.IntentHandler;
+﻿using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.State;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -9,7 +8,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
 /// 表示锻造工坊意图处理器。
 /// </summary>
 public sealed class ForgeLabIntentHandler
-    : MviIntentHandlerBase<UnitState, ForgeLabIntent, ForgeLabEffect>
+    : MviIntentHandlerBase<UnitState, ForgeLabIntent>
 {
     private readonly ILobbyApiService _apiService;
     private readonly IMviStore<PlayerState, PlayerIntent, PlayerEffect> _playerStore;
@@ -51,7 +50,7 @@ public sealed class ForgeLabIntentHandler
     /// <param name="intent">用户意图（已通过 null 检查）。</param>
     /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>业务结果;无业务时返回 null。</returns>
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    protected override async ValueTask<ForgeLabIntent?> HandleCoreAsync(
         UnitState state,
         ForgeLabIntent intent,
         CancellationToken cancellationToken)
@@ -65,7 +64,7 @@ public sealed class ForgeLabIntentHandler
         }
     }
 
-    private async ValueTask<IMviBusinessResult?> HandleForgeAsync(
+    private async ValueTask<ForgeLabIntent?> HandleForgeAsync(
         ForgeLabIntent.Forge forge,
         CancellationToken cancellationToken)
     {
@@ -90,21 +89,19 @@ public sealed class ForgeLabIntentHandler
 
         if (!result.Success)
         {
-            return new FollowUpIntentResult<ForgeLabIntent>(
-                new ForgeLabIntent.ForgeFailed(result.ErrorMessage ?? "锻造失败。"));
+            return new ForgeLabIntent.ForgeFailed(result.ErrorMessage ?? "锻造失败。");
         }
 
         int newPower = heroPower + forge.Spec.PowerBonus;
         string readyText = await _apiService
             .BuildBattleReadyTextAsync(selectedMission, newPower, stamina, potionCount, cancellationToken)
             .ConfigureAwait(false);
-        return new FollowUpIntentResult<ForgeLabIntent>(
-            new ForgeLabIntent.Forged(
-                forge.Spec.ItemName,
-                forge.Spec.OreCost,
-                forge.Spec.CrystalCost,
-                forge.Spec.PowerBonus,
-                result.ForgeScore,
-                readyText));
+        return new ForgeLabIntent.Forged(
+            forge.Spec.ItemName,
+            forge.Spec.OreCost,
+            forge.Spec.CrystalCost,
+            forge.Spec.PowerBonus,
+            result.ForgeScore,
+            readyText);
     }
 }

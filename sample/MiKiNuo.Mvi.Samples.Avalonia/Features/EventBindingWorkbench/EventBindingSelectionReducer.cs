@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
@@ -16,8 +15,7 @@ public sealed partial class EventBindingSelectionReducer
     [MviReduce(typeof(EventBindingSelectionIntent.ChangeSelection))]
     private MviReduceResult<EventBindingSelectionState, EventBindingSelectionEffect> HandleChangeSelection(
         EventBindingSelectionState state,
-        EventBindingSelectionIntent.ChangeSelection intent,
-        IMviBusinessResult? result)
+        EventBindingSelectionIntent.ChangeSelection intent)
     {
         string patientId = intent.Payload.SelectedValue?.ToString() ?? "-";
         int selectedIndex = intent.Payload.SelectedIndex ?? -1;

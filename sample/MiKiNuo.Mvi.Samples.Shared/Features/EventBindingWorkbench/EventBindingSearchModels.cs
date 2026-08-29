@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
+﻿using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
@@ -57,7 +57,7 @@ public sealed class EventBindingSearchEffectDispatcher : MviEffectDispatcherBase
     {
         if (effect is EventBindingSearchEffect.NotifyQueryChanged queryChanged)
         {
-            await _mediator.SendAsync<EventBindingWorkbenchInteractionRequest, EventBindingWorkbenchInteractionResponse>(
+            await _mediator.SendAsync<EventBindingWorkbenchInteractionResponse>(
                 new EventBindingWorkbenchInteractionRequest("SearchPanel", "TextChanged", queryChanged.QueryText),
                 cancellationToken).ConfigureAwait(false);
         }

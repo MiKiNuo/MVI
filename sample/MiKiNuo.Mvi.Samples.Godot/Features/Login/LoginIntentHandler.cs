@@ -1,8 +1,7 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Login;
@@ -11,7 +10,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.Login;
 /// 表示游戏登录意图处理器。
 /// </summary>
 public sealed class LoginIntentHandler
-    : MviIntentHandlerBase<LoginState, LoginIntent, LoginEffect>
+    : MviIntentHandlerBase<LoginState, LoginIntent>
 {
     private readonly IAuthService _authService;
 
@@ -36,7 +35,7 @@ public sealed class LoginIntentHandler
         "Design",
         "CA1062:Validate arguments of public methods",
         Justification = "由基类统一验证参数。")]
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    protected override async ValueTask<LoginIntent?> HandleCoreAsync(
         LoginState state,
         LoginIntent intent,
         CancellationToken cancellationToken)
@@ -49,10 +48,10 @@ public sealed class LoginIntentHandler
 
             if (result.IsSuccess && result.Profile is not null)
             {
-                return new LoginBusinessResult.Success(result.Profile);
+                return new LoginIntent.Succeeded(result.Profile);
             }
 
-            return new LoginBusinessResult.Failure(result.ErrorMessage ?? "登录失败。");
+            return new LoginIntent.Failed(result.ErrorMessage ?? "登录失败。");
         }
 
         return null;

@@ -1,7 +1,6 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
 
@@ -9,7 +8,7 @@ namespace MiKiNuo.Mvi.Samples.Godot.Features.EventBindingWorkbench;
 /// 表示 Godot 选择面板意图处理器。
 /// </summary>
 public sealed class EventBindingSelectionIntentHandler
-    : MviIntentHandlerBase<EventBindingSelectionState, EventBindingSelectionIntent, EventBindingSelectionEffect>
+    : MviIntentHandlerBase<EventBindingSelectionState, EventBindingSelectionIntent>
 {
     /// <summary>
     /// 处理具体业务逻辑。
@@ -18,7 +17,7 @@ public sealed class EventBindingSelectionIntentHandler
     /// <param name="intent">用户意图（已通过 null 检查）。</param>
     /// <param name="cancellationToken">取消标记（已通过检查）。</param>
     /// <returns>业务结果;无业务时返回 null。</returns>
-    protected override async ValueTask<IMviBusinessResult?> HandleCoreAsync(
+    protected override async ValueTask<EventBindingSelectionIntent?> HandleCoreAsync(
         EventBindingSelectionState state,
         EventBindingSelectionIntent intent,
         CancellationToken cancellationToken)

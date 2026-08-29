@@ -189,20 +189,10 @@ internal static class MviViewModelEmission
 
             builder.AppendLine();
 
-            if (command.IsAsync)
-            {
-                builder.Append("        ").Append(command.Name).Append(" = new global::MiKiNuo.Mvi.Application.MVI.Command.MviAsyncCommand(").AppendLine();
-                builder.Append("            ").Append(streamName).AppendLine(",");
-                builder.Append("            (payload, cancellationToken) => DispatchAsync(Create").Append(command.Name).AppendLine("Intent(payload), cancellationToken),");
-                builder.Append("            UiDispatcher);").AppendLine();
-            }
-            else
-            {
-                builder.Append("        ").Append(command.Name).Append(" = new global::MiKiNuo.Mvi.Application.MVI.Command.MviCommand(").AppendLine();
-                builder.Append("            ").Append(streamName).AppendLine(",");
-                builder.Append("            payload => _ = DispatchAsync(Create").Append(command.Name).AppendLine("Intent(payload)),");
-                builder.Append("            UiDispatcher);").AppendLine();
-            }
+            builder.Append("        ").Append(command.Name).Append(" = new global::MiKiNuo.Mvi.Application.MVI.Command.MviAsyncCommand(").AppendLine();
+            builder.Append("            ").Append(streamName).AppendLine(",");
+            builder.Append("            (payload, cancellationToken) => DispatchAsync(Create").Append(command.Name).AppendLine("Intent(payload), cancellationToken),");
+            builder.Append("            UiDispatcher);").AppendLine();
 
             builder.AppendLine();
         }
@@ -263,7 +253,7 @@ internal static class MviViewModelEmission
         builder.AppendLine("            {");
         if (property.IsTwoWay && !string.IsNullOrWhiteSpace(property.IntentTypeName))
         {
-            builder.Append("                _ = DispatchAsync(new ").Append(property.IntentTypeName).AppendLine("(value));");
+            builder.Append("                QueueDispatch(new ").Append(property.IntentTypeName).AppendLine("(value));");
         }
 
         builder.AppendLine("            }");

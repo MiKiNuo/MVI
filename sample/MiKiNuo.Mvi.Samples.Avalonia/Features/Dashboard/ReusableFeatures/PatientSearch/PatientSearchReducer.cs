@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.ReusableFeatures.PatientSearch;
@@ -16,8 +15,7 @@ public sealed partial class PatientSearchReducer
     [MviReduce(typeof(PatientSearchIntent.ChangeQueryText))]
     private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleChangeQueryText(
         PatientSearchState state,
-        PatientSearchIntent.ChangeQueryText intent,
-        IMviBusinessResult? result)
+        PatientSearchIntent.ChangeQueryText intent)
     {
         bool canSearch = !string.IsNullOrWhiteSpace(intent.QueryText);
         return Unchanged(
@@ -37,8 +35,7 @@ public sealed partial class PatientSearchReducer
     [MviReduce(typeof(PatientSearchIntent.SearchPatient))]
     private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSearchPatient(
         PatientSearchState state,
-        PatientSearchIntent.SearchPatient intent,
-        IMviBusinessResult? result)
+        PatientSearchIntent.SearchPatient intent)
     {
         if (!state.CanSearch)
         {
@@ -64,8 +61,7 @@ public sealed partial class PatientSearchReducer
     [MviReduce(typeof(PatientSearchIntent.SelectFirstPatient))]
     private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleSelectFirstPatient(
         PatientSearchState state,
-        PatientSearchIntent.SelectFirstPatient intent,
-        IMviBusinessResult? result)
+        PatientSearchIntent.SelectFirstPatient intent)
     {
         string statusText = state.CanSelectPatient
             ? $"已选择患者 {state.SelectedPatientName}，正在请求父页面协调兄弟 MVI。"
@@ -87,8 +83,7 @@ public sealed partial class PatientSearchReducer
     [MviReduce(typeof(PatientSearchIntent.ApplyExternalUpdate))]
     private MviReduceResult<PatientSearchState, PatientSearchEffect> HandleApplyExternalUpdate(
         PatientSearchState state,
-        PatientSearchIntent.ApplyExternalUpdate intent,
-        IMviBusinessResult? result)
+        PatientSearchIntent.ApplyExternalUpdate intent)
     {
         return Unchanged(
             state with

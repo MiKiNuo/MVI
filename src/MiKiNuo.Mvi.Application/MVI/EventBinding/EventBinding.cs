@@ -26,11 +26,11 @@ public interface IEventSource<TEvent>
 public interface IEventBinding
 {
     /// <summary>
-    /// 附加绑定到派发回调。
+    /// 附加绑定到 Intent 派发器。
     /// </summary>
-    /// <param name="dispatch">Intent 派发回调。</param>
+    /// <param name="dispatcher">Intent 派发器。</param>
     /// <returns>用于取消绑定的可释放资源。</returns>
-    public IDisposable Attach(Action<IMviIntent> dispatch);
+    public IDisposable Attach(IMviIntentDispatcher dispatcher);
 }
 
 /// <summary>
@@ -54,14 +54,34 @@ public sealed class EventBinding<TEvent> : IEventBinding
     }
 
     /// <summary>
-    /// 附加绑定到派发回调并返回可释放资源。
+    /// 附加绑定到 Intent 派发器并返回可释放资源。
     /// </summary>
-    /// <param name="dispatch">Intent 派发回调。</param>
+    /// <param name="dispatcher">Intent 派发器。</param>
     /// <returns>用于取消绑定的可释放资源。</returns>
-    public IDisposable Attach(Action<IMviIntent> dispatch)
+    public IDisposable Attach(IMviIntentDispatcher dispatcher)
     {
-        ArgumentNullException.ThrowIfNull(dispatch);
-        return _source.Subscribe(e => dispatch(_mapper(e)));
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        return _source.Subscribe(e => ObserveDispatch(dispatcher.DispatchAsync(_mapper(e))));
+    }
+
+    private static void ObserveDispatch(ValueTask dispatch)
+    {
+        if (!dispatch.IsCompletedSuccessfully)
+        {
+            _ = IgnoreReportedFailureAsync(dispatch);
+        }
+    }
+
+    private static async ValueTask IgnoreReportedFailureAsync(ValueTask dispatch)
+    {
+        try
+        {
+            await dispatch.ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // IMviIntentDispatcher 已通过 DispatchFailed 报告异常。
+        }
     }
 }
 
@@ -79,13 +99,21 @@ public abstract class MviComponent : IDisposable, IMviIntentDispatcher
     private bool _isDisposed;
 
     /// <summary>
-    /// 显式实现 <see cref="IMviIntentDispatcher.Dispatch"/>，转发到 protected 抽象方法。
+    /// 当 Intent 派发失败时触发。
+    /// </summary>
+    public event EventHandler<IntentDispatchExceptionEventArgs>? DispatchFailed;
+
+    /// <summary>
+    /// 显式实现 <see cref="IMviIntentDispatcher.DispatchAsync"/>。
     /// </summary>
     /// <param name="intent">意图。</param>
-    void IMviIntentDispatcher.Dispatch(IMviIntent intent)
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
+    ValueTask IMviIntentDispatcher.DispatchAsync(
+        IMviIntent intent,
+        CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(intent);
-        Dispatch(intent);
+        return DispatchIntentAsync(intent, cancellationToken);
     }
 
     /// <summary>
@@ -95,10 +123,63 @@ public abstract class MviComponent : IDisposable, IMviIntentDispatcher
     public IMviIntentDispatcher GetIntentDispatcher() => this;
 
     /// <summary>
-    /// 派发 Intent 到 Store。
+    /// 派发 Intent 到 Store 的核心实现。
     /// </summary>
     /// <param name="intent">意图。</param>
-    protected abstract void Dispatch(IMviIntent intent);
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
+    protected abstract ValueTask DispatchCoreAsync(
+        IMviIntent intent,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 派发 Intent，并统一报告失败。
+    /// </summary>
+    /// <param name="intent">意图。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
+    protected async ValueTask DispatchIntentAsync(
+        IMviIntent intent,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+        ArgumentNullException.ThrowIfNull(intent);
+
+        try
+        {
+            await DispatchCoreAsync(intent, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            DispatchFailed?.Invoke(this, new IntentDispatchExceptionEventArgs(exception, intent));
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 为同步 UI adapter 启动派发，并确保失败已被观察。
+    /// </summary>
+    /// <param name="intent">意图。</param>
+    protected void QueueDispatch(IMviIntent intent)
+    {
+        ValueTask dispatch = DispatchIntentAsync(intent);
+        if (!dispatch.IsCompletedSuccessfully)
+        {
+            _ = IgnoreReportedFailureAsync(dispatch);
+        }
+    }
+
+    private static async ValueTask IgnoreReportedFailureAsync(ValueTask dispatch)
+    {
+        try
+        {
+            await dispatch.ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // DispatchIntentAsync 已通过 DispatchFailed 报告异常。
+        }
+    }
 
     /// <summary>
     /// 释放组件资源。

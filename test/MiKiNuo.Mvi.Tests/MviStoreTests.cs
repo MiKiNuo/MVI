@@ -88,12 +88,10 @@ public sealed class MviStoreTests
         /// </summary>
         /// <param name="state">当前状态。</param>
         /// <param name="intent">用户意图。</param>
-        /// <param name="result">业务结果。</param>
         /// <returns>规约结果。</returns>
         public MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult<ReentryState, LoopEffect> Reduce(
             ReentryState state,
-            ReentryIntent intent,
-            MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult? result = null)
+            ReentryIntent intent)
         {
             return intent is ReentryIntent.Fire
                 ? MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult.StateAndEffect(
@@ -107,16 +105,16 @@ public sealed class MviStoreTests
     /// 表示重入测试用空意图处理器。
     /// </summary>
     private sealed class ReentryIntentHandler
-        : MiKiNuo.Mvi.Application.MVI.IntentHandler.IMviIntentHandler<ReentryState, ReentryIntent, LoopEffect>
+        : MiKiNuo.Mvi.Application.MVI.IntentHandler.IMviIntentHandler<ReentryState, ReentryIntent>
     {
         /// <summary>
-        /// 处理意图（空操作，返回无业务结果）。
+        /// 处理意图（空操作，返回无后续意图）。
         /// </summary>
         /// <param name="state">当前状态。</param>
         /// <param name="intent">用户意图。</param>
         /// <param name="cancellationToken">取消标记。</param>
-        /// <returns>无业务结果。</returns>
-        public async ValueTask<MiKiNuo.Mvi.Domain.MVI.Business.IMviBusinessResult?> HandleAsync(
+        /// <returns>无后续意图。</returns>
+        public async ValueTask<ReentryIntent?> HandleAsync(
             ReentryState state,
             ReentryIntent intent,
             CancellationToken cancellationToken = default)

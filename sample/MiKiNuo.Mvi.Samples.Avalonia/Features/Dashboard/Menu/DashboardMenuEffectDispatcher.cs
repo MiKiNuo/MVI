@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
+﻿using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 
@@ -32,7 +32,7 @@ public sealed class DashboardMenuEffectDispatcher : MviEffectDispatcherBase<Dash
     {
         if (effect is DashboardMenuEffect.RequestNavigation requestNavigation)
         {
-            await _mediator.SendAsync<NavigateDashboardPageRequest, DashboardNavigationResponse>(
+            await _mediator.SendAsync<DashboardNavigationResponse>(
                 new NavigateDashboardPageRequest(requestNavigation.PageKey),
                 cancellationToken).ConfigureAwait(false);
         }

@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Mediator;
+﻿using MiKiNuo.Mvi.Application.MVI.Mediator;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Dashboard.Mediator;
 
@@ -47,7 +47,7 @@ public static class DashboardComponentInteractionDispatcher
         ArgumentException.ThrowIfNullOrWhiteSpace(actionKey);
         ArgumentNullException.ThrowIfNull(contextText);
 
-        return mediator.SendAsync<DashboardComponentInteractionRequest, DashboardComponentInteractionResponse>(
+        return mediator.SendAsync<DashboardComponentInteractionResponse>(
             new DashboardComponentInteractionRequest(pageKey, sourceComponent, actionKey, contextText),
             cancellationToken);
     }

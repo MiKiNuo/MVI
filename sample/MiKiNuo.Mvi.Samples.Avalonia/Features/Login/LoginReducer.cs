@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 
@@ -17,8 +16,7 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.ChangeUserName))]
     private MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
         LoginState state,
-        LoginIntent.ChangeUserName intent,
-        IMviBusinessResult? result)
+        LoginIntent.ChangeUserName intent)
     {
         return Unchanged(
             state with
@@ -35,8 +33,7 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.ChangePassword))]
     private MviReduceResult<LoginState, LoginEffect> HandleChangePassword(
         LoginState state,
-        LoginIntent.ChangePassword intent,
-        IMviBusinessResult? result)
+        LoginIntent.ChangePassword intent)
     {
         return Unchanged(
             state with
@@ -53,38 +50,44 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmitState))]
     private MviReduceResult<LoginState, LoginEffect> HandleSubmit(
         LoginState state,
-        LoginIntent.Submit intent,
-        IMviBusinessResult? result)
+        LoginIntent.Submit intent)
     {
-        if (result is null)
-        {
-            return Unchanged(
-                state with { IsBusy = true, ErrorMessage = null });
-        }
-
-        if (result is LoginBusinessResult.Success success)
-        {
-            LoginState newState = state with { IsBusy = false, ErrorMessage = null, CanSubmit = true };
-            return WithEffect(
-                newState,
-                new LoginEffect.NavigateToDashboard(success.Profile.DisplayName));
-        }
-
-        if (result is LoginBusinessResult.Failure failure)
-        {
-            return Unchanged(
-                state with
-                {
-                    IsBusy = false,
-                    ErrorMessage = failure.ErrorMessage,
-                    CanSubmit = CanSubmit(state.UserName, state.Password),
-                });
-        }
-
-        return Unchanged(state);
+        return Unchanged(
+            state with { IsBusy = true, ErrorMessage = null });
     }
 
-    private bool CanSubmitState(LoginState state) => state.CanSubmit || state.IsBusy;
+    /// <summary>
+    /// 处理登录成功意图。
+    /// </summary>
+    [MviReduce(typeof(LoginIntent.Succeeded))]
+    private MviReduceResult<LoginState, LoginEffect> HandleSucceeded(
+        LoginState state,
+        LoginIntent.Succeeded intent)
+    {
+        LoginState newState = state with { IsBusy = false, ErrorMessage = null, CanSubmit = true };
+        return WithEffect(
+            newState,
+            new LoginEffect.NavigateToDashboard(intent.Profile.DisplayName));
+    }
+
+    /// <summary>
+    /// 处理登录失败意图。
+    /// </summary>
+    [MviReduce(typeof(LoginIntent.Failed))]
+    private MviReduceResult<LoginState, LoginEffect> HandleFailed(
+        LoginState state,
+        LoginIntent.Failed intent)
+    {
+        return Unchanged(
+            state with
+            {
+                IsBusy = false,
+                ErrorMessage = intent.ErrorMessage,
+                CanSubmit = CanSubmit(state.UserName, state.Password),
+            });
+    }
+
+    private bool CanSubmitState(LoginState state) => state.CanSubmit;
 
     private bool CanSubmit(string userName, string password)
     {

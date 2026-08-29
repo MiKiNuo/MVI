@@ -1,5 +1,4 @@
 ﻿﻿﻿﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Godot.Features.Lobby;
@@ -14,41 +13,8 @@ public sealed partial class MissionReducer
     [MviReduce(typeof(MissionIntent.Accept))]
     private MviReduceResult<MissionState, MissionEffect> HandleAccept(
         MissionState state,
-        MissionIntent.Accept intent,
-        IMviBusinessResult? result)
+        MissionIntent.Accept intent)
     {
-        if (result is FollowUpIntentResult<MissionIntent> fur)
-        {
-            switch (fur.Intent)
-            {
-                case MissionIntent.Accepted accepted:
-                {
-                    MissionState newMission = new(
-                        accepted.MissionName,
-                        $"已接受 {accepted.MissionName}，消耗体力 {accepted.StaminaCost}，预计奖励 {accepted.Reward}。");
-                    return WithEffects(
-                        newMission,
-                        new MissionEffect[]
-                        {
-                            new MissionEffect.ConsumeStamina(accepted.StaminaCost),
-                            new MissionEffect.UpdateBattleReadyText(accepted.BattleReadyText),
-                            new MissionEffect.LogActivity($"接受任务 {accepted.MissionName}。"),
-                            new MissionEffect.Trace($"Mission Accept {accepted.MissionName}"),
-                        });
-                }
-                case MissionIntent.AcceptFailed failed:
-                {
-                    return WithEffects(
-                        state,
-                        new MissionEffect[]
-                        {
-                            new MissionEffect.LogActivity(failed.ErrorMessage ?? "接受任务失败。"),
-                            new MissionEffect.Trace("Mission Accept Failed"),
-                        });
-                }
-            }
-        }
-
         return Unchanged(state);
     }
 
@@ -56,8 +22,7 @@ public sealed partial class MissionReducer
     [MviReduce(typeof(MissionIntent.Accepted))]
     private MviReduceResult<MissionState, MissionEffect> HandleAccepted(
         MissionState state,
-        MissionIntent.Accepted intent,
-        IMviBusinessResult? result)
+        MissionIntent.Accepted intent)
     {
         MissionState newMission = new(
             intent.MissionName,
@@ -77,8 +42,7 @@ public sealed partial class MissionReducer
     [MviReduce(typeof(MissionIntent.AcceptFailed))]
     private MviReduceResult<MissionState, MissionEffect> HandleAcceptFailed(
         MissionState state,
-        MissionIntent.AcceptFailed intent,
-        IMviBusinessResult? result)
+        MissionIntent.AcceptFailed intent)
     {
         return WithEffects(
             state,
@@ -93,27 +57,8 @@ public sealed partial class MissionReducer
     [MviReduce(typeof(MissionIntent.Complete))]
     private MviReduceResult<MissionState, MissionEffect> HandleComplete(
         MissionState state,
-        MissionIntent.Complete intent,
-        IMviBusinessResult? result)
+        MissionIntent.Complete intent)
     {
-        if (result is FollowUpIntentResult<MissionIntent> fur
-            && fur.Intent is MissionIntent.Completed completed)
-        {
-            MissionState newMission = state with
-            {
-                MissionProgress = $"{state.SelectedMission} 已完成，获得金币 {completed.Reward}。",
-            };
-            return WithEffects(
-                newMission,
-                new MissionEffect[]
-                {
-                    new MissionEffect.AddGold(completed.Reward),
-                    new MissionEffect.UpdateBattleReadyText(completed.BattleReadyText),
-                    new MissionEffect.LogActivity($"任务完成，奖励 {completed.Reward}。"),
-                    new MissionEffect.Trace($"Mission Complete reward={completed.Reward}"),
-                });
-        }
-
         return Unchanged(state);
     }
 
@@ -121,8 +66,7 @@ public sealed partial class MissionReducer
     [MviReduce(typeof(MissionIntent.Completed))]
     private MviReduceResult<MissionState, MissionEffect> HandleCompleted(
         MissionState state,
-        MissionIntent.Completed intent,
-        IMviBusinessResult? result)
+        MissionIntent.Completed intent)
     {
         MissionState newMission = state with
         {

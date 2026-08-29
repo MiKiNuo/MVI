@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -17,8 +16,7 @@ public sealed partial class AppShellReducer
     [MviReduce(typeof(AppShellIntent.ShowPage))]
     private MviReduceResult<AppShellState, UnitEffect> HandleShowPage(
         AppShellState state,
-        AppShellIntent.ShowPage intent,
-        IMviBusinessResult? result)
+        AppShellIntent.ShowPage intent)
     {
         return Unchanged(
             state with { CurrentPageKey = intent.PageKey, Title = intent.Title });

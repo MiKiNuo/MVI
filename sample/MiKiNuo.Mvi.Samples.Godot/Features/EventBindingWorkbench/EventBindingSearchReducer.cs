@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 using MiKiNuo.Mvi.Samples.Shared.Features.EventBindingWorkbench;
 
@@ -15,8 +14,7 @@ public sealed partial class EventBindingSearchReducer
     [MviReduce(typeof(EventBindingSearchIntent.ChangeQuery))]
     private MviReduceResult<EventBindingSearchState, EventBindingSearchEffect> HandleChangeQuery(
         EventBindingSearchState state,
-        EventBindingSearchIntent.ChangeQuery intent,
-        IMviBusinessResult? result)
+        EventBindingSearchIntent.ChangeQuery intent)
     {
         EventBindingSearchState newState = state with
         {

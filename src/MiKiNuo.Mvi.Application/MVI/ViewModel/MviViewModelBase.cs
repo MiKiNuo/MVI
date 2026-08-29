@@ -95,29 +95,25 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
     /// <returns>表示异步派发过程的任务。</returns>
     protected async ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default)
     {
-        await Store.DispatchAsync(intent, cancellationToken);
+        await DispatchIntentAsync(intent, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// 派发意图到状态存储。
     /// </summary>
     /// <param name="intent">意图。</param>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Reliability",
-        "CA2012:Avoid unnecessary zero-bit allocation",
-        Justification = "fire-and-forget 派发 Intent，Store 内部已处理异步完成。")]
-    protected override void Dispatch(IMviIntent intent)
+    protected override ValueTask DispatchCoreAsync(
+        IMviIntent intent,
+        CancellationToken cancellationToken)
     {
         if (intent is TIntent typedIntent)
         {
-            _ = DispatchAsync(typedIntent);
+            return Store.DispatchAsync(typedIntent, cancellationToken);
         }
-        else
-        {
-            throw new ArgumentException(
-                $"意图类型不匹配：期望 {typeof(TIntent).FullName}，实际 {intent?.GetType().FullName ?? "null"}。",
-                nameof(intent));
-        }
+
+        throw new ArgumentException(
+            $"意图类型不匹配：期望 {typeof(TIntent).FullName}，实际 {intent?.GetType().FullName ?? "null"}。",
+            nameof(intent));
     }
 
     /// <summary>

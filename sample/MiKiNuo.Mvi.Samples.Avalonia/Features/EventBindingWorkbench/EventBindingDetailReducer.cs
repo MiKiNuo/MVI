@@ -1,5 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
-using MiKiNuo.Mvi.Domain.MVI.Business;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.EventBindingWorkbench;
@@ -16,8 +15,7 @@ public sealed partial class EventBindingDetailReducer
     [MviReduce(typeof(EventBindingDetailIntent.PressDetail))]
     private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandlePressDetail(
         EventBindingDetailState state,
-        EventBindingDetailIntent.PressDetail intent,
-        IMviBusinessResult? result)
+        EventBindingDetailIntent.PressDetail intent)
     {
         string pointerText = $"Pointer {intent.Payload.Button} @ {intent.Payload.PositionX:0},{intent.Payload.PositionY:0}";
         EventBindingDetailState newState = state with
@@ -36,8 +34,7 @@ public sealed partial class EventBindingDetailReducer
     [MviReduce(typeof(EventBindingDetailIntent.Refresh))]
     private MviReduceResult<EventBindingDetailState, EventBindingDetailEffect> HandleRefresh(
         EventBindingDetailState state,
-        EventBindingDetailIntent.Refresh intent,
-        IMviBusinessResult? result)
+        EventBindingDetailIntent.Refresh intent)
     {
         int refreshCount = state.RefreshCount + 1;
         string sourceName = intent.Payload.SourceName ?? "Unknown";
