@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Domain.MVI.State;
+﻿using MiKiNuo.Mvi.Domain.MVI.State;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -31,7 +31,9 @@ public sealed class StatePathTests
     [Test]
     public async Task Getter_Should_Throw_WhenDefaultInstanceAsync()
     {
+#pragma warning disable MVI0017 // 本测试刻意验证分析器所禁止的默认实例运行时行为。
         StatePath<PathSampleState, int> path = default;
+#pragma warning restore MVI0017
 
         await Assert.That(() => path.Getter).Throws<InvalidOperationException>();
     }

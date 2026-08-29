@@ -16,45 +16,11 @@ public sealed partial class MviDiContainerGenerator
     internal static partial class Analysis
     {
         /// <summary>
-        /// 编译中是否包含 [DiService] 或 [MviFeatureModule] 标记的类。
-        /// 用于在确认无需生成代码时短路 <see cref="IIncrementalGenerator"/>，避免空跑分析。
+        /// 将单个标记 [DiService] 的类型解析为生成模型。
         /// </summary>
-        public static bool HasDiServices(
-            Compilation compilation,
-            System.Threading.CancellationToken cancellationToken)
-        {
-            return GeneratorSyntaxHelpers.CompilationHasAttribute(
-                compilation,
-                cancellationToken,
-                "DiService",
-                "MviFeatureModule");
-        }
-
-        /// <summary>
-        /// 发现所有 [DiService] 标记的服务。
-        /// </summary>
-        /// <param name="compilation">编译对象。</param>
-        /// <param name="cancellationToken">取消标记。</param>
-        /// <returns>发现的 DI 服务信息列表。</returns>
-        public static List<Models.DiServiceInfo> Discover(
-            Compilation compilation,
-            System.Threading.CancellationToken cancellationToken)
-        {
-            List<Models.DiServiceInfo> result = new();
-
-            foreach (INamedTypeSymbol classSymbol in GeneratorSyntaxHelpers.EnumerateClassSymbols(compilation, cancellationToken))
-            {
-                Models.DiServiceInfo? info = ParseDiService(classSymbol);
-                if (info is not null)
-                {
-                    result.Add(info);
-                }
-            }
-
-            return result;
-        }
-
-        private static Models.DiServiceInfo? ParseDiService(INamedTypeSymbol classSymbol)
+        /// <param name="classSymbol">类型符号。</param>
+        /// <returns>DI 服务信息；特性缺失时返回 <c>null</c>。</returns>
+        public static Models.DiServiceInfo? ParseDiService(INamedTypeSymbol classSymbol)
         {
             AttributeData? attr = GeneratorSyntaxHelpers.FindAttribute(classSymbol, "DiService");
             if (attr is null)
@@ -92,6 +58,7 @@ public sealed partial class MviDiContainerGenerator
                 BuildConstructorArguments(classSymbol);
 
             return new Models.DiServiceInfo(
+                classSymbol.ContainingAssembly.Name,
                 serviceTypeName,
                 implementationTypeName,
                 lifetime,

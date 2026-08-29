@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.Diagnostics;
 
@@ -21,38 +22,57 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
     /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterSourceOutput(context.CompilationProvider, Execute);
+        IncrementalValuesProvider<ViewModelCandidate> candidates = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
+                static (syntaxContext, cancellationToken) => GetCandidate(syntaxContext, cancellationToken))
+            .Where(static candidate => candidate is not null)
+            .Select(static (candidate, _) => candidate!);
+
+        context.RegisterSourceOutput(candidates, Execute);
     }
 
-    private static void Execute(SourceProductionContext context, Compilation compilation)
+    private static ViewModelCandidate? GetCandidate(
+        GeneratorSyntaxContext context,
+        System.Threading.CancellationToken cancellationToken)
     {
-        INamedTypeSymbol? viewModelBaseSymbol = compilation.GetTypeByMetadataName(
+        INamedTypeSymbol? viewModelBaseSymbol = context.SemanticModel.Compilation.GetTypeByMetadataName(
             "MiKiNuo.Mvi.Application.MVI.ViewModel.MviViewModelBase`3");
+        if (viewModelBaseSymbol is null
+            || context.SemanticModel.GetDeclaredSymbol(context.Node, cancellationToken) is not INamedTypeSymbol viewModelSymbol
+            || !Analysis.TryGetMviBase(viewModelSymbol, viewModelBaseSymbol, out _))
+        {
+            return null;
+        }
 
-        if (viewModelBaseSymbol is null)
+        return new ViewModelCandidate(viewModelSymbol, viewModelBaseSymbol);
+    }
+
+    private static void Execute(SourceProductionContext context, ViewModelCandidate candidate)
+    {
+        MviViewModelModels.ViewModelDescriptor? descriptor = Analysis.Collect(
+            candidate.ViewModelSymbol,
+            candidate.ViewModelBaseSymbol,
+            context);
+
+        if (descriptor is null)
         {
             return;
         }
 
-        foreach (INamedTypeSymbol viewModelSymbol in GeneratorSyntaxHelpers.EnumerateClassSymbols(
-            compilation,
-            context.CancellationToken))
-        {
-            MviViewModelModels.ViewModelDescriptor? descriptor = Analysis.Collect(
-                viewModelSymbol,
-                viewModelBaseSymbol,
-                context);
+        string source = MviViewModelEmission.Emit(descriptor);
+        context.AddSource(
+            $"{descriptor.ViewModelSymbol.Name}.g.cs",
+            SourceText.From(source, Encoding.UTF8));
+    }
 
-            if (descriptor is null)
-            {
-                continue;
-            }
+    private sealed class ViewModelCandidate(
+        INamedTypeSymbol viewModelSymbol,
+        INamedTypeSymbol viewModelBaseSymbol)
+    {
+        public INamedTypeSymbol ViewModelSymbol { get; } = viewModelSymbol;
 
-            string source = MviViewModelEmission.Emit(descriptor);
-            context.AddSource(
-                $"{descriptor.ViewModelSymbol.Name}.g.cs",
-                SourceText.From(source, Encoding.UTF8));
-        }
+        public INamedTypeSymbol ViewModelBaseSymbol { get; } = viewModelBaseSymbol;
     }
 
     /// <summary>

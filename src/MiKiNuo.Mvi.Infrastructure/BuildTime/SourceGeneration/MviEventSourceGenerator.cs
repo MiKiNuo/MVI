@@ -1,6 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
@@ -28,47 +30,147 @@ public sealed class MviEventSourceGenerator : IIncrementalGenerator
     /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterSourceOutput(context.CompilationProvider, Execute);
+        IncrementalValuesProvider<SourceControlEvents> sourceControls = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is TypeDeclarationSyntax,
+                static (syntaxContext, cancellationToken) =>
+                    CollectSourceControlEvents(syntaxContext, cancellationToken))
+            .Where(static control => control is not null)
+            .Select(static (control, _) => control!);
+
+        IncrementalValueProvider<Compilation> referencedCompilation = context.CompilationProvider
+            .WithComparer(MetadataReferenceCompilationComparer.Instance);
+
+        context.RegisterSourceOutput(
+            sourceControls.Collect().Combine(referencedCompilation),
+            Execute);
     }
 
     /// <summary>
-    /// 执行生成逻辑：检测平台类型并扫描控件事件。
+    /// 收集单个源码控件类型的事件。
     /// </summary>
-    /// <param name="context">源代码生产上下文。</param>
-    /// <param name="compilation">当前编译。</param>
-    private static void Execute(SourceProductionContext context, Compilation compilation)
+    private static SourceControlEvents? CollectSourceControlEvents(
+        GeneratorSyntaxContext context,
+        System.Threading.CancellationToken cancellationToken)
     {
+        if (context.SemanticModel.GetDeclaredSymbol(context.Node, cancellationToken) is not INamedTypeSymbol typeSymbol)
+        {
+            return null;
+        }
+
+        return TypeScanner.ScanSourceControlEvents(typeSymbol);
+    }
+
+    /// <summary>
+    /// 执行生成逻辑：合并源码控件与引用程序集控件的事件。
+    /// </summary>
+    private static void Execute(
+        SourceProductionContext context,
+        (ImmutableArray<SourceControlEvents> Left, Compilation Right) input)
+    {
+        List<EventDefinition> avaloniaEvents = new();
+        List<EventDefinition> godotEvents = new();
+        foreach (SourceControlEvents sourceControl in input.Left)
+        {
+            List<EventDefinition> target = sourceControl.Platform == ControlPlatform.Avalonia
+                ? avaloniaEvents
+                : godotEvents;
+            target.AddRange(sourceControl.Events);
+        }
+
+        Compilation compilation = input.Right;
         INamedTypeSymbol? avaloniaControlType = compilation.GetTypeByMetadataName("Avalonia.Controls.Control");
         INamedTypeSymbol? godotControlType = compilation.GetTypeByMetadataName("Godot.Control");
 
         if (avaloniaControlType is not null)
         {
-            List<EventDefinition> events = TypeScanner.ScanControlEvents(compilation, avaloniaControlType);
-            if (events.Count > 0)
-            {
-                string source = Emission.EmitExtensions(
-                    events,
-                    "MiKiNuo.Mvi.Platforms.Avalonia.Events",
-                    "MviAvaloniaEventSourceExtensions");
-                context.AddSource(
-                    "MviAvaloniaEventSourceExtensions.g.cs",
-                    SourceText.From(source, Encoding.UTF8));
-            }
+            avaloniaEvents.AddRange(TypeScanner.ScanReferencedControlEvents(compilation, avaloniaControlType));
         }
 
         if (godotControlType is not null)
         {
-            List<EventDefinition> events = TypeScanner.ScanControlEvents(compilation, godotControlType);
-            if (events.Count > 0)
+            godotEvents.AddRange(TypeScanner.ScanReferencedControlEvents(compilation, godotControlType));
+        }
+
+        if (avaloniaEvents.Count > 0)
+        {
+            string source = Emission.EmitExtensions(
+                avaloniaEvents,
+                "MiKiNuo.Mvi.Platforms.Avalonia.Events",
+                "MviAvaloniaEventSourceExtensions");
+            context.AddSource(
+                "MviAvaloniaEventSourceExtensions.g.cs",
+                SourceText.From(source, Encoding.UTF8));
+        }
+
+        if (godotEvents.Count > 0)
+        {
+            string source = Emission.EmitExtensions(
+                godotEvents,
+                "MiKiNuo.Mvi.Platforms.Godot.Binding",
+                "MviGodotEventSourceExtensions");
+            context.AddSource(
+                "MviGodotEventSourceExtensions.g.cs",
+                SourceText.From(source, Encoding.UTF8));
+        }
+    }
+
+    internal enum ControlPlatform
+    {
+        Avalonia,
+        Godot,
+    }
+
+    internal sealed class SourceControlEvents(
+        ControlPlatform platform,
+        IReadOnlyList<EventDefinition> events)
+    {
+        /// <summary>获取控件平台。</summary>
+        public ControlPlatform Platform { get; } = platform;
+
+        /// <summary>获取控件事件。</summary>
+        public IReadOnlyList<EventDefinition> Events { get; } = events;
+    }
+
+    private sealed class MetadataReferenceCompilationComparer : IEqualityComparer<Compilation>
+    {
+        public static MetadataReferenceCompilationComparer Instance { get; } = new();
+
+        public bool Equals(Compilation? x, Compilation? y)
+        {
+            if (ReferenceEquals(x, y))
             {
-                string source = Emission.EmitExtensions(
-                    events,
-                    "MiKiNuo.Mvi.Platforms.Godot.Binding",
-                    "MviGodotEventSourceExtensions");
-                context.AddSource(
-                    "MviGodotEventSourceExtensions.g.cs",
-                    SourceText.From(source, Encoding.UTF8));
+                return true;
             }
+
+            if (x is null
+                || y is null
+                || !string.Equals(x.AssemblyName, y.AssemblyName, System.StringComparison.Ordinal)
+                || x.ExternalReferences.Length != y.ExternalReferences.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < x.ExternalReferences.Length; i++)
+            {
+                if (!object.Equals(x.ExternalReferences[i], y.ExternalReferences[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public int GetHashCode(Compilation obj)
+        {
+            int hash = obj.AssemblyName?.GetHashCode() ?? 0;
+            foreach (MetadataReference reference in obj.ExternalReferences)
+            {
+                hash = unchecked((hash * 397) ^ reference.GetHashCode());
+            }
+
+            return hash;
         }
     }
 
@@ -121,22 +223,42 @@ public sealed class MviEventSourceGenerator : IIncrementalGenerator
     internal static class TypeScanner
     {
         /// <summary>
-        /// 扫描编译中所有继承自指定控件基类的类型，提取其 public 事件。
-        /// 同时遍历当前编译源代码与所有引用程序集，覆盖内置控件与自定义控件。
+        /// 扫描单个源码类型，若为平台控件则提取其 public 事件。
+        /// </summary>
+        /// <param name="type">源码类型。</param>
+        /// <returns>源码控件事件；不是平台控件时返回 <c>null</c>。</returns>
+        public static SourceControlEvents? ScanSourceControlEvents(INamedTypeSymbol type)
+        {
+            if (type.TypeKind != TypeKind.Class
+                || type.IsGenericType
+                || !IsPublicAccessible(type))
+            {
+                return null;
+            }
+
+            ControlPlatform? platform = DeterminePlatform(type);
+            if (platform is null)
+            {
+                return null;
+            }
+
+            List<EventDefinition> events = new();
+            AddEvents(type, events);
+            return events.Count == 0 ? null : new SourceControlEvents(platform.Value, events);
+        }
+
+        /// <summary>
+        /// 扫描引用程序集中所有继承自指定控件基类的类型，提取其 public 事件。
         /// </summary>
         /// <param name="compilation">当前编译。</param>
         /// <param name="controlBaseType">控件基类型符号。</param>
         /// <returns>事件定义列表。</returns>
-        public static List<EventDefinition> ScanControlEvents(Compilation compilation, INamedTypeSymbol controlBaseType)
+        public static List<EventDefinition> ScanReferencedControlEvents(
+            Compilation compilation,
+            INamedTypeSymbol controlBaseType)
         {
             List<EventDefinition> events = new();
             HashSet<string> seenTypes = new();
-            IAssemblySymbol? baseAssembly = controlBaseType.ContainingAssembly;
-
-            foreach (INamedTypeSymbol type in EnumerateAllTypes(compilation.SourceModule.GlobalNamespace))
-            {
-                ProcessType(type, controlBaseType, seenTypes, events);
-            }
 
             foreach (MetadataReference reference in compilation.ExternalReferences)
             {
@@ -152,6 +274,25 @@ public sealed class MviEventSourceGenerator : IIncrementalGenerator
             }
 
             return events;
+        }
+
+        private static ControlPlatform? DeterminePlatform(INamedTypeSymbol type)
+        {
+            for (INamedTypeSymbol? current = type; current is not null; current = current.BaseType)
+            {
+                string metadataName = current.OriginalDefinition.ToDisplayString();
+                if (string.Equals(metadataName, "Avalonia.Controls.Control", System.StringComparison.Ordinal))
+                {
+                    return ControlPlatform.Avalonia;
+                }
+
+                if (string.Equals(metadataName, "Godot.Control", System.StringComparison.Ordinal))
+                {
+                    return ControlPlatform.Godot;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -189,6 +330,11 @@ public sealed class MviEventSourceGenerator : IIncrementalGenerator
                 return;
             }
 
+            AddEvents(type, events);
+        }
+
+        private static void AddEvents(INamedTypeSymbol type, List<EventDefinition> events)
+        {
             foreach (IEventSymbol evt in EnumerateEvents(type))
             {
                 EventDefinition? definition = EventExtractor.Extract(evt, type);

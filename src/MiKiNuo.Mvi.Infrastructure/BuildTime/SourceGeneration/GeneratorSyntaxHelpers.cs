@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -344,7 +344,7 @@ internal static class GeneratorSyntaxHelpers
 
     private static bool IsAttributeMatch(string attributeName, string candidateShortName)
     {
-        // 兼容全限定写法（如 [MiKiNuo.Mvi.Domain.MVI.Feature.MviFeatureModule]）：只比较最后一段。
+        // 兼容全限定写法（如 [MiKiNuo.Mvi.Domain.DI.DiService]）：只比较最后一段。
         int lastDotIndex = attributeName.LastIndexOf('.');
         if (lastDotIndex >= 0)
         {

@@ -159,27 +159,11 @@ public sealed class EventBindingWorkbenchSampleTests
 
         InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionResponse>("bad-request");
+            await composition.Mediator.SendAsync<SharedWorkbench.EventBindingWorkbenchInteractionResponse>(
+                new UnsupportedWorkbenchRequest());
         });
 
         await Assert.That(ex!.Message).Contains("不支持请求类型");
-    }
-
-    /// <summary>
-    /// 验证记录型中介者对不兼容的响应类型抛出明确异常。
-    /// </summary>
-    [Test]
-    public async Task AvaloniaWorkbench_Mediator_Should_ThrowForIncompatibleResponseTypeAsync()
-    {
-        await using AvaloniaWorkbench.EventBindingWorkbenchComposition composition = AvaloniaWorkbench.EventBindingWorkbenchComposition.Create();
-
-        InvalidOperationException? ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-        {
-            await composition.Mediator.SendAsync<string>(
-                new SharedWorkbench.EventBindingWorkbenchInteractionRequest("Test", "Probe", "ctx"));
-        });
-
-        await Assert.That(ex!.Message).Contains("无法将响应转换为请求类型");
     }
 
     /// <summary>
@@ -208,4 +192,10 @@ public sealed class EventBindingWorkbenchSampleTests
             "..",
             ".."));
     }
+
+    /// <summary>
+    /// 表示未注册的工作台测试请求。
+    /// </summary>
+    private sealed record UnsupportedWorkbenchRequest
+        : MiKiNuo.Mvi.Domain.MVI.Mediator.IMviRequest<SharedWorkbench.EventBindingWorkbenchInteractionResponse>;
 }

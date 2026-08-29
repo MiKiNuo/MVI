@@ -38,6 +38,7 @@ public sealed class EventBindingRecordingMediator : IMviMediator
         IMviRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         if (request is not EventBindingWorkbenchInteractionRequest interactionRequest)
         {

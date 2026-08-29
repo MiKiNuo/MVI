@@ -1,11 +1,10 @@
-using MiKiNuo.Mvi.Application.MVI.Command;
+﻿using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.EventBinding;
 using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
-using MiKiNuo.Mvi.Domain.MVI.Business;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
@@ -37,12 +36,11 @@ public sealed class ViewEventCommandBindingTests
             new NoopEffectDispatcher<EventCommandEffect>());
         using EventCommandViewModel viewModel = new(store);
 
-        viewModel.CaptureTextCommand.Execute(new MviTextChangedEventPayload(
+        await ((IMviAsyncCommand)viewModel.CaptureTextCommand).ExecuteAsync(new MviTextChangedEventPayload(
             Text: "admin",
             PreviousText: string.Empty,
             IsUserInitiated: true,
             RawEventArgs: null));
-        await Task.Delay(50);
 
         await Assert.That(store.CurrentState.Text).IsEqualTo("admin");
         await Assert.That(store.CurrentState.WasUserInitiated).IsTrue();
@@ -83,7 +81,7 @@ public sealed class ViewEventCommandBindingTests
     public async Task EventBinding_Should_DispatchMappedIntentOnEventAsync()
     {
         TestEventSource rawSource = new();
-        List<IMviIntent> dispatched = [];
+        using TestComponent component = new();
 
         IEventSource<string> eventSource = new DelegateEventSource<string>(handler =>
         {
@@ -92,16 +90,16 @@ public sealed class ViewEventCommandBindingTests
         });
 
         EventBinding<string> binding = new(eventSource, text => new TestIntent(text));
-        IDisposable attachment = binding.Attach(intent => dispatched.Add(intent));
+        IDisposable attachment = binding.Attach(component.GetIntentDispatcher());
 
         rawSource.Raise("hello");
 
-        await Assert.That(dispatched.Count).IsEqualTo(1);
-        await Assert.That(((TestIntent)dispatched[0]!).Value).IsEqualTo("hello");
+        await Assert.That(component.Dispatched.Count).IsEqualTo(1);
+        await Assert.That(((TestIntent)component.Dispatched[0]!).Value).IsEqualTo("hello");
 
         attachment.Dispose();
         rawSource.Raise("ignored");
-        await Assert.That(dispatched.Count).IsEqualTo(1);
+        await Assert.That(component.Dispatched.Count).IsEqualTo(1);
     }
 
     /// <summary>
@@ -128,9 +126,32 @@ public sealed class ViewEventCommandBindingTests
         using TestComponent component = new();
         IMviIntentDispatcher dispatcher = component.GetIntentDispatcher();
 
-        dispatcher.Dispatch(new TestIntent("hello"));
+        await dispatcher.DispatchAsync(new TestIntent("hello"));
         await Assert.That(component.Dispatched.Count).IsEqualTo(1);
         await Assert.That(((TestIntent)component.Dispatched[0]!).Value).IsEqualTo("hello");
+    }
+
+    /// <summary>
+    /// 验证异步派发失败既向调用方传播，也通过统一事件报告原始意图。
+    /// </summary>
+    [Test]
+    public async Task MviComponent_DispatchAsync_Should_ReportAndRethrowFailureAsync()
+    {
+        InvalidOperationException failure = new("dispatch failed");
+        using TestComponent component = new() { Failure = failure };
+        IMviIntentDispatcher dispatcher = component.GetIntentDispatcher();
+        IntentDispatchExceptionEventArgs? reported = null;
+        dispatcher.DispatchFailed += (_, eventArgs) => reported = eventArgs;
+        TestIntent intent = new("hello");
+
+        InvalidOperationException? thrown = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await dispatcher.DispatchAsync(intent);
+        });
+
+        await Assert.That(ReferenceEquals(thrown, failure)).IsTrue();
+        await Assert.That(ReferenceEquals(reported?.Exception, failure)).IsTrue();
+        await Assert.That(ReferenceEquals(reported?.Intent, intent)).IsTrue();
     }
 
     /// <summary>
@@ -287,10 +308,29 @@ public sealed class ViewEventCommandBindingTests
         public List<IMviIntent> Dispatched { get; } = [];
 
         /// <summary>
+        /// 获取或设置派发时返回的测试异常。
+        /// </summary>
+        public Exception? Failure { get; set; }
+
+        /// <summary>
         /// 派发 Intent 到 Store。
         /// </summary>
         /// <param name="intent">意图。</param>
-        protected override void Dispatch(IMviIntent intent) => Dispatched.Add(intent);
+        /// <param name="cancellationToken">取消标记。</param>
+        /// <returns>表示异步派发过程的任务。</returns>
+        protected override ValueTask DispatchCoreAsync(
+            IMviIntent intent,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Failure is not null)
+            {
+                return ValueTask.FromException(Failure);
+            }
+
+            Dispatched.Add(intent);
+            return ValueTask.CompletedTask;
+        }
     }
 }
 

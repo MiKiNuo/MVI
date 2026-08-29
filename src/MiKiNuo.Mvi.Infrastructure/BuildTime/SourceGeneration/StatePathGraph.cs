@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -8,8 +8,8 @@ namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 /// <summary>
 /// 表示 MVI 状态属性图的展开规则与结果模型。
 /// <para>
-/// 供 <c>MviStatePathsGenerator</c>、<c>MviStateSliceGenerator</c> 与
-/// <c>MviViewModelGenerator</c> 共用，保证“哪些属性是叶子、哪些是分支”
+/// 供 <c>MviStatePathsGenerator</c> 与 <c>MviViewModelGenerator</c>
+/// 共用，保证“哪些属性是叶子、哪些是分支”
 /// 在所有生成器中判定一致。
 /// </para>
 /// </summary>

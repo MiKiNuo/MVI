@@ -20,20 +20,17 @@ public sealed partial class MviDiContainerGenerator
         /// </summary>
         /// <param name="assemblyName">目标程序集名称（用作容器命名空间）。</param>
         /// <param name="services">分析得到的 DI 服务信息。</param>
-        /// <param name="features">分析得到的 Feature Store 装配信息。</param>
         /// <returns>生成的 C# 源码。</returns>
         public static string GenerateContainerSource(
             string assemblyName,
-            IReadOnlyList<Models.DiServiceInfo> services,
-            IReadOnlyList<Models.FeatureStoreInfo> features)
+            IReadOnlyList<Models.DiServiceInfo> services)
         {
             StringBuilder builder = new();
             string containerNamespace = string.IsNullOrEmpty(assemblyName) ? "GeneratedContainer" : assemblyName;
 
             EmitFileHeader(builder, containerNamespace, services);
             EmitConstructor(builder, services);
-            EmitResolveMethods(builder, services, features);
-            EmitFeatureStoreFactories(builder, features);
+            EmitResolveMethods(builder, services);
             EmitCreateScope(builder);
             EmitCreateWith(builder, services);
             EmitScopeClass(builder, services);
@@ -119,11 +116,10 @@ public sealed partial class MviDiContainerGenerator
         /// </summary>
         private static void EmitResolveMethods(
             StringBuilder builder,
-            IReadOnlyList<Models.DiServiceInfo> services,
-            IReadOnlyList<Models.FeatureStoreInfo> features)
+            IReadOnlyList<Models.DiServiceInfo> services)
         {
             EmitResolveGeneric(builder);
-            EmitResolveByType(builder, services, features);
+            EmitResolveByType(builder, services);
         }
 
         /// <summary>
@@ -149,8 +145,7 @@ public sealed partial class MviDiContainerGenerator
         /// </summary>
         private static void EmitResolveByType(
             StringBuilder builder,
-            IReadOnlyList<Models.DiServiceInfo> services,
-            IReadOnlyList<Models.FeatureStoreInfo> features)
+            IReadOnlyList<Models.DiServiceInfo> services)
         {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 解析指定类型的服务。");
@@ -189,20 +184,6 @@ public sealed partial class MviDiContainerGenerator
                     builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
                     builder.AppendLine(");");
                 }
-            }
-
-            foreach (Models.FeatureStoreInfo feature in features)
-            {
-                builder.Append("        if (serviceType == typeof(global::MiKiNuo.Mvi.Application.MVI.Store.IMviStore<")
-                    .Append(feature.StateTypeName).Append(", ")
-                    .Append(feature.IntentTypeName).Append(", ")
-                    .Append(feature.EffectTypeName).AppendLine(">))");
-                builder.AppendLine("        {");
-                builder.Append("            object created = Create").Append(feature.GetSafeMethodKey()).AppendLine("FeatureStore();");
-                builder.AppendLine("            _singletons[serviceType] = created;");
-                builder.AppendLine("            return created;");
-                builder.AppendLine("        }");
-                builder.AppendLine();
             }
 
             builder.AppendLine();

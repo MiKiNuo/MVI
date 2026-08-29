@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -81,6 +81,25 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     }
 
     /// <summary>
+    /// 验证作用域拥有独立缓存、在作用域内解析构造依赖并释放缓存实例。
+    /// </summary>
+    [Test]
+    public async Task Generate_Should_EmitOwnedScopedLifetimeAsync()
+    {
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
+                ScopedServiceSource + "\n" + StubDefinitions);
+        string generatedCode = runResult.GeneratedTrees.Single().GetText().ToString();
+
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(generatedCode).Contains("private readonly Dictionary<Type, object> _scoped = new();");
+        await Assert.That(generatedCode).Contains("object created = new global::TestApp.ScopedConsumer(this.Resolve<global::TestApp.ScopedDependency>());");
+        await Assert.That(generatedCode).Contains("_scoped[serviceType] = created;");
+        await Assert.That(generatedCode).Contains("if (instance is IDisposable disposable)");
+        await Assert.That(generatedCode).Contains("return _container.Resolve(serviceType);");
+    }
+
+    /// <summary>
     /// 桩类型定义：模拟 DI 特性、生命周期枚举与应用层 DI 接口。
     /// </summary>
     private const string StubDefinitions = TestSupport.GeneratorTestStubs.DiContainerRuntime;
@@ -109,6 +128,33 @@ public sealed class MviDiContainerGeneratorBehaviorTests
         {
             public sealed class PlainClass
             {
+            }
+        }
+        """;
+
+    /// <summary>
+    /// 测试源代码：含作用域依赖链。
+    /// </summary>
+    private const string ScopedServiceSource = """
+        using MiKiNuo.Mvi.Domain.DI;
+
+        namespace TestApp
+        {
+            [DiService(ServiceLifetime.Singleton)]
+            public sealed class SingletonDependency
+            {
+            }
+
+            [DiService(ServiceLifetime.Scoped)]
+            public sealed class ScopedDependency : System.IDisposable
+            {
+                public void Dispose() { }
+            }
+
+            [DiService(ServiceLifetime.Scoped)]
+            public sealed class ScopedConsumer
+            {
+                public ScopedConsumer(ScopedDependency dependency) { }
             }
         }
         """;

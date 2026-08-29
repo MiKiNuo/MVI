@@ -5,6 +5,7 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors></WarningsAsErrors>
     <EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
+    <TestingPlatformCommandLineArguments>--maximum-parallel-tests 1</TestingPlatformCommandLineArguments>
     <NoWarn>$(NoWarn);CS1591;CS8785;RS1035;RS1022;RS1024;RS1025;RS1026;RS1027;RS1028;RS1029;RS1030</NoWarn>
   </PropertyGroup>
   <ItemGroup>

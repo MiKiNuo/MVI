@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text;
 using Microsoft.CodeAnalysis;
 
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
@@ -23,6 +22,7 @@ public sealed partial class MviDiContainerGenerator
             /// <summary>
             /// 初始化 DI 服务信息。
             /// </summary>
+            /// <param name="assemblyName">目标程序集名称。</param>
             /// <param name="serviceTypeName">服务类型（完整限定名）。</param>
             /// <param name="implementationTypeName">实现类型（完整限定名）。</param>
             /// <param name="lifetime">生命周期。</param>
@@ -36,6 +36,7 @@ public sealed partial class MviDiContainerGenerator
             /// 供 <c>CreateWith</c> 反射式按参数实例化时做 <c>args[i] is T</c> 模式匹配。
             /// </param>
             public DiServiceInfo(
+                string assemblyName,
                 string serviceTypeName,
                 string implementationTypeName,
                 GeneratedLifetime lifetime,
@@ -43,6 +44,7 @@ public sealed partial class MviDiContainerGenerator
                 IReadOnlyList<string> constructorArgumentExpressions,
                 IReadOnlyList<string> constructorParameterTypeNames)
             {
+                AssemblyName = assemblyName;
                 ServiceTypeName = serviceTypeName;
                 ImplementationTypeName = implementationTypeName;
                 Lifetime = lifetime;
@@ -50,6 +52,9 @@ public sealed partial class MviDiContainerGenerator
                 ConstructorArgumentExpressions = constructorArgumentExpressions;
                 ConstructorParameterTypeNames = constructorParameterTypeNames;
             }
+
+            /// <summary>目标程序集名称。</summary>
+            public string AssemblyName { get; }
 
             /// <summary>服务类型（完整限定名）。</summary>
             public string ServiceTypeName { get; }
@@ -101,93 +106,6 @@ public sealed partial class MviDiContainerGenerator
             Transient = 2,
         }
 
-        /// <summary>
-        /// 表示一个可装配的 Feature Store 信息。
-        /// </summary>
-        internal sealed class FeatureStoreInfo
-        {
-            /// <summary>
-            /// 初始化 Feature Store 信息。
-            /// </summary>
-            /// <param name="featureKey">功能模块键。</param>
-            /// <param name="stateTypeName">状态类型（完整限定名）。</param>
-            /// <param name="intentTypeName">意图类型（完整限定名）。</param>
-            /// <param name="effectTypeName">副作用类型（完整限定名）。</param>
-            /// <param name="reducerTypeName">规约器类型（完整限定名）。</param>
-            /// <param name="handlerTypeName">意图处理器类型（完整限定名）。</param>
-            /// <param name="dispatcherTypeName">副作用分发器类型（完整限定名）。</param>
-            /// <param name="reducerConstructorArguments">规约器构造实参表达式。</param>
-            /// <param name="handlerConstructorArguments">意图处理器构造实参表达式。</param>
-            /// <param name="dispatcherConstructorArguments">副作用分发器构造实参表达式。</param>
-            public FeatureStoreInfo(
-                string featureKey,
-                string stateTypeName,
-                string intentTypeName,
-                string effectTypeName,
-                string reducerTypeName,
-                string handlerTypeName,
-                string dispatcherTypeName,
-                IReadOnlyList<string> reducerConstructorArguments,
-                IReadOnlyList<string> handlerConstructorArguments,
-                IReadOnlyList<string> dispatcherConstructorArguments)
-            {
-                FeatureKey = featureKey;
-                StateTypeName = stateTypeName;
-                IntentTypeName = intentTypeName;
-                EffectTypeName = effectTypeName;
-                ReducerTypeName = reducerTypeName;
-                HandlerTypeName = handlerTypeName;
-                DispatcherTypeName = dispatcherTypeName;
-                ReducerConstructorArguments = reducerConstructorArguments;
-                HandlerConstructorArguments = handlerConstructorArguments;
-                DispatcherConstructorArguments = dispatcherConstructorArguments;
-            }
-
-            /// <summary>功能模块键。</summary>
-            public string FeatureKey { get; }
-
-            /// <summary>状态类型（完整限定名）。</summary>
-            public string StateTypeName { get; }
-
-            /// <summary>意图类型（完整限定名）。</summary>
-            public string IntentTypeName { get; }
-
-            /// <summary>副作用类型（完整限定名）。</summary>
-            public string EffectTypeName { get; }
-
-            /// <summary>规约器类型（完整限定名）。</summary>
-            public string ReducerTypeName { get; }
-
-            /// <summary>意图处理器类型（完整限定名）。</summary>
-            public string HandlerTypeName { get; }
-
-            /// <summary>副作用分发器类型（完整限定名）。</summary>
-            public string DispatcherTypeName { get; }
-
-            /// <summary>规约器构造实参表达式。</summary>
-            public IReadOnlyList<string> ReducerConstructorArguments { get; }
-
-            /// <summary>意图处理器构造实参表达式。</summary>
-            public IReadOnlyList<string> HandlerConstructorArguments { get; }
-
-            /// <summary>副作用分发器构造实参表达式。</summary>
-            public IReadOnlyList<string> DispatcherConstructorArguments { get; }
-
-            /// <summary>
-            /// 获取可作为方法名片段的功能模块键（仅保留字母数字与下划线）。
-            /// </summary>
-            /// <returns>安全的方法名片段。</returns>
-            public string GetSafeMethodKey()
-            {
-                StringBuilder builder = new();
-                foreach (char character in FeatureKey)
-                {
-                    builder.Append(char.IsLetterOrDigit(character) || character == '_' ? character : '_');
-                }
-
-                return builder.Length == 0 ? "Feature" : builder.ToString();
-            }
-        }
     }
 }
 

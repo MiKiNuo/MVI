@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using MiKiNuo.Mvi.Application.MVI.EventBinding;
 using MiKiNuo.Mvi.Application.MVI.Store;
@@ -102,6 +102,8 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
     /// 派发意图到状态存储。
     /// </summary>
     /// <param name="intent">意图。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>表示异步派发过程的任务。</returns>
     protected override ValueTask DispatchCoreAsync(
         IMviIntent intent,
         CancellationToken cancellationToken)

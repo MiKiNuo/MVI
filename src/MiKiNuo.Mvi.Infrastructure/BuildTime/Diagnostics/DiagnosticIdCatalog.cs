@@ -1,4 +1,4 @@
-namespace MiKiNuo.Mvi.Infrastructure.BuildTime.Diagnostics;
+﻿namespace MiKiNuo.Mvi.Infrastructure.BuildTime.Diagnostics;
 
 /// <summary>
 /// 表示 MVI 框架全部诊断 ID 的集中目录。
@@ -108,21 +108,6 @@ public static class DiagnosticIdCatalog
     /// <summary>泛型状态类型跳过 StatePath 生成。</summary>
     public const string MviStatePathGenericStateSkipped = "MVI0011";
 
-    /// <summary>切片构造参数无法解析到状态属性路径。</summary>
-    public const string MviStateSliceParameterUnresolved = "MVI0012";
-
-    /// <summary>切片构造参数匹配到多个状态属性路径。</summary>
-    public const string MviStateSliceParameterAmbiguous = "MVI0013";
-
-    /// <summary>切片声明不符合约定。</summary>
-    public const string MviStateSliceDeclarationInvalid = "MVI0014";
-
-    /// <summary>功能模块状态缺少 public static Initial 成员。</summary>
-    public const string MviFeatureStateMissingInitial = "MVI0015";
-
-    /// <summary>功能模块组件（Reducer/IntentHandler/EffectDispatcher）无法唯一解析。</summary>
-    public const string MviFeatureComponentNotResolvable = "MVI0016";
-
     /// <summary>禁止使用 StatePath 默认实例（default 字面量 / default(T) / 无参 new）。</summary>
     public const string MviStatePathDefaultInstance = "MVI0017";
 
@@ -162,11 +147,6 @@ public static class DiagnosticIdCatalog
         MviApplyStateCoreConflict,
         MviStatePathGraphCycle,
         MviStatePathGenericStateSkipped,
-        MviStateSliceParameterUnresolved,
-        MviStateSliceParameterAmbiguous,
-        MviStateSliceDeclarationInvalid,
-        MviFeatureStateMissingInitial,
-        MviFeatureComponentNotResolvable,
         MviStatePathDefaultInstance,
     ];
 }

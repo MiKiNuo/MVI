@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
@@ -53,14 +53,14 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
 
         IncrementalValueProvider<ImmutableArray<SlotFieldModel>> groupedSlots = slots.Collect();
 
-        context.RegisterSourceOutput(groupedSlots.Combine(context.CompilationProvider), static (productionContext, source) =>
+        context.RegisterSourceOutput(groupedSlots, static (productionContext, source) =>
         {
             // 必须按 [MviSlot] 字段所在的 partial class 聚合后逐个 emit：
             // 之前只取 grouped.First() 会让"多个含 [MviSlot] 的 View"项目里只有
             // 字典序首个 View 拿到 OnBindSlots override，其余 View 的槽位全部空着。
             // 这里对每个含 [MviSlot] 的 View 单独调用 AddSource，互不影响。
             Dictionary<INamedTypeSymbol, List<SlotFieldModel>> grouped = new(SymbolEqualityComparer.Default);
-            foreach (SlotFieldModel slot in source.Left)
+            foreach (SlotFieldModel slot in source)
             {
                 if (!grouped.TryGetValue(slot.ContainingType, out List<SlotFieldModel>? list))
                 {
@@ -74,7 +74,7 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             foreach (KeyValuePair<INamedTypeSymbol, List<SlotFieldModel>> group in grouped)
             {
                 productionContext.CancellationToken.ThrowIfCancellationRequested();
-                SlotGenerationModel? model = Analysis.BuildGenerationModel(group.Value, source.Right, productionContext.CancellationToken);
+                SlotGenerationModel? model = Analysis.BuildGenerationModel(group.Value, productionContext.CancellationToken);
                 if (model is null)
                 {
                     continue;
@@ -255,7 +255,6 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
         /// </summary>
         public static SlotGenerationModel? BuildGenerationModel(
             List<SlotFieldModel> slotsForClass,
-            Compilation compilation,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -274,13 +273,13 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
                 return null;
             }
 
-            INamedTypeSymbol? viewModelType = ResolveViewModelType(containingType, platform, compilation, cancellationToken);
+            INamedTypeSymbol? viewModelType = ResolveViewModelType(containingType, platform, cancellationToken);
             if (viewModelType is null)
             {
                 return null;
             }
 
-            List<SlotFieldModel> validatedSlots = ValidateFactoryMethods(viewModelType, slotsForClass, compilation, cancellationToken);
+            List<SlotFieldModel> validatedSlots = ValidateFactoryMethods(viewModelType, slotsForClass, cancellationToken);
             if (validatedSlots.Count == 0)
             {
                 return null;
@@ -311,7 +310,6 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
         private static List<SlotFieldModel> ValidateFactoryMethods(
             INamedTypeSymbol viewModelType,
             List<SlotFieldModel> slotsForClass,
-            Compilation compilation,
             CancellationToken cancellationToken)
         {
             List<SlotFieldModel> validatedSlots = new(slotsForClass.Count);
@@ -319,7 +317,7 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (FindFactoryMethod(viewModelType, slot.FactoryName, compilation, cancellationToken) is not null)
+                if (FindFactoryMethod(viewModelType, slot.FactoryName, cancellationToken) is not null)
                 {
                     validatedSlots.Add(slot);
                 }
@@ -331,7 +329,6 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
         private static INamedTypeSymbol? ResolveViewModelType(
             INamedTypeSymbol viewType,
             SlotPlatform platform,
-            Compilation compilation,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -359,7 +356,6 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
         private static IMethodSymbol? FindFactoryMethod(
             INamedTypeSymbol viewModelType,
             string methodName,
-            Compilation compilation,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

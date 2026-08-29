@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Presentation.Disposables;
@@ -29,33 +29,6 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
             }
 
             throw new InvalidOperationException($"当前视图未绑定 ViewModel：{typeof(TViewModel).FullName}");
-        }
-    }
-
-    /// <summary>
-    /// 绑定 ViewModel；保留旧版 1 参数入口以兼容"手写 Bind"或"无槽位"场景。
-    /// <para>
-    /// 此重载 <b>不</b> 触发组合模式槽位绑定钩子（<see cref="OnBindSlots"/>）。
-    /// 需要源生成器 emit 槽位绑定逻辑的 View，必须使用带 <see cref="IMviResolver"/> 的 2 参数重载。
-    /// </para>
-    /// </summary>
-    /// <param name="viewModel">视图模型。</param>
-    public void Bind(TViewModel viewModel)
-    {
-        ArgumentNullException.ThrowIfNull(viewModel);
-
-        ClearBindings();
-        DataContext = viewModel;
-        MviDisposableBag? bindingBag = new();
-        try
-        {
-            OnBind(viewModel, bindingBag);
-            _bindings = bindingBag;
-            bindingBag = null;
-        }
-        finally
-        {
-            bindingBag?.Dispose();
         }
     }
 

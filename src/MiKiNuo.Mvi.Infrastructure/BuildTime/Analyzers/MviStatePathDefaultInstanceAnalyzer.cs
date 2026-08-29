@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -27,7 +27,7 @@ public sealed class MviStatePathDefaultInstanceAnalyzer : DiagnosticAnalyzer
         category: "MviStatePath",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "StatePath 是 readonly struct，默认实例未初始化取值委托。应始终使用源生成器产出的路径实例或 StatePath.Create 工厂方法。");
+        description: "StatePath 是 readonly struct，默认实例未初始化取值委托。应始终使用源生成器产出的路径实例或 StatePath.Create 工厂方法.");
 
     /// <summary>
     /// 获取支持的诊断描述集合。

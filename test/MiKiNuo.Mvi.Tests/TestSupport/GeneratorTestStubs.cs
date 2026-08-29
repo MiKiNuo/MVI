@@ -1,4 +1,4 @@
-namespace MiKiNuo.Mvi.Tests.TestSupport;
+﻿namespace MiKiNuo.Mvi.Tests.TestSupport;
 
 /// <summary>
 /// 表示源生成器行为测试共享的桩定义核。
@@ -17,7 +17,7 @@ internal static class GeneratorTestStubs
         """;
 
     /// <summary>
-    /// StatePath 运行时与切片特性桩（依赖 <see cref="StateContracts"/>）。
+    /// StatePath 运行时桩（依赖 <see cref="StateContracts"/>）。
     /// </summary>
     public const string StatePathRuntime = """
         namespace MiKiNuo.Mvi.Domain.MVI.State
@@ -37,14 +37,6 @@ internal static class GeneratorTestStubs
                 public static StatePath<TState, TValue> Create(
                     string displayPath,
                     System.Func<TState, TValue> getter) => new(displayPath, getter);
-            }
-
-            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-            public sealed class MviStateSliceAttribute : System.Attribute
-            {
-                public MviStateSliceAttribute(System.Type stateType) { StateType = stateType; }
-
-                public System.Type StateType { get; }
             }
         }
         """;
@@ -110,7 +102,7 @@ internal static class GeneratorTestStubs
         """;
 
     /// <summary>
-    /// MVI Store 运行时桩（标记接口、Reducer/Handler/Dispatcher 契约、Store 与 Feature 特性）。
+    /// MVI Store 运行时桩（标记接口、Reducer/Handler/Dispatcher 契约与 Store）。
     /// </summary>
     public const string MviStoreRuntime = """
         namespace MiKiNuo.Mvi.Domain.MVI.State
@@ -126,19 +118,6 @@ internal static class GeneratorTestStubs
         namespace MiKiNuo.Mvi.Domain.MVI.Effect
         {
             public interface IMviEffect { }
-        }
-
-        namespace MiKiNuo.Mvi.Domain.MVI.Feature
-        {
-            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-            public sealed class MviFeatureModuleAttribute : System.Attribute
-            {
-                public MviFeatureModuleAttribute(string featureKey) { FeatureKey = featureKey; }
-
-                public string FeatureKey { get; }
-
-                public string DisplayName { get; set; } = string.Empty;
-            }
         }
 
         namespace MiKiNuo.Mvi.Domain.MVI.Reducer

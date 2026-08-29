@@ -21,6 +21,8 @@ internal sealed class NoopMediator : IMviMediator
         IMviRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
         return new ValueTask<TResponse>(default(TResponse)!);
     }
 }

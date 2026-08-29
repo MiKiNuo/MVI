@@ -1,7 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.Diagnostics;
 
@@ -24,60 +25,60 @@ public sealed class MviStatePathsGenerator : IIncrementalGenerator
     /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterSourceOutput(context.CompilationProvider, Execute);
+        IncrementalValuesProvider<INamedTypeSymbol> stateTypes = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is TypeDeclarationSyntax { BaseList: not null },
+                static (syntaxContext, cancellationToken) => GetStateType(syntaxContext, cancellationToken))
+            .Where(static stateType => stateType is not null)
+            .Select(static (stateType, _) => stateType!);
+
+        context.RegisterSourceOutput(stateTypes, Execute);
     }
 
-    private static void Execute(SourceProductionContext context, Compilation compilation)
+    private static INamedTypeSymbol? GetStateType(
+        GeneratorSyntaxContext context,
+        System.Threading.CancellationToken cancellationToken)
     {
-        INamedTypeSymbol? stateMarker = compilation.GetTypeByMetadataName(
+        INamedTypeSymbol? stateMarker = context.SemanticModel.Compilation.GetTypeByMetadataName(
             "MiKiNuo.Mvi.Domain.MVI.State.IMviState");
         if (stateMarker is null)
         {
+            return null;
+        }
+
+        if (context.SemanticModel.GetDeclaredSymbol(context.Node, cancellationToken) is not INamedTypeSymbol typeSymbol
+            || !StatePathGraph.IsNamespaceAccessible(typeSymbol)
+            || !typeSymbol.AllInterfaces.Any(i => i.Equals(stateMarker, SymbolEqualityComparer.Default)))
+        {
+            return null;
+        }
+
+        return typeSymbol;
+    }
+
+    private static void Execute(SourceProductionContext context, INamedTypeSymbol typeSymbol)
+    {
+        if (IsGeneric(typeSymbol))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                Analysis.GenericStateSkippedRule,
+                typeSymbol.Locations.FirstOrDefault(),
+                typeSymbol.ToDisplayString()));
             return;
         }
 
-        HashSet<INamedTypeSymbol> visited = new(SymbolEqualityComparer.Default);
-        foreach (INamedTypeSymbol typeSymbol in GeneratorSyntaxHelpers.EnumerateTypeSymbols(
-            compilation,
-            context.CancellationToken))
-        {
-            if (!visited.Add(typeSymbol))
-            {
-                continue;
-            }
+        List<StatePathNode> roots = StatePathGraph.Expand(
+            typeSymbol,
+            cycleType => context.ReportDiagnostic(Diagnostic.Create(
+                Analysis.StateGraphCycleRule,
+                typeSymbol.Locations.FirstOrDefault(),
+                typeSymbol.Name,
+                cycleType.Name)));
 
-            if (!StatePathGraph.IsNamespaceAccessible(typeSymbol))
-            {
-                continue;
-            }
-
-            if (!typeSymbol.AllInterfaces.Any(i => i.Equals(stateMarker, SymbolEqualityComparer.Default)))
-            {
-                continue;
-            }
-
-            if (IsGeneric(typeSymbol))
-            {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    Analysis.GenericStateSkippedRule,
-                    typeSymbol.Locations.FirstOrDefault(),
-                    typeSymbol.ToDisplayString()));
-                continue;
-            }
-
-            List<StatePathNode> roots = StatePathGraph.Expand(
-                typeSymbol,
-                cycleType => context.ReportDiagnostic(Diagnostic.Create(
-                    Analysis.StateGraphCycleRule,
-                    typeSymbol.Locations.FirstOrDefault(),
-                    typeSymbol.Name,
-                    cycleType.Name)));
-
-            string source = Emission.Emit(typeSymbol, roots);
-            context.AddSource(
-                GetHintName(typeSymbol),
-                SourceText.From(source, Encoding.UTF8));
-        }
+        string source = Emission.Emit(typeSymbol, roots);
+        context.AddSource(
+            GetHintName(typeSymbol),
+            SourceText.From(source, Encoding.UTF8));
     }
 
     private static bool IsGeneric(INamedTypeSymbol symbol)

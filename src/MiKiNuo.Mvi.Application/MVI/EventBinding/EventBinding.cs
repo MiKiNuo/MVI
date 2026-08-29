@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Domain.MVI.Intent;
+﻿using MiKiNuo.Mvi.Domain.MVI.Intent;
 
 namespace MiKiNuo.Mvi.Application.MVI.EventBinding;
 
@@ -72,7 +72,7 @@ public sealed class EventBinding<TEvent> : IEventBinding
         }
     }
 
-    private static async ValueTask IgnoreReportedFailureAsync(ValueTask dispatch)
+    private static async Task IgnoreReportedFailureAsync(ValueTask dispatch)
     {
         try
         {
@@ -169,7 +169,7 @@ public abstract class MviComponent : IDisposable, IMviIntentDispatcher
         }
     }
 
-    private static async ValueTask IgnoreReportedFailureAsync(ValueTask dispatch)
+    private static async Task IgnoreReportedFailureAsync(ValueTask dispatch)
     {
         try
         {

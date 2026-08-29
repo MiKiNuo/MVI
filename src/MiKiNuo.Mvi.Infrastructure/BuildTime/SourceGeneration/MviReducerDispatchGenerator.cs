@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -26,39 +26,57 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
     /// <param name="context">增量生成器初始化上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterSourceOutput(context.CompilationProvider, Execute);
+        IncrementalValuesProvider<ReducerCandidate> candidates = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
+                static (syntaxContext, cancellationToken) => GetCandidate(syntaxContext, cancellationToken))
+            .Where(static candidate => candidate is not null)
+            .Select(static (candidate, _) => candidate!);
+
+        context.RegisterSourceOutput(candidates, Execute);
     }
 
-    private static void Execute(SourceProductionContext context, Compilation compilation)
+    private static ReducerCandidate? GetCandidate(
+        GeneratorSyntaxContext context,
+        System.Threading.CancellationToken cancellationToken)
     {
-        INamedTypeSymbol? reducerBaseSymbol = compilation.GetTypeByMetadataName(
+        INamedTypeSymbol? reducerBaseSymbol = context.SemanticModel.Compilation.GetTypeByMetadataName(
             "MiKiNuo.Mvi.Application.MVI.Reducer.MviReducerBase`3");
+        if (reducerBaseSymbol is null
+            || context.SemanticModel.GetDeclaredSymbol(context.Node, cancellationToken) is not INamedTypeSymbol reducerSymbol
+            || GeneratorSyntaxHelpers.FindGenericBaseInChain(reducerSymbol, reducerBaseSymbol) is null)
+        {
+            return null;
+        }
 
-        if (reducerBaseSymbol is null)
+        return new ReducerCandidate(reducerSymbol, reducerBaseSymbol);
+    }
+
+    private static void Execute(SourceProductionContext context, ReducerCandidate candidate)
+    {
+        ReducerDescriptor? descriptor = Analysis.Collect(
+            candidate.ReducerSymbol,
+            candidate.ReducerBaseSymbol,
+            context);
+
+        if (descriptor is null)
         {
             return;
         }
 
-        foreach (INamedTypeSymbol reducerSymbol in GeneratorSyntaxHelpers.EnumerateClassSymbols(
-            compilation,
-            context.CancellationToken))
-        {
-            ReducerDescriptor? descriptor = Analysis.Collect(
-                reducerSymbol,
-                reducerBaseSymbol,
-                compilation,
-                context);
+        string source = Emission.Emit(descriptor);
+        context.AddSource(
+            $"{descriptor.ReducerSymbol.Name}.MviReduce.g.cs",
+            SourceText.From(source, Encoding.UTF8));
+    }
 
-            if (descriptor is null)
-            {
-                continue;
-            }
+    private sealed class ReducerCandidate(
+        INamedTypeSymbol reducerSymbol,
+        INamedTypeSymbol reducerBaseSymbol)
+    {
+        public INamedTypeSymbol ReducerSymbol { get; } = reducerSymbol;
 
-            string source = Emission.Emit(descriptor);
-            context.AddSource(
-                $"{descriptor.ReducerSymbol.Name}.MviReduce.g.cs",
-                SourceText.From(source, Encoding.UTF8));
-        }
+        public INamedTypeSymbol ReducerBaseSymbol { get; } = reducerBaseSymbol;
     }
 
     /// <summary>
@@ -107,18 +125,16 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
             isEnabledByDefault: true);
 
         /// <summary>
-    /// 收集规约器描述信息。
-    /// </summary>
-    /// <param name="reducerSymbol">规约器类型符号。</param>
-    /// <param name="reducerBaseSymbol">规约器基类符号。</param>
-    /// <param name="compilation">编译对象。</param>
-    /// <param name="context">源生成上下文。</param>
-    /// <returns>规约器描述，不匹配则返回 null。</returns>
-    public static ReducerDescriptor? Collect(
-        INamedTypeSymbol reducerSymbol,
-        INamedTypeSymbol reducerBaseSymbol,
-        Compilation compilation,
-        SourceProductionContext context)
+        /// 收集规约器描述信息。
+        /// </summary>
+        /// <param name="reducerSymbol">规约器类型符号。</param>
+        /// <param name="reducerBaseSymbol">规约器基类符号。</param>
+        /// <param name="context">源生成上下文。</param>
+        /// <returns>规约器描述，不匹配则返回 null。</returns>
+        public static ReducerDescriptor? Collect(
+            INamedTypeSymbol reducerSymbol,
+            INamedTypeSymbol reducerBaseSymbol,
+            SourceProductionContext context)
         {
             INamedTypeSymbol? baseGeneric = GeneratorSyntaxHelpers.FindGenericBaseInChain(reducerSymbol, reducerBaseSymbol);
             if (baseGeneric is null)
@@ -144,7 +160,6 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
                 stateType,
                 intentType,
                 effectType,
-                compilation,
                 context);
 
             ReportMissingHandlers(intentType, handlers, reducerSymbol, context);
@@ -186,7 +201,6 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
             INamedTypeSymbol stateType,
             INamedTypeSymbol intentType,
             INamedTypeSymbol effectType,
-            Compilation compilation,
             SourceProductionContext context)
         {
             List<ReduceHandlerModel> handlers = new();
@@ -208,7 +222,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
 
                 string? guardName = TryExtractGuard(reduceAttr);
 
-                if (!ValidateMethodSignature(method, stateType, intentSubtype, effectType, compilation))
+                if (!ValidateMethodSignature(method, stateType, intentSubtype, effectType))
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
                         HandlerSignatureInvalidRule,
@@ -295,8 +309,7 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
             IMethodSymbol method,
             INamedTypeSymbol stateType,
             INamedTypeSymbol? intentSubtype,
-            INamedTypeSymbol effectType,
-            Compilation compilation)
+            INamedTypeSymbol effectType)
         {
             if (intentSubtype is null)
             {
@@ -318,16 +331,12 @@ public sealed class MviReducerDispatchGenerator : IIncrementalGenerator
                 return false;
             }
 
-            INamedTypeSymbol? expectedReturn = compilation.GetTypeByMetadataName(
-                "MiKiNuo.Mvi.Domain.MVI.Reducer.MviReduceResult`2");
-            if (expectedReturn is null)
-            {
-                return false;
-            }
-
-            INamedTypeSymbol constructedReturn = expectedReturn.Construct(stateType, effectType);
             if (method.ReturnType is not INamedTypeSymbol actualReturn
-                || !actualReturn.Equals(constructedReturn, SymbolEqualityComparer.Default))
+                || actualReturn.OriginalDefinition.MetadataName != "MviReduceResult`2"
+                || actualReturn.OriginalDefinition.ContainingNamespace.ToDisplayString()
+                    != "MiKiNuo.Mvi.Domain.MVI.Reducer"
+                || !actualReturn.TypeArguments[0].Equals(stateType, SymbolEqualityComparer.Default)
+                || !actualReturn.TypeArguments[1].Equals(effectType, SymbolEqualityComparer.Default))
             {
                 return false;
             }

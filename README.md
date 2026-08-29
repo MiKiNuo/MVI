@@ -326,7 +326,12 @@ Broadcast
 而是使用明确的 Request / Response：
 
 ```csharp
-await mediator.SendAsync<TRequest, TResponse>(request, cancellationToken);
+public sealed record OpenPatientRequest(string PatientId)
+    : IMviRequest<OpenPatientResponse>;
+
+OpenPatientResponse response = await mediator.SendAsync<OpenPatientResponse>(
+    new OpenPatientRequest(patientId),
+    cancellationToken);
 ```
 
 适合处理：
@@ -468,6 +473,10 @@ public abstract partial record LoginIntent : IMviIntent
     public sealed partial record ChangePassword(string Password) : LoginIntent;
 
     public sealed partial record Submit : LoginIntent;
+
+    public sealed partial record Succeeded(ILoginProfile Profile) : LoginIntent;
+
+    public sealed partial record Failed(string ErrorMessage) : LoginIntent;
 }
 ```
 
@@ -489,8 +498,7 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.ChangeUserName))]
     private MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
         LoginState state,
-        LoginIntent.ChangeUserName intent,
-        IMviBusinessResult? result)
+        LoginIntent.ChangeUserName intent)
     {
         LoginState nextState = state with
         {
@@ -505,42 +513,42 @@ public sealed partial class LoginReducer
     [MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmitState))]
     private MviReduceResult<LoginState, LoginEffect> HandleSubmit(
         LoginState state,
-        LoginIntent.Submit intent,
-        IMviBusinessResult? result)
+        LoginIntent.Submit intent)
     {
-        if (result is null)
-        {
-            return Unchanged(state with { IsBusy = true, ErrorMessage = null });
-        }
-
-        if (result is LoginBusinessResult.Success success)
-        {
-            LoginState nextState = state with
-            {
-                IsBusy = false,
-                ErrorMessage = null,
-                CanSubmit = true
-            };
-
-            return WithEffect(
-                nextState,
-                new LoginEffect.NavigateToDashboard(success.Profile.DisplayName));
-        }
-
-        if (result is LoginBusinessResult.Failure failure)
-        {
-            return Unchanged(state with
-            {
-                IsBusy = false,
-                ErrorMessage = failure.ErrorMessage,
-                CanSubmit = CanSubmit(state.UserName, state.Password)
-            });
-        }
-
-        return Unchanged(state);
+        return Unchanged(state with { IsBusy = true, ErrorMessage = null });
     }
 
-    private bool CanSubmitState(LoginState state) => state.CanSubmit || state.IsBusy;
+    [MviReduce(typeof(LoginIntent.Succeeded))]
+    private MviReduceResult<LoginState, LoginEffect> HandleSucceeded(
+        LoginState state,
+        LoginIntent.Succeeded intent)
+    {
+        LoginState nextState = state with
+        {
+            IsBusy = false,
+            ErrorMessage = null,
+            CanSubmit = true
+        };
+
+        return WithEffect(
+            nextState,
+            new LoginEffect.NavigateToDashboard(intent.Profile.DisplayName));
+    }
+
+    [MviReduce(typeof(LoginIntent.Failed))]
+    private MviReduceResult<LoginState, LoginEffect> HandleFailed(
+        LoginState state,
+        LoginIntent.Failed intent)
+    {
+        return Unchanged(state with
+        {
+            IsBusy = false,
+            ErrorMessage = intent.ErrorMessage,
+            CanSubmit = CanSubmit(state.UserName, state.Password)
+        });
+    }
+
+    private bool CanSubmitState(LoginState state) => state.CanSubmit;
 
     private bool CanSubmit(string userName, string password)
     {
