@@ -21,7 +21,13 @@ public sealed class HttpAuthService : IAuthService, IDisposable
         Timeout = TimeSpan.FromSeconds(15),
     };
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 登录
+    /// </summary>
+    /// <param name="userName"></param>
+    /// <param name="password"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<AuthResult> LoginAsync(
         string userName,
         string password,
@@ -63,7 +69,14 @@ public sealed class HttpAuthService : IAuthService, IDisposable
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册
+    /// </summary>
+    /// <param name="userName"></param>
+    /// <param name="email"></param>
+    /// <param name="password"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<AuthResult> RegisterAsync(
         string userName,
         string email,

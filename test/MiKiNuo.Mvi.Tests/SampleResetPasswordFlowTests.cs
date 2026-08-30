@@ -32,19 +32,18 @@ public sealed class SampleResetPasswordFlowTests
     }
 
     /// <summary>
-    /// 验证重置密码 CanSubmit 需要用户名且两次密码一致。
+    /// 验证重置密码 CanSubmit 只要求字段填齐（业务规则校验由中间件承载）。
     /// </summary>
     [Test]
-    public async Task ResetPassword_CanSubmit_Should_RequireMatchingPasswordsAsync()
+    public async Task ResetPassword_CanSubmit_Should_RequireAllFieldsFilledAsync()
     {
         ResetPasswordReducer reducer = new();
         ResetPasswordState state = ResetPasswordState.Initial;
 
         state = reducer.Reduce(state, new ResetPasswordIntent.ChangeUserName("emilys")).State;
-        state = reducer.Reduce(state, new ResetPasswordIntent.ChangeNewPassword("newpass")).State;
         await Assert.That(state.CanSubmit).IsFalse();
 
-        state = reducer.Reduce(state, new ResetPasswordIntent.ChangeConfirmPassword("newpass")).State;
+        state = reducer.Reduce(state, new ResetPasswordIntent.ChangeNewPassword("newpass")).State;
         await Assert.That(state.CanSubmit).IsTrue();
     }
 

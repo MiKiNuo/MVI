@@ -107,7 +107,6 @@ public sealed partial class ResetPasswordReducer
     {
         return !state.IsBusy
             && !string.IsNullOrWhiteSpace(state.UserName)
-            && !string.IsNullOrWhiteSpace(state.NewPassword)
-            && state.NewPassword == state.ConfirmPassword;
+            && !string.IsNullOrWhiteSpace(state.NewPassword);
     }
 }

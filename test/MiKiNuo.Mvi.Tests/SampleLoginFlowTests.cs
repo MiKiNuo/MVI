@@ -53,20 +53,19 @@ public sealed class SampleLoginFlowTests
     }
 
     /// <summary>
-    /// 验证注册页 CanSubmit 需要邮箱含 at 符号且两次密码一致。
+    /// 验证注册页 CanSubmit 只要求字段填齐（业务规则校验由中间件承载）。
     /// </summary>
     [Test]
-    public async Task Register_CanSubmit_Should_RequireValidEmailAndMatchingPasswordAsync()
+    public async Task Register_CanSubmit_Should_RequireAllFieldsFilledAsync()
     {
         RegisterReducer reducer = new();
         RegisterState state = RegisterState.Initial;
 
         state = reducer.Reduce(state, new RegisterIntent.ChangeUserName("neo")).State;
         state = reducer.Reduce(state, new RegisterIntent.ChangeEmail("neo@example.com")).State;
-        state = reducer.Reduce(state, new RegisterIntent.ChangePassword("abc123")).State;
         await Assert.That(state.CanSubmit).IsFalse();
 
-        state = reducer.Reduce(state, new RegisterIntent.ChangeConfirmPassword("abc123")).State;
+        state = reducer.Reduce(state, new RegisterIntent.ChangePassword("abc123")).State;
         await Assert.That(state.CanSubmit).IsTrue();
     }
 

@@ -119,8 +119,6 @@ public sealed partial class RegisterReducer
         return !state.IsBusy
             && !string.IsNullOrWhiteSpace(state.UserName)
             && !string.IsNullOrWhiteSpace(state.Email)
-            && state.Email.Contains('@', StringComparison.Ordinal)
-            && !string.IsNullOrWhiteSpace(state.Password)
-            && state.Password == state.ConfirmPassword;
+            && !string.IsNullOrWhiteSpace(state.Password);
     }
 }
