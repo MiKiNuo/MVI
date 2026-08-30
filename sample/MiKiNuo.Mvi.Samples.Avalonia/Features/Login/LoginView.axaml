@@ -11,7 +11,8 @@
         BorderBrush="#E2E8F0"
         BorderThickness="1"
         CornerRadius="8">
-        <StackPanel Spacing="14">
+        <Grid>
+            <StackPanel Spacing="14">
             <TextBlock
                 FontSize="22"
                 FontWeight="SemiBold"
@@ -46,11 +47,28 @@
                 HorizontalContentAlignment="Center"
                 Command="{Binding GoResetPasswordCommand}"
                 Content="忘记密码？" />
-            <TextBlock
-                FontSize="11"
-                Foreground="#94A3B8"
-                Text="联网测试账号：emilys / emilyspass（dummyjson.com）"
-                TextWrapping="Wrap" />
-        </StackPanel>
+                <TextBlock
+                    FontSize="11"
+                    Foreground="#94A3B8"
+                    Text="联网测试账号：emilys / emilyspass（dummyjson.com）"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+            <Panel
+                Background="#CCFFFFFF"
+                IsVisible="{Binding IsBusy}"
+                ZIndex="10">
+                <StackPanel
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8">
+                    <ProgressBar Width="160" IsIndeterminate="True" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="#475569"
+                        HorizontalAlignment="Center"
+                        Text="登录中..." />
+                </StackPanel>
+            </Panel>
+        </Grid>
     </Border>
 </UserControl>
