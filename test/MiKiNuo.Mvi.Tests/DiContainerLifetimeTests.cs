@@ -1,86 +1,110 @@
-using MiKiNuo.Mvi.Application.DI;
+using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.DI;
-using MiKiNuo.Mvi.Presentation.ViewRegistry;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
-using MiKiNuo.Mvi.Samples.Shared.Features.Login;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 using TUnit.Assertions;
 using TUnit.Core;
-using ZLinq;
 
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示编译期 DI 容器生命周期测试。
+/// 表示 [MviFeature] 生成容器的生命周期与装配回归测试。
 /// </summary>
 public sealed class DiContainerLifetimeTests
 {
     /// <summary>
-    /// 验证根容器可以通过泛型和 Type 两种方式解析单例服务。
+    /// 验证容器可解析 [DiService] 注册的单例服务。
     /// </summary>
     [Test]
-    public async Task RootContainer_Should_ResolveSingletonServicesAsync()
+    public async Task Container_Should_ResolveSingletonServiceAsync()
     {
-        SampleGeneratedContainer container = new();
+        GeneratedMviContainer container = new();
 
-        IMviViewRegistry firstRegistry = container.Resolve<IMviViewRegistry>();
-        object secondRegistry = container.Resolve(typeof(IMviViewRegistry));
+        IAuthService first = container.Resolve<IAuthService>();
+        IAuthService second = container.Resolve<IAuthService>();
 
-        await Assert.That(ReferenceEquals(firstRegistry, secondRegistry)).IsTrue();
+        await Assert.That(ReferenceEquals(first, second)).IsTrue();
+        await Assert.That(first).IsTypeOf<HttpAuthService>();
     }
 
     /// <summary>
-    /// 验证同一作用域内 Scoped 服务复用实例，不同作用域创建不同实例。
+    /// 验证 Feature 的 Store 与 ViewModel 由容器装配且为单例。
     /// </summary>
     [Test]
-    public async Task Scope_Should_CacheScopedServicesWithinSameScopeAsync()
+    public async Task Container_Should_AssembleFeatureAsSingletonsAsync()
     {
-        SampleGeneratedContainer container = new();
+        GeneratedMviContainer container = new();
 
-        using IMviScope firstScope = container.CreateScope();
-        using IMviScope secondScope = container.CreateScope();
+        IMviStore<LoginState, LoginIntent, LoginEffect> firstStore =
+            container.Resolve<IMviStore<LoginState, LoginIntent, LoginEffect>>();
+        IMviStore<LoginState, LoginIntent, LoginEffect> secondStore =
+            container.Resolve<IMviStore<LoginState, LoginIntent, LoginEffect>>();
+        LoginViewModel firstViewModel = container.Resolve<LoginViewModel>();
+        LoginViewModel secondViewModel = container.Resolve<LoginViewModel>();
 
-        LoginViewModel firstLogin = firstScope.Resolve<LoginViewModel>();
-        LoginViewModel secondLogin = firstScope.Resolve<LoginViewModel>();
-        LoginViewModel otherScopeLogin = secondScope.Resolve<LoginViewModel>();
-
-        await Assert.That(ReferenceEquals(firstLogin, secondLogin)).IsTrue();
-        await Assert.That(ReferenceEquals(firstLogin, otherScopeLogin)).IsFalse();
+        await Assert.That(ReferenceEquals(firstStore, secondStore)).IsTrue();
+        await Assert.That(ReferenceEquals(firstViewModel, secondViewModel)).IsTrue();
     }
 
     /// <summary>
-    /// 验证作用域可以解析登录 Store，并且 Store 与 ViewModel 共享同一作用域实例。
+    /// 验证 UnitEffect Feature（应用壳）自动接入空副作用分发器并可正常派发。
     /// </summary>
     [Test]
-    public async Task Scope_Should_ResolveLoginStoreAndViewModelAsync()
+    public async Task Container_Should_AssembleUnitEffectFeatureAsync()
     {
-        SampleGeneratedContainer container = new();
+        GeneratedMviContainer container = new();
 
-        using IMviScope scope = container.CreateScope();
+        IMviStore<AppShellState, AppShellIntent, UnitEffect> shellStore =
+            container.Resolve<IMviStore<AppShellState, AppShellIntent, UnitEffect>>();
 
-        IMviStore<LoginState, LoginIntent, LoginEffect> store =
-            scope.Resolve<IMviStore<LoginState, LoginIntent, LoginEffect>>();
-        LoginViewModel viewModel = scope.Resolve<LoginViewModel>();
+        await shellStore.DispatchAsync(new AppShellIntent.ShowRegister());
 
-        await Assert.That(store).IsNotNull();
-        await Assert.That(viewModel).IsNotNull();
+        await Assert.That(shellStore.CurrentState.CurrentPage).IsEqualTo(ShellPage.Register);
     }
 
     /// <summary>
-    /// 验证生成容器会暴露服务描述和生命周期信息。
+    /// 验证主页 ViewModel 的兄弟 Store 构造参数由容器解析。
     /// </summary>
     [Test]
-    public async Task GeneratedContainer_Should_ExposeServiceDescriptorsAsync()
+    public async Task Container_Should_ResolveViewModelWithSiblingStoreDependencyAsync()
     {
-        SampleGeneratedContainer container = new();
+        GeneratedMviContainer container = new();
 
-        MviServiceDescriptor loginDescriptor = container.ServiceDescriptors.AsValueEnumerable()
-            .Single(static descriptor => descriptor.ServiceType == typeof(LoginViewModel));
-        MviServiceDescriptor registryDescriptor = container.ServiceDescriptors.AsValueEnumerable()
-            .Single(static descriptor => descriptor.ServiceType == typeof(IMviViewRegistry));
+        HomeViewModel homeViewModel = container.Resolve<HomeViewModel>();
 
-        await Assert.That(loginDescriptor.Lifetime).IsEqualTo(ServiceLifetime.Scoped);
-        await Assert.That(registryDescriptor.Lifetime).IsEqualTo(ServiceLifetime.Singleton);
+        await Assert.That(homeViewModel).IsNotNull();
+        await Assert.That(homeViewModel.DisplayName).IsEqualTo(string.Empty);
+    }
+
+    /// <summary>
+    /// 验证容器内置中介者可通过属性与 Resolve 两种方式访问同一实例。
+    /// </summary>
+    [Test]
+    public async Task Container_Should_ExposeSharedMediatorAsync()
+    {
+        GeneratedMviContainer container = new();
+
+        IMviMediator resolved = container.Resolve<IMviMediator>();
+
+        await Assert.That(ReferenceEquals(resolved, container.Mediator)).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证容器暴露服务描述集合。
+    /// </summary>
+    [Test]
+    public async Task Container_Should_ExposeServiceDescriptorsAsync()
+    {
+        GeneratedMviContainer container = new();
+
+        await Assert.That(
+            container.ServiceDescriptors.Any(
+                static descriptor => descriptor.ServiceType == typeof(IAuthService)
+                    && descriptor.Lifetime == ServiceLifetime.Singleton)).IsTrue();
     }
 }

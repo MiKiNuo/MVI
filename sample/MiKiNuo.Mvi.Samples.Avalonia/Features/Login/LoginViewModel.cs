@@ -3,28 +3,29 @@ using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
 using MiKiNuo.Mvi.Domain.MVI.Binding;
-using MiKiNuo.Mvi.Samples.Shared.Features.Login;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
 /// <summary>
-/// 表示登录界面 ViewModel。
+/// 表示登录页 ViewModel。
 /// </summary>
 public sealed partial class LoginViewModel
     : MviViewModelBase<LoginState, LoginIntent, LoginEffect>
 {
     /// <summary>
-    /// 初始化登录界面 ViewModel。
+    /// 初始化登录页 ViewModel。
     /// </summary>
     /// <param name="store">登录状态存储。</param>
-    /// <param name="uiDispatcher">UI 调度器（可选，由 DI 容器注入以确保 Avalonia UI 线程触发 CanExecuteChanged）。</param>
-    public LoginViewModel(IMviStore<LoginState, LoginIntent, LoginEffect> store, IMviUiDispatcher? uiDispatcher = null)
+    /// <param name="uiDispatcher">UI 调度器。</param>
+    public LoginViewModel(
+        IMviStore<LoginState, LoginIntent, LoginEffect> store,
+        IMviUiDispatcher? uiDispatcher = null)
         : base(store, uiDispatcher)
     {
     }
 
     /// <summary>
-    /// 获取或设置用户账号。
+    /// 获取或设置用户名。
     /// </summary>
     [MviBind(
         nameof(LoginState.UserName),
@@ -33,7 +34,7 @@ public sealed partial class LoginViewModel
     public partial string UserName { get; set; }
 
     /// <summary>
-    /// 获取或设置用户密码。
+    /// 获取或设置密码。
     /// </summary>
     [MviBind(
         nameof(LoginState.Password),
@@ -60,8 +61,14 @@ public sealed partial class LoginViewModel
     public partial bool CanSubmit { get; private set; }
 
     /// <summary>
-    /// 获取提交命令。
+    /// 获取提交登录命令。
     /// </summary>
     [MviCommand(typeof(LoginIntent.Submit), CanExecuteProperty = nameof(CanSubmit), IsAsync = true)]
     public partial IMviAsyncCommand SubmitCommand { get; private set; }
+
+    /// <summary>
+    /// 获取跳转注册页命令。
+    /// </summary>
+    [MviCommand(typeof(LoginIntent.GoRegister), IsAsync = true)]
+    public partial IMviAsyncCommand GoRegisterCommand { get; private set; }
 }

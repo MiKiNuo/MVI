@@ -1,6 +1,5 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Command;
+using MiKiNuo.Mvi.Application.MVI.Command;
 using MiKiNuo.Mvi.Application.MVI.EventBinding;
-using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.ViewModel;
@@ -31,7 +30,6 @@ public sealed class ViewEventCommandBindingTests
     {
         using MviStore<EventCommandState, EventCommandIntent, EventCommandEffect> store = new(
             EventCommandState.Initial,
-            new EventCommandIntentHandler(),
             new EventCommandReducer(),
             new NoopEffectDispatcher<EventCommandEffect>());
         using EventCommandViewModel viewModel = new(store);
@@ -364,28 +362,7 @@ public abstract partial record EventCommandIntent : IMviIntent
 /// </summary>
 public abstract partial record EventCommandEffect : IMviEffect;
 
-/// <summary>
-/// 表示事件命令测试意图处理器。
-/// </summary>
-public sealed class EventCommandIntentHandler
-    : MviIntentHandlerBase<EventCommandState, EventCommandIntent>
-{
-    /// <summary>
-    /// 处理具体业务逻辑。
-    /// </summary>
-    /// <param name="state">当前状态（已通过 null 检查）。</param>
-    /// <param name="intent">用户意图（已通过 null 检查）。</param>
-    /// <param name="cancellationToken">取消标记（已通过检查）。</param>
-    /// <returns>后续意图;无后续工作时返回 null。</returns>
-    protected override async ValueTask<EventCommandIntent?> HandleCoreAsync(
-        EventCommandState state,
-        EventCommandIntent intent,
-        CancellationToken cancellationToken)
-    {
-        await Task.CompletedTask;
-        return null;
-    }
-}
+
 
 /// <summary>
 /// 表示事件命令测试规约器。

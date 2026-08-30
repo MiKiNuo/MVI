@@ -31,16 +31,43 @@ public sealed partial class MviDiContainerGenerator : IIncrementalGenerator
             .Where(static service => service is not null)
             .Select(static (service, _) => service!);
 
-        context.RegisterSourceOutput(services.Collect(), static (productionContext, discoveredServices) =>
+        IncrementalValuesProvider<INamedTypeSymbol> featureReducers = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                "MiKiNuo.Mvi.Domain.DI.MviFeatureAttribute",
+                static (node, _) => node is ClassDeclarationSyntax,
+                static (syntaxContext, _) => (INamedTypeSymbol)syntaxContext.TargetSymbol);
+
+        IncrementalValueProvider<(
+            (System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo>, System.Collections.Immutable.ImmutableArray<INamedTypeSymbol>) Left,
+            Compilation Right)> combined =
+            services.Collect()
+                .Combine(featureReducers.Collect())
+                .Combine(context.CompilationProvider);
+
+        context.RegisterSourceOutput(combined, static (productionContext, payload) =>
         {
-            if (discoveredServices.IsDefaultOrEmpty)
+            System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> discoveredServices = payload.Left.Item1;
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> reducerSymbols = payload.Left.Item2;
+            Compilation compilation = payload.Right;
+
+            if (discoveredServices.IsDefaultOrEmpty && reducerSymbols.IsDefaultOrEmpty)
             {
                 return;
             }
 
+            IReadOnlyList<Models.MviFeatureInfo> features = FeatureAnalysis.CollectFeatures(
+                reducerSymbols,
+                compilation,
+                productionContext);
+
+            string assemblyName = discoveredServices.IsDefaultOrEmpty
+                ? compilation.AssemblyName ?? "GeneratedMviAssembly"
+                : discoveredServices[0].AssemblyName;
+
             string source = Emission.GenerateContainerSource(
-                discoveredServices[0].AssemblyName,
-                discoveredServices);
+                assemblyName,
+                discoveredServices.IsDefaultOrEmpty ? System.Array.Empty<Models.DiServiceInfo>() : discoveredServices,
+                features);
             productionContext.AddSource(
                 "GeneratedMviContainer.g.cs",
                 SourceText.From(source, Encoding.UTF8));

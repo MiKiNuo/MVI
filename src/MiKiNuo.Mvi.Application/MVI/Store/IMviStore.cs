@@ -1,8 +1,8 @@
-﻿using R3;
-
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 using MiKiNuo.Mvi.Domain.MVI.State;
+using R3;
+
 namespace MiKiNuo.Mvi.Application.MVI.Store;
 
 /// <summary>
@@ -25,11 +25,6 @@ public interface IMviStore<TState, TIntent, TEffect> : IDisposable
     /// 获取状态变化流。
     /// </summary>
     public Observable<TState> States { get; }
-
-    /// <summary>
-    /// 获取副作用变化流。
-    /// </summary>
-    public Observable<TEffect> Effects { get; }
 
     /// <summary>
     /// 派发意图。

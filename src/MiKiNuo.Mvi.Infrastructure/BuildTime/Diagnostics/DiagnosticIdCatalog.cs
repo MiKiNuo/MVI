@@ -108,6 +108,21 @@ public static class DiagnosticIdCatalog
     /// <summary>泛型状态类型跳过 StatePath 生成。</summary>
     public const string MviStatePathGenericStateSkipped = "MVI0011";
 
+    /// <summary>副作用分发器类未标记 partial 修饰符。</summary>
+    public const string MviEffectDispatcherNotPartial = "MVI0012";
+
+    /// <summary>副作用子类型缺少对应的处理方法。</summary>
+    public const string MviEffectHandlerMissing = "MVI0013";
+
+    /// <summary>多个处理方法标记同一副作用子类型。</summary>
+    public const string MviEffectHandlerDuplicate = "MVI0014";
+
+    /// <summary>副作用处理方法签名不符合约定。</summary>
+    public const string MviEffectHandlerSignatureInvalid = "MVI0015";
+
+    /// <summary>Feature 状态类型缺少公开静态 Initial 属性。</summary>
+    public const string MviFeatureStateInitialMissing = "MVI0016";
+
     /// <summary>禁止使用 StatePath 默认实例（default 字面量 / default(T) / 无参 new）。</summary>
     public const string MviStatePathDefaultInstance = "MVI0017";
 
@@ -147,6 +162,11 @@ public static class DiagnosticIdCatalog
         MviApplyStateCoreConflict,
         MviStatePathGraphCycle,
         MviStatePathGenericStateSkipped,
+        MviEffectDispatcherNotPartial,
+        MviEffectHandlerMissing,
+        MviEffectHandlerDuplicate,
+        MviEffectHandlerSignatureInvalid,
+        MviFeatureStateInitialMissing,
         MviStatePathDefaultInstance,
     ];
 }

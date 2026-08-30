@@ -1,4 +1,3 @@
-﻿using MiKiNuo.Mvi.Application.MVI.IntentHandler;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
@@ -80,7 +79,6 @@ public sealed class SelectStateTests
     {
         return new MviStore<CounterState, CounterIntent, UnitEffect>(
             new CounterState(0, string.Empty),
-            new NullCounterIntentHandler(),
             new CounterReducer(),
             new NoopEffectDispatcher<UnitEffect>());
     }
@@ -136,27 +134,5 @@ public sealed class CounterReducer : IMviReducer<CounterState, CounterIntent, Un
                 state with { Label = rename.Label }),
             _ => MviReduceResult.State<CounterState, UnitEffect>(state),
         };
-    }
-}
-
-/// <summary>
-/// 表示 SelectState 测试用空意图处理器。
-/// </summary>
-public sealed class NullCounterIntentHandler : IMviIntentHandler<CounterState, CounterIntent>
-{
-    /// <summary>
-    /// 处理意图(空操作,返回无后续意图)。
-    /// </summary>
-    /// <param name="state">当前状态。</param>
-    /// <param name="intent">用户意图。</param>
-    /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>无后续意图。</returns>
-    public async ValueTask<CounterIntent?> HandleAsync(
-        CounterState state,
-        CounterIntent intent,
-        CancellationToken cancellationToken = default)
-    {
-        await Task.CompletedTask;
-        return null;
     }
 }

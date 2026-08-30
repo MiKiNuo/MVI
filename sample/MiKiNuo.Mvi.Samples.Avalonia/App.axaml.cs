@@ -1,6 +1,6 @@
-﻿﻿﻿﻿﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using MiKiNuo.Mvi.Platforms.Avalonia.Threading;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;
@@ -25,7 +25,7 @@ public sealed partial class App : global::Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            SampleCompositionRoot compositionRoot = new();
+            SampleCompositionRoot compositionRoot = new(new AvaloniaMviUiDispatcher());
             desktop.MainWindow = compositionRoot.CreateMainWindow();
         }
 

@@ -2,27 +2,9 @@
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.MainWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="MiKiNuo MVI Sample"
-    Width="1100"
-    Height="720"
-    Background="#EEF2F7">
-    <Border Padding="20" Background="#EEF2F7">
-        <Grid RowDefinitions="Auto,*" RowSpacing="14">
-            <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="10">
-                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
-                    <Button x:Name="OriginalSampleButton" Content="原示例" MinWidth="96" />
-                    <Button x:Name="EventBindingWorkbenchButton" Grid.Column="1" Content="事件绑定 Workbench" MinWidth="168" />
-                    <TextBlock
-                        Grid.Column="2"
-                        Text="{Binding Title}"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        FontSize="15"
-                        FontWeight="SemiBold"
-                        Foreground="#334155" />
-                </Grid>
-            </Border>
-            <ContentControl x:Name="RootContent" Grid.Row="1" />
-        </Grid>
-    </Border>
+    Title="MiKiNuo MVI - 联网登录注册"
+    Width="720"
+    Height="520"
+    Background="#F1F5F9">
+    <ContentControl x:Name="RootContent" />
 </Window>

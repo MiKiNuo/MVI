@@ -16,4 +16,9 @@ MVI0008 | MviReducer | Error | 守卫谓词方法不存在或签名不是 (TStat
 MVI0009 | MviBinding | Error | 生成器接管的 ViewModel（声明 [MviBind] 或 [MviCommand]）禁止手写 ApplyStateCore 重写，由源生成器实现。
 MVI0010 | MviStatePath | Error | 状态属性图存在循环引用，无法展开 StatePath，已跳过该分支。
 MVI0011 | MviStatePath | Warning | 泛型状态类型跳过 StatePath 生成。
+MVI0012 | MviEffect | Error | 副作用分发器类必须标记 partial 修饰符，否则源生成器无法 emit DispatchCoreAsync 方法。
+MVI0013 | MviEffect | Warning | 副作用子类型缺少对应的 [MviEffect] 方法，分发时将走默认分支不执行任何操作。
+MVI0014 | MviEffect | Error | 多个处理方法标记同一副作用子类型，每个副作用子类型只能有一个处理方法。
+MVI0015 | MviEffect | Error | 副作用处理方法签名不符合约定，必须是 (TEffect.Xxx effect, CancellationToken cancellationToken) => ValueTask。
+MVI0016 | MviFeature | Error | Feature 状态类型缺少公开静态 Initial 属性，生成的容器无法构造 Store，已跳过该 Feature 装配。
 MVI0017 | MviStatePath | Warning | 禁止使用 StatePath 默认实例（default 字面量 / default(T) / 无参 new），默认实例访问 Getter 会抛 InvalidOperationException。

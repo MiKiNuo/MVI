@@ -140,17 +140,6 @@ internal static class GeneratorTestStubs
             }
         }
 
-        namespace MiKiNuo.Mvi.Application.MVI.IntentHandler
-        {
-            public interface IMviIntentHandler<TState, TIntent>
-            {
-                System.Threading.Tasks.ValueTask<TIntent?> HandleAsync(
-                    TState state,
-                    TIntent intent,
-                    System.Threading.CancellationToken cancellationToken = default);
-            }
-        }
-
         namespace MiKiNuo.Mvi.Application.MVI.Effect
         {
             public interface IMviEffectDispatcher<TEffect>
@@ -169,7 +158,6 @@ internal static class GeneratorTestStubs
             {
                 public MviStore(
                     TState initialState,
-                    MiKiNuo.Mvi.Application.MVI.IntentHandler.IMviIntentHandler<TState, TIntent> intentHandler,
                     MiKiNuo.Mvi.Application.MVI.Reducer.IMviReducer<TState, TIntent, TEffect> reducer,
                     MiKiNuo.Mvi.Application.MVI.Effect.IMviEffectDispatcher<TEffect> effectDispatcher)
                 {

@@ -25,17 +25,10 @@ public sealed partial class MviDiContainerGenerator
             string assemblyName,
             IReadOnlyList<Models.DiServiceInfo> services)
         {
-            StringBuilder builder = new();
-            string containerNamespace = string.IsNullOrEmpty(assemblyName) ? "GeneratedContainer" : assemblyName;
-
-            EmitFileHeader(builder, containerNamespace, services);
-            EmitConstructor(builder, services);
-            EmitResolveMethods(builder, services);
-            EmitCreateScope(builder);
-            EmitCreateWith(builder, services);
-            EmitScopeClass(builder, services);
-
-            return builder.ToString();
+            return GenerateContainerSource(
+                assemblyName,
+                services,
+                System.Array.Empty<Models.MviFeatureInfo>());
         }
 
         /// <summary>

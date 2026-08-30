@@ -1,0 +1,53 @@
+<UserControl
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Register.RegisterView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border
+        MaxWidth="420"
+        Padding="32"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Background="#FFFFFF"
+        BorderBrush="#E2E8F0"
+        BorderThickness="1"
+        CornerRadius="8">
+        <StackPanel Spacing="14">
+            <TextBlock
+                FontSize="22"
+                FontWeight="SemiBold"
+                Foreground="#0F172A"
+                Text="注册" />
+            <TextBox
+                PlaceholderText="用户名"
+                Text="{Binding UserName, Mode=TwoWay}" />
+            <TextBox
+                PlaceholderText="邮箱"
+                Text="{Binding Email, Mode=TwoWay}" />
+            <TextBox
+                PasswordChar="*"
+                PlaceholderText="密码"
+                Text="{Binding Password, Mode=TwoWay}" />
+            <TextBox
+                PasswordChar="*"
+                PlaceholderText="确认密码"
+                Text="{Binding ConfirmPassword, Mode=TwoWay}" />
+            <TextBlock
+                FontSize="12"
+                Foreground="#DC2626"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Text="{Binding ErrorMessage}"
+                TextWrapping="Wrap" />
+            <Button
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Command="{Binding SubmitCommand}"
+                Content="注册"
+                IsEnabled="{Binding CanSubmit}" />
+            <Button
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Command="{Binding GoLoginCommand}"
+                Content="已有账号？去登录" />
+        </StackPanel>
+    </Border>
+</UserControl>

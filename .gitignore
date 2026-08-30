@@ -60,3 +60,5 @@ data_*/
 mono_crash.*.json
 /AGENTS.md
 /.gsd
+/CONTEXT.md
+/docs

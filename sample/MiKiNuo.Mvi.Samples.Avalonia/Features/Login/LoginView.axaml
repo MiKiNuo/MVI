@@ -2,17 +2,50 @@
     x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Login.LoginView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="18" Padding="32" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <StackPanel Spacing="16">
-            <TextBlock Text="MiKiNuo MVI 登录" FontSize="26" FontWeight="Bold" Foreground="#0F172A" />
-            <TextBlock Text="示例账号：admin / 123456" Foreground="#475569" />
-            <TextBox PlaceholderText="账号" Text="{Binding UserName, Mode=TwoWay}" />
-            <TextBox PlaceholderText="密码" PasswordChar="*" Text="{Binding Password, Mode=TwoWay}" />
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" />
-            <Button Command="{Binding SubmitCommand}" HorizontalAlignment="Stretch">
-                <TextBlock Text="登录" HorizontalAlignment="Center" />
-            </Button>
-            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+    <Border
+        MaxWidth="420"
+        Padding="32"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Background="#FFFFFF"
+        BorderBrush="#E2E8F0"
+        BorderThickness="1"
+        CornerRadius="8">
+        <StackPanel Spacing="14">
+            <TextBlock
+                FontSize="22"
+                FontWeight="SemiBold"
+                Foreground="#0F172A"
+                Text="登录" />
+            <TextBox
+                PlaceholderText="用户名"
+                Text="{Binding UserName, Mode=TwoWay}" />
+            <TextBox
+                PasswordChar="*"
+                PlaceholderText="密码"
+                Text="{Binding Password, Mode=TwoWay}" />
+            <TextBlock
+                FontSize="12"
+                Foreground="#DC2626"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Text="{Binding ErrorMessage}"
+                TextWrapping="Wrap" />
+            <Button
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Command="{Binding SubmitCommand}"
+                Content="登录"
+                IsEnabled="{Binding CanSubmit}" />
+            <Button
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Command="{Binding GoRegisterCommand}"
+                Content="没有账号？去注册" />
+            <TextBlock
+                FontSize="11"
+                Foreground="#94A3B8"
+                Text="联网测试账号：emilys / emilyspass（dummyjson.com）"
+                TextWrapping="Wrap" />
         </StackPanel>
     </Border>
 </UserControl>

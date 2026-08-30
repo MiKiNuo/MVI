@@ -1,42 +1,79 @@
 using MiKiNuo.Mvi.Application.MVI.Effect;
+using MiKiNuo.Mvi.Application.MVI.Mediator;
+using MiKiNuo.Mvi.Domain.MVI.Effect;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 
 /// <summary>
-/// 表示登录副作用分发器。
-/// <para>
-/// 处理 <see cref="LoginEffect.NavigateToDashboard"/> 时调用导航服务跳转 Dashboard。
-/// </para>
+/// 表示登录页副作用分发器：执行联网认证并回流结果意图，导航经 Mediator 协调应用壳。
 /// </summary>
-public sealed class LoginEffectDispatcher : MviEffectDispatcherBase<LoginEffect>
+public sealed partial class LoginEffectDispatcher
+    : MviEffectDispatcherBase<LoginIntent, LoginEffect>
 {
-    private readonly ILoginNavigationService _navigationService;
+    private readonly IAuthService _authService;
+    private readonly IMviMediator _mediator;
 
     /// <summary>
-    /// 初始化登录副作用分发器。
+    /// 初始化登录页副作用分发器。
     /// </summary>
-    /// <param name="navigationService">登录导航服务。</param>
-    public LoginEffectDispatcher(ILoginNavigationService navigationService)
+    /// <param name="authService">认证服务。</param>
+    /// <param name="mediator">跨 Feature 协调中介者。</param>
+    public LoginEffectDispatcher(IAuthService authService, IMviMediator mediator)
     {
-        ArgumentNullException.ThrowIfNull(navigationService);
-        _navigationService = navigationService;
+        ArgumentNullException.ThrowIfNull(authService);
+        ArgumentNullException.ThrowIfNull(mediator);
+        _authService = authService;
+        _mediator = mediator;
     }
 
     /// <summary>
-    /// 分发副作用。
+    /// 执行联网登录并回流成功/失败意图。
     /// </summary>
-    /// <param name="effect">副作用。</param>
-    /// <param name="cancellationToken">取消标记。</param>
-    /// <returns>表示异步分发过程的任务。</returns>
-    protected override async ValueTask DispatchCoreAsync(LoginEffect effect, CancellationToken cancellationToken)
+    [MviEffect(typeof(LoginEffect.PerformLogin))]
+    private async ValueTask HandlePerformLogin(
+        LoginEffect.PerformLogin effect,
+        CancellationToken cancellationToken)
     {
-        switch (effect)
+        AuthResult result = await _authService
+            .LoginAsync(effect.UserName, effect.Password, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsSuccess && result.DisplayName is not null)
         {
-            case LoginEffect.NavigateToDashboard navigateToDashboard:
-                await _navigationService.NavigateToDashboardAsync(
-                    navigateToDashboard.DisplayName,
-                    cancellationToken).ConfigureAwait(false);
-                break;
+            await DispatchIntentAsync(new LoginIntent.Succeeded(result.DisplayName), cancellationToken)
+                .ConfigureAwait(false);
+            return;
         }
+
+        await DispatchIntentAsync(new LoginIntent.Failed(result.ErrorMessage ?? "登录失败。"), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 经 Mediator 请求应用壳跳转到注册页。
+    /// </summary>
+    [MviEffect(typeof(LoginEffect.ShowRegisterPage))]
+    private async ValueTask HandleShowRegisterPage(
+        LoginEffect.ShowRegisterPage effect,
+        CancellationToken cancellationToken)
+    {
+        _ = await _mediator
+            .SendAsync(new NavigateToPageRequest(ShellPage.Register, null), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 经 Mediator 请求应用壳跳转到主页。
+    /// </summary>
+    [MviEffect(typeof(LoginEffect.ShowHomePage))]
+    private async ValueTask HandleShowHomePage(
+        LoginEffect.ShowHomePage effect,
+        CancellationToken cancellationToken)
+    {
+        _ = await _mediator
+            .SendAsync(new NavigateToPageRequest(ShellPage.Home, effect.DisplayName), cancellationToken)
+            .ConfigureAwait(false);
     }
 }

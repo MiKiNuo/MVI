@@ -1,4 +1,3 @@
-﻿using System;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
@@ -9,22 +8,18 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 public abstract partial record AppShellIntent : IMviIntent
 {
     /// <summary>
-    /// 表示显示页面的意图。
+    /// 表示导航到登录页意图。
     /// </summary>
-    /// <param name="PageKey">页面键（<see cref="ShellPageKeys"/> 中之一）。</param>
-    /// <param name="Title">页面标题。</param>
-    public sealed partial record ShowPage(string PageKey, string Title) : AppShellIntent;
+    public sealed partial record ShowLogin : AppShellIntent;
 
     /// <summary>
-    /// 创建显示页面意图。
+    /// 表示导航到注册页意图。
     /// </summary>
-    /// <param name="pageKey">页面键。</param>
-    /// <param name="title">页面标题。</param>
-    /// <returns>显示页面意图。</returns>
-    public static ShowPage CreateShowPage(string pageKey, string title)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(pageKey);
-        ArgumentNullException.ThrowIfNull(title);
-        return new ShowPage(pageKey, title);
-    }
+    public sealed partial record ShowRegister : AppShellIntent;
+
+    /// <summary>
+    /// 表示导航到主页意图。
+    /// </summary>
+    /// <param name="DisplayName">用户显示名。</param>
+    public sealed partial record ShowHome(string DisplayName) : AppShellIntent;
 }
