@@ -20,6 +20,11 @@ public abstract partial record LoginEffect : IMviEffect
     public sealed partial record ShowRegisterPage : LoginEffect;
 
     /// <summary>
+    /// 表示跳转到重置密码页副作用。
+    /// </summary>
+    public sealed partial record ShowResetPasswordPage : LoginEffect;
+
+    /// <summary>
     /// 表示跳转到主页副作用。
     /// </summary>
     /// <param name="DisplayName">用户显示名。</param>

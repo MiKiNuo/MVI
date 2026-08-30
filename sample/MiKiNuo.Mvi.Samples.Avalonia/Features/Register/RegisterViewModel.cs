@@ -27,66 +27,54 @@ public sealed partial class RegisterViewModel
     /// <summary>
     /// 获取或设置用户名。
     /// </summary>
-    [MviBind(
-        nameof(RegisterState.UserName),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(RegisterIntent.ChangeUserName))]
+    [MviBind(nameof(RegisterState.UserName), IntentType = typeof(RegisterIntent.ChangeUserName))]
     public partial string UserName { get; set; }
 
     /// <summary>
     /// 获取或设置邮箱。
     /// </summary>
-    [MviBind(
-        nameof(RegisterState.Email),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(RegisterIntent.ChangeEmail))]
+    [MviBind(nameof(RegisterState.Email), IntentType = typeof(RegisterIntent.ChangeEmail))]
     public partial string Email { get; set; }
 
     /// <summary>
     /// 获取或设置密码。
     /// </summary>
-    [MviBind(
-        nameof(RegisterState.Password),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(RegisterIntent.ChangePassword))]
+    [MviBind(nameof(RegisterState.Password), IntentType = typeof(RegisterIntent.ChangePassword))]
     public partial string Password { get; set; }
 
     /// <summary>
     /// 获取或设置确认密码。
     /// </summary>
-    [MviBind(
-        nameof(RegisterState.ConfirmPassword),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(RegisterIntent.ChangeConfirmPassword))]
+    [MviBind(nameof(RegisterState.ConfirmPassword), IntentType = typeof(RegisterIntent.ChangeConfirmPassword))]
     public partial string ConfirmPassword { get; set; }
 
     /// <summary>
     /// 获取是否正在注册。
     /// </summary>
-    [MviBind(nameof(RegisterState.IsBusy))]
+    [MviBind(nameof(RegisterState.IsBusy), BindingMode = MviBindingMode.OneWay)]
     public partial bool IsBusy { get; private set; }
 
     /// <summary>
     /// 获取错误消息。
     /// </summary>
-    [MviBind(nameof(RegisterState.ErrorMessage))]
+    [MviBind(nameof(RegisterState.ErrorMessage), BindingMode = MviBindingMode.OneWay)]
     public partial string? ErrorMessage { get; private set; }
 
     /// <summary>
     /// 获取是否允许提交。
     /// </summary>
-    [MviBind(nameof(RegisterState.CanSubmit))]
+    [MviBind(nameof(RegisterState.CanSubmit), BindingMode = MviBindingMode.OneWay)]
     public partial bool CanSubmit { get; private set; }
 
     /// <summary>
     /// 获取提交注册命令。
     /// </summary>
-    [MviCommand(typeof(RegisterIntent.Submit), CanExecuteProperty = nameof(CanSubmit), IsAsync = true)]
+    [MviCommand(typeof(RegisterIntent.Submit), CanExecuteProperty = nameof(CanSubmit))]
     public partial IMviAsyncCommand SubmitCommand { get; private set; }
 
     /// <summary>
     /// 获取跳转登录页命令。
     /// </summary>
-    [MviCommand(typeof(RegisterIntent.GoLogin), IsAsync = true)]
+    [MviCommand(typeof(RegisterIntent.GoLogin))]
     public partial IMviAsyncCommand GoLoginCommand { get; private set; }
 }

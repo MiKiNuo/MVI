@@ -27,12 +27,12 @@ public sealed partial class AppShellViewModel
     /// <summary>
     /// 获取当前页面。
     /// </summary>
-    [MviBind(nameof(AppShellState.CurrentPage))]
+    [MviBind(nameof(AppShellState.CurrentPage), BindingMode = MviBindingMode.OneWay)]
     public partial ShellPage CurrentPage { get; private set; }
 
     /// <summary>
     /// 获取已登录用户显示名。
     /// </summary>
-    [MviBind(nameof(AppShellState.DisplayName))]
+    [MviBind(nameof(AppShellState.DisplayName), BindingMode = MviBindingMode.OneWay)]
     public partial string? DisplayName { get; private set; }
 }

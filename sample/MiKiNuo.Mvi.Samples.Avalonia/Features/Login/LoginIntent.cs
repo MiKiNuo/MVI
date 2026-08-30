@@ -40,4 +40,9 @@ public abstract partial record LoginIntent : IMviIntent
     /// 表示跳转到注册页意图。
     /// </summary>
     public sealed partial record GoRegister : LoginIntent;
+
+    /// <summary>
+    /// 表示跳转到重置密码页意图。
+    /// </summary>
+    public sealed partial record GoResetPassword : LoginIntent;
 }

@@ -65,6 +65,19 @@ public sealed partial class LoginEffectDispatcher
     }
 
     /// <summary>
+    /// 经 Mediator 请求应用壳跳转到重置密码页。
+    /// </summary>
+    [MviEffect(typeof(LoginEffect.ShowResetPasswordPage))]
+    private async ValueTask HandleShowResetPasswordPage(
+        LoginEffect.ShowResetPasswordPage effect,
+        CancellationToken cancellationToken)
+    {
+        _ = await _mediator
+            .SendAsync(new NavigateToPageRequest(ShellPage.ResetPassword, null), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 经 Mediator 请求应用壳跳转到主页。
     /// </summary>
     [MviEffect(typeof(LoginEffect.ShowHomePage))]

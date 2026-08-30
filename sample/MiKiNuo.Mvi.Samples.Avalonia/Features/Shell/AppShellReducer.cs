@@ -39,6 +39,17 @@ public sealed partial class AppShellReducer
     }
 
     /// <summary>
+    /// 处理导航到重置密码页意图。
+    /// </summary>
+    [MviReduce(typeof(AppShellIntent.ShowResetPassword))]
+    private MviReduceResult<AppShellState, UnitEffect> HandleShowResetPassword(
+        AppShellState state,
+        AppShellIntent.ShowResetPassword intent)
+    {
+        return Unchanged(state with { CurrentPage = ShellPage.ResetPassword });
+    }
+
+    /// <summary>
     /// 处理导航到主页意图。
     /// </summary>
     [MviReduce(typeof(AppShellIntent.ShowHome))]

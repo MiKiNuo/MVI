@@ -20,7 +20,11 @@ public sealed class MviCommandAttribute(Type intentType) : Attribute
     /// <summary>
     /// 获取或设置是否异步命令。
     /// </summary>
-    public bool IsAsync { get; set; }
+    /// <remarks>
+    /// 缺省为 true：命令走异步派发链路；
+    /// 需要同步命令时显式指定 <c>IsAsync = false</c>。
+    /// </remarks>
+    public bool IsAsync { get; set; } = true;
 
     /// <summary>
     /// 获取或设置命令载荷类型，用于存在多个一参 Intent 构造函数时消除歧义。

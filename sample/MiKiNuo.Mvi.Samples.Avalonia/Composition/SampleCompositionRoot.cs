@@ -54,6 +54,7 @@ public sealed class SampleCompositionRoot
         AppShellIntent intent = request.Page switch
         {
             ShellPage.Register => new AppShellIntent.ShowRegister(),
+            ShellPage.ResetPassword => new AppShellIntent.ShowResetPassword(),
             ShellPage.Home => new AppShellIntent.ShowHome(request.DisplayName ?? string.Empty),
             _ => new AppShellIntent.ShowLogin(),
         };

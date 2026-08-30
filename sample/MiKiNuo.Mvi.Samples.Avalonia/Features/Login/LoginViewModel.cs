@@ -27,48 +27,48 @@ public sealed partial class LoginViewModel
     /// <summary>
     /// 获取或设置用户名。
     /// </summary>
-    [MviBind(
-        nameof(LoginState.UserName),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(LoginIntent.ChangeUserName))]
+    [MviBind(nameof(LoginState.UserName), IntentType = typeof(LoginIntent.ChangeUserName))]
     public partial string UserName { get; set; }
 
     /// <summary>
     /// 获取或设置密码。
     /// </summary>
-    [MviBind(
-        nameof(LoginState.Password),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(LoginIntent.ChangePassword))]
+    [MviBind(nameof(LoginState.Password), IntentType = typeof(LoginIntent.ChangePassword))]
     public partial string Password { get; set; }
 
     /// <summary>
     /// 获取是否正在登录。
     /// </summary>
-    [MviBind(nameof(LoginState.IsBusy))]
+    [MviBind(nameof(LoginState.IsBusy), BindingMode = MviBindingMode.OneWay)]
     public partial bool IsBusy { get; private set; }
 
     /// <summary>
     /// 获取错误消息。
     /// </summary>
-    [MviBind(nameof(LoginState.ErrorMessage))]
+    [MviBind(nameof(LoginState.ErrorMessage), BindingMode = MviBindingMode.OneWay)]
     public partial string? ErrorMessage { get; private set; }
 
     /// <summary>
     /// 获取是否允许提交。
     /// </summary>
-    [MviBind(nameof(LoginState.CanSubmit))]
+    [MviBind(nameof(LoginState.CanSubmit), BindingMode = MviBindingMode.OneWay)]
     public partial bool CanSubmit { get; private set; }
 
     /// <summary>
     /// 获取提交登录命令。
     /// </summary>
-    [MviCommand(typeof(LoginIntent.Submit), CanExecuteProperty = nameof(CanSubmit), IsAsync = true)]
+    [MviCommand(typeof(LoginIntent.Submit), CanExecuteProperty = nameof(CanSubmit))]
     public partial IMviAsyncCommand SubmitCommand { get; private set; }
 
     /// <summary>
     /// 获取跳转注册页命令。
     /// </summary>
-    [MviCommand(typeof(LoginIntent.GoRegister), IsAsync = true)]
+    [MviCommand(typeof(LoginIntent.GoRegister))]
     public partial IMviAsyncCommand GoRegisterCommand { get; private set; }
+
+    /// <summary>
+    /// 获取跳转重置密码页命令。
+    /// </summary>
+    [MviCommand(typeof(LoginIntent.GoResetPassword))]
+    public partial IMviAsyncCommand GoResetPasswordCommand { get; private set; }
 }

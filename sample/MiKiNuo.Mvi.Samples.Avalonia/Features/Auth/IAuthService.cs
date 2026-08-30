@@ -30,4 +30,16 @@ public interface IAuthService
         string email,
         string password,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 联网重置密码。
+    /// </summary>
+    /// <param name="userName">用户名。</param>
+    /// <param name="newPassword">新密码。</param>
+    /// <param name="cancellationToken">取消标记。</param>
+    /// <returns>认证结果。</returns>
+    public Task<AuthResult> ResetPasswordAsync(
+        string userName,
+        string newPassword,
+        CancellationToken cancellationToken);
 }

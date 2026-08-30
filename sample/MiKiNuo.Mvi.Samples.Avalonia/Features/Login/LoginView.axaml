@@ -3,7 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border
-        MaxWidth="420"
+        Width="420"
         Padding="32"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
@@ -41,6 +41,11 @@
                 HorizontalContentAlignment="Center"
                 Command="{Binding GoRegisterCommand}"
                 Content="没有账号？去注册" />
+            <Button
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Command="{Binding GoResetPasswordCommand}"
+                Content="忘记密码？" />
             <TextBlock
                 FontSize="11"
                 Foreground="#94A3B8"

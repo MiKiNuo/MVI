@@ -209,7 +209,8 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
                 string stateProperty = attribute.ConstructorArguments.Length > 0
                     ? attribute.ConstructorArguments[0].Value?.ToString() ?? property.Name
                     : property.Name;
-                bool isTwoWay = false;
+                // 缺省双向绑定；显式 BindingMode = OneWay 时才退化为单向。
+                bool isTwoWay = true;
                 string? intentTypeName = null;
 
                 foreach (KeyValuePair<string, TypedConstant> namedArgument in attribute.NamedArguments)
@@ -281,7 +282,8 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
             AttributeData attribute)
         {
             string? canExecuteProperty = null;
-            bool isAsync = false;
+            // 缺省异步命令；显式 IsAsync = false 时才退化为同步。
+            bool isAsync = true;
             ITypeSymbol? explicitPayloadType = null;
 
             foreach (KeyValuePair<string, TypedConstant> namedArgument in attribute.NamedArguments)

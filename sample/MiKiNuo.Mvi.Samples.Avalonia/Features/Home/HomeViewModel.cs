@@ -45,7 +45,7 @@ public sealed partial class HomeViewModel
     /// <summary>
     /// 获取退出登录命令。
     /// </summary>
-    [MviCommand(typeof(HomeIntent.Logout), IsAsync = true)]
+    [MviCommand(typeof(HomeIntent.Logout))]
     public partial IMviAsyncCommand LogoutCommand { get; private set; }
 
     private void ApplyShellState(AppShellState shellState)

@@ -15,7 +15,11 @@ public sealed class MviBindAttribute(string stateProperty) : Attribute
     /// <summary>
     /// 获取或设置绑定模式。
     /// </summary>
-    public MviBindingMode BindingMode { get; set; } = MviBindingMode.OneWay;
+    /// <remarks>
+    /// 缺省为 <see cref="MviBindingMode.TwoWay"/>：UI setter 生成 Intent 回流；
+    /// 只读展示属性请显式指定 <see cref="MviBindingMode.OneWay"/>。
+    /// </remarks>
+    public MviBindingMode BindingMode { get; set; } = MviBindingMode.TwoWay;
 
     /// <summary>
     /// 获取或设置双向绑定时生成的 Intent 类型。

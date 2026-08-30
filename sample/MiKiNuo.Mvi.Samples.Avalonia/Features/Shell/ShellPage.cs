@@ -11,6 +11,9 @@ public enum ShellPage
     /// <summary>注册页。</summary>
     Register,
 
+    /// <summary>重置密码页。</summary>
+    ResetPassword,
+
     /// <summary>主页。</summary>
     Home,
 }

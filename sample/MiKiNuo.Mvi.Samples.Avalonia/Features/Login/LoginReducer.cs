@@ -96,6 +96,17 @@ public sealed partial class LoginReducer
         return WithEffect(state, new LoginEffect.ShowRegisterPage());
     }
 
+    /// <summary>
+    /// 处理跳转到重置密码页意图。
+    /// </summary>
+    [MviReduce(typeof(LoginIntent.GoResetPassword))]
+    private MviReduceResult<LoginState, LoginEffect> HandleGoResetPassword(
+        LoginState state,
+        LoginIntent.GoResetPassword intent)
+    {
+        return WithEffect(state, new LoginEffect.ShowResetPasswordPage());
+    }
+
     private bool CanSubmitState(LoginState state) => state.CanSubmit;
 
     private bool CanSubmit(string userName, string password)

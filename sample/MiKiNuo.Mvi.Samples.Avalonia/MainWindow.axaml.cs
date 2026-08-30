@@ -5,6 +5,7 @@ using MiKiNuo.Mvi.Platforms.Avalonia.Views;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Register;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.ResetPassword;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;
@@ -51,6 +52,7 @@ public sealed partial class MainWindow : Window
         Control view = _shellViewModel.CurrentPage switch
         {
             ShellPage.Register => CreateView<RegisterView, RegisterViewModel>(),
+            ShellPage.ResetPassword => CreateView<ResetPasswordView, ResetPasswordViewModel>(),
             ShellPage.Home => CreateView<HomeView, HomeViewModel>(),
             _ => CreateView<LoginView, LoginViewModel>(),
         };

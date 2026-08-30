@@ -18,6 +18,11 @@ public abstract partial record AppShellIntent : IMviIntent
     public sealed partial record ShowRegister : AppShellIntent;
 
     /// <summary>
+    /// 表示导航到重置密码页意图。
+    /// </summary>
+    public sealed partial record ShowResetPassword : AppShellIntent;
+
+    /// <summary>
     /// 表示导航到主页意图。
     /// </summary>
     /// <param name="DisplayName">用户显示名。</param>

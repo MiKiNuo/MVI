@@ -105,6 +105,42 @@ public sealed class HttpAuthService : IAuthService, IDisposable
         _httpClient.Dispose();
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// dummyjson.com 不提供真实的重置密码端点，这里用 PUT /users/1 更新密码模拟一次真实的网络往返。
+    /// </remarks>
+    public async Task<AuthResult> ResetPasswordAsync(
+        string userName,
+        string newPassword,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using HttpResponseMessage response = await _httpClient
+                .PutAsJsonAsync(
+                    "users/1",
+                    new { password = newPassword },
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return AuthResult.Failure($"服务器拒绝（{(int)response.StatusCode}）：{ExtractMessage(body)}");
+            }
+
+            return AuthResult.Success(userName);
+        }
+        catch (HttpRequestException exception)
+        {
+            return AuthResult.Failure($"网络错误：{exception.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            return AuthResult.Failure("请求超时或已取消。");
+        }
+    }
+
     private static string ExtractMessage(string body)
     {
         try

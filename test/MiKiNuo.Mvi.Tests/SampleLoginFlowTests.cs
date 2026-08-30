@@ -150,6 +150,12 @@ public sealed class SampleLoginFlowTests
         {
             return Task.FromResult(AuthResult.Success(userName));
         }
+
+        /// <inheritdoc />
+        public Task<AuthResult> ResetPasswordAsync(string userName, string newPassword, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AuthResult.Success(userName));
+        }
     }
 
     private sealed class FakeFailureAuthService : IAuthService
@@ -164,6 +170,12 @@ public sealed class SampleLoginFlowTests
         public Task<AuthResult> RegisterAsync(string userName, string email, string password, CancellationToken cancellationToken)
         {
             return Task.FromResult(AuthResult.Failure("注册失败"));
+        }
+
+        /// <inheritdoc />
+        public Task<AuthResult> ResetPasswordAsync(string userName, string newPassword, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AuthResult.Failure("重置密码失败"));
         }
     }
 }
