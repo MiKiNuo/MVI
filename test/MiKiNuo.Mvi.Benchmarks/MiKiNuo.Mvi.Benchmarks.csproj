@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <UseMiKiNuoMviBuildTimeTools>true</UseMiKiNuoMviBuildTimeTools>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+</Project>

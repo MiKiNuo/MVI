@@ -12,6 +12,7 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test\MiKiNuo.Mvi.Tests\MiKiNuo.Mvi.Tests.csproj" Type="C#" />
+    <Project Path="test\MiKiNuo.Mvi.Benchmarks\MiKiNuo.Mvi.Benchmarks.csproj" Type="C#" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />

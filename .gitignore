@@ -45,6 +45,9 @@ msbuild.wrn
 .godot/
 .nomedia
 
+# BenchmarkDotNet 本地产物（完整结果导出至 docs/benchmarks/results/）
+BenchmarkDotNet.Artifacts/
+
 # Godot-specific ignores
 .import/
 export.cfg

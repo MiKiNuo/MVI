@@ -1,0 +1,17 @@
+﻿<Project>
+  <!--
+    本文件是 BenchmarkDotNet 生成子工程的护栏：
+    BDN 的自动生成代码位于本目录的 bin 下，会继承仓库根 Directory.Build.props
+    （GenerateDocumentationFile + WarningsAsErrors=CS1591），
+    而生成代码没有 XML 注释，导致子工程编译失败。
+    就近的 Directory.Build.props 优先于根文件：基准工程自身保持全仓严格设置，
+    仅对非基准工程（BDN 自动生成的子工程）关闭文档文件与警告即错误。
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'MiKiNuo.Mvi.Benchmarks'">
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <WarningsAsErrors></WarningsAsErrors>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

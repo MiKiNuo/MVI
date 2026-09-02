@@ -45,6 +45,9 @@ jobs:
       - name: Test
         run: dotnet test --solution ${{ env.SOLUTION_FILE }} -c Release --no-build --results-directory TestResults
 
+      - name: Benchmark smoke (--list flat)
+        run: dotnet run --project test/MiKiNuo.Mvi.Benchmarks -c Release --no-build -- --list flat
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
