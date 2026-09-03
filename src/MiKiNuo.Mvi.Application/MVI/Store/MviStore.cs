@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
+﻿using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
@@ -53,7 +53,7 @@ public sealed class MviStore<TState, TIntent, TEffect>
         _state = new ReactiveProperty<TState>(initialState);
         _reducer = reducer;
         _effectDispatcher = effectDispatcher;
-        _pipeline = new MviMiddlewarePipeline<TState, TIntent, TEffect>(middlewares ?? []);
+        _pipeline = new MviMiddlewarePipeline<TState, TIntent, TEffect>(middlewares, ExecuteReduceCore);
         _dispatchGate = new SemaphoreSlim(1, 1);
 
         if (effectDispatcher is IMviIntentSinkAttachable<TIntent> attachable)
@@ -96,10 +96,7 @@ public sealed class MviStore<TState, TIntent, TEffect>
         {
             MviMiddlewareContext<TState, TIntent, TEffect> context = new(CurrentState, intent);
 
-            result = await _pipeline.InvokeAsync(
-                context,
-                ExecuteReduceCore,
-                cancellationToken).ConfigureAwait(false);
+            result = await _pipeline.InvokeAsync(context, cancellationToken).ConfigureAwait(false);
 
             _state.Value = result.State;
         }

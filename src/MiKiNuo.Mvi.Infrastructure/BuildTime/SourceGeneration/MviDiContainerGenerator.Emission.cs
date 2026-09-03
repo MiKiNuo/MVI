@@ -65,7 +65,7 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine("/// 所有服务通过 [DiService] 特性自动注册。");
             builder.AppendLine("/// 单例使用按需懒加载，避免构造期因未注册依赖而失败。");
             builder.AppendLine("/// </summary>");
-            builder.Append("public sealed class GeneratedMviContainer : IMviResolver, IMviServiceGraph");
+            builder.Append("public sealed class GeneratedMviContainer : IMviResolver, IMviServiceGraph, IMviServiceFactoryReceiver");
             builder.AppendLine();
             builder.AppendLine("{");
             builder.AppendLine("    private readonly Dictionary<Type, object> _singletons = new();");
@@ -107,12 +107,10 @@ public sealed partial class MviDiContainerGenerator
         /// <summary>
         /// 生成 Resolve&lt;T&gt; 与 Resolve(Type) 方法。
         /// </summary>
-        private static void EmitResolveMethods(
-            StringBuilder builder,
-            IReadOnlyList<Models.DiServiceInfo> services)
+        private static void EmitResolveMethods(StringBuilder builder)
         {
             EmitResolveGeneric(builder);
-            EmitResolveByType(builder, services);
+            EmitResolveByType(builder);
         }
 
         /// <summary>
@@ -134,11 +132,10 @@ public sealed partial class MviDiContainerGenerator
         }
 
         /// <summary>
-        /// 生成 Resolve(Type) 非泛型方法。
+        /// 生成 Resolve(Type) 非泛型方法：单例缓存命中后走静态工厂字典路由。
         /// </summary>
         private static void EmitResolveByType(
-            StringBuilder builder,
-            IReadOnlyList<Models.DiServiceInfo> services)
+            StringBuilder builder)
         {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 解析指定类型的服务。");
@@ -157,32 +154,96 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine("            return existing;");
             builder.AppendLine("        }");
             builder.AppendLine();
-            foreach (Models.DiServiceInfo service in services)
-            {
-                builder.Append("        if (serviceType == typeof(").Append(service.ServiceTypeName)
-                    .AppendLine("))");
-                if (service.Lifetime == Models.GeneratedLifetime.Singleton)
-                {
-                    builder.Append("        {").AppendLine();
-                    builder.Append("            object created = new ").Append(service.ImplementationTypeName).Append('(');
-                    builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
-                    builder.AppendLine(");");
-                    builder.Append("            _singletons[serviceType] = created;").AppendLine();
-                    builder.Append("            return created;").AppendLine();
-                    builder.Append("        }").AppendLine();
-                }
-                else
-                {
-                    builder.Append("            return new ").Append(service.ImplementationTypeName).Append('(');
-                    builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
-                    builder.AppendLine(");");
-                }
-            }
-
+            builder.AppendLine("        if (_factories.TryGetValue(serviceType, out (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory) entry))");
+            builder.AppendLine("        {");
+            builder.AppendLine("            object created = entry.Factory(this);");
+            builder.AppendLine("            if (entry.Lifetime == ServiceLifetime.Singleton)");
+            builder.AppendLine("            {");
+            builder.AppendLine("                _singletons[serviceType] = created;");
+            builder.AppendLine("            }");
+            builder.AppendLine();
+            builder.AppendLine("            return created;");
+            builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        throw new InvalidOperationException($\"未注册服务：{serviceType.FullName}\");");
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 生成静态服务工厂路由表：服务类型 →（生命周期, 工厂委托），
+        /// 替代逐服务 if-else 线性链，使解析成本与注册深度无关。
+        /// </summary>
+        /// <param name="builder">源码构造器。</param>
+        /// <param name="services">DI 服务信息集合。</param>
+        internal static void EmitServiceFactoryTable(
+            StringBuilder builder,
+            IReadOnlyList<Models.DiServiceInfo> services)
+        {
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 获取服务类型到生命周期与工厂委托的路由表；重复注册以首个为准。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    internal static readonly Dictionary<Type, (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory)> _factories = CreateServiceFactories();");
+            builder.AppendLine();
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 构建服务工厂路由表：工厂内的构造参数依赖经接收器解析，保持调用方的作用域语义。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <returns>服务类型到生命周期与工厂委托的映射。</returns>");
+            builder.AppendLine("    private static Dictionary<Type, (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory)> CreateServiceFactories()");
+            builder.AppendLine("    {");
+            builder.AppendLine("        Dictionary<Type, (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory)> factories = new();");
+
+            foreach (Models.DiServiceInfo service in services)
+            {
+                builder.Append("        factories.TryAdd(typeof(").Append(service.ServiceTypeName)
+                    .Append("), (ServiceLifetime.").Append(service.Lifetime.ToServiceLifetimeName())
+                    .Append(", static receiver => new ").Append(service.ImplementationTypeName).Append('(');
+                builder.Append(BuildFactoryArguments(service));
+                builder.AppendLine(")));");
+            }
+
+            builder.AppendLine("        return factories;");
+            builder.AppendLine("    }");
+            builder.AppendLine();
+        }
+
+        /// <summary>
+        /// 构建工厂构造参数表达式：每个构造参数经接收器解析。
+        /// </summary>
+        /// <param name="service">DI 服务信息。</param>
+        /// <returns>逗号分隔的构造实参表达式。</returns>
+        private static string BuildFactoryArguments(Models.DiServiceInfo service)
+        {
+            List<string> arguments = new(service.ConstructorParameterTypeNames.Count);
+            foreach (string parameterTypeName in service.ConstructorParameterTypeNames)
+            {
+                arguments.Add("receiver.Resolve<" + parameterTypeName + ">()");
+            }
+
+            return string.Join(", ", arguments);
+        }
+
+        /// <summary>
+        /// 生成服务工厂的依赖解析接收器接口（命名空间级）：
+        /// 容器与作用域各自实现，使工厂内构造参数依赖随接收方的作用域语义解析。
+        /// </summary>
+        /// <param name="builder">源码构造器。</param>
+        internal static void EmitServiceFactoryReceiverInterface(StringBuilder builder)
+        {
+            builder.AppendLine();
+            builder.AppendLine("/// <summary>");
+            builder.AppendLine("/// 表示服务工厂的依赖解析接收器：容器与作用域各自实现，");
+            builder.AppendLine("/// 使工厂内的构造参数依赖随接收方的作用域语义解析。");
+            builder.AppendLine("/// </summary>");
+            builder.AppendLine("internal interface IMviServiceFactoryReceiver");
+            builder.AppendLine("{");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 解析服务。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <typeparam name=\"TService\">服务类型。</typeparam>");
+            builder.AppendLine("    /// <returns>服务实例。</returns>");
+            builder.AppendLine("    TService Resolve<TService>() where TService : notnull;");
+            builder.AppendLine("}");
         }
 
         /// <summary>
@@ -306,18 +367,17 @@ public sealed partial class MviDiContainerGenerator
         }
 
         /// <summary>
-        /// 生成作用域嵌套类。
+        /// 生成作用域嵌套类：经容器静态工厂字典路由，
+        /// 单例转发容器、作用域内缓存、瞬态逐次构造，依赖经作用域接收器解析。
         /// </summary>
-        private static void EmitScopeClass(
-            StringBuilder builder,
-            IReadOnlyList<Models.DiServiceInfo> services)
+        private static void EmitScopeClass(StringBuilder builder)
         {
             builder.AppendLine("}");
             builder.AppendLine();
             builder.AppendLine("/// <summary>");
             builder.AppendLine("/// 表示由源生成器生成的作用域实现。");
             builder.AppendLine("/// </summary>");
-            builder.AppendLine("internal sealed class GeneratedMviScope : IMviScope");
+            builder.AppendLine("internal sealed class GeneratedMviScope : IMviScope, IMviServiceFactoryReceiver");
             builder.AppendLine();
             builder.AppendLine("{");
             builder.AppendLine("    private readonly GeneratedMviContainer _container;");
@@ -341,33 +401,21 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine("            return existing;");
             builder.AppendLine("        }");
             builder.AppendLine();
-
-            foreach (Models.DiServiceInfo service in services)
-            {
-                builder.Append("        if (serviceType == typeof(").Append(service.ServiceTypeName)
-                    .AppendLine("))");
-                builder.AppendLine("        {");
-
-                if (service.Lifetime == Models.GeneratedLifetime.Singleton)
-                {
-                    builder.AppendLine("            return _container.Resolve(serviceType);");
-                }
-                else
-                {
-                    builder.Append("            object created = new ").Append(service.ImplementationTypeName).Append('(');
-                    builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
-                    builder.AppendLine(");");
-                    if (service.Lifetime == Models.GeneratedLifetime.Scoped)
-                    {
-                        builder.AppendLine("            _scoped[serviceType] = created;");
-                    }
-
-                    builder.AppendLine("            return created;");
-                }
-
-                builder.AppendLine("        }");
-            }
-
+            builder.AppendLine("        if (GeneratedMviContainer._factories.TryGetValue(serviceType, out (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory) entry))");
+            builder.AppendLine("        {");
+            builder.AppendLine("            if (entry.Lifetime == ServiceLifetime.Singleton)");
+            builder.AppendLine("            {");
+            builder.AppendLine("                return _container.Resolve(serviceType);");
+            builder.AppendLine("            }");
+            builder.AppendLine();
+            builder.AppendLine("            object created = entry.Factory(this);");
+            builder.AppendLine("            if (entry.Lifetime == ServiceLifetime.Scoped)");
+            builder.AppendLine("            {");
+            builder.AppendLine("                _scoped[serviceType] = created;");
+            builder.AppendLine("            }");
+            builder.AppendLine();
+            builder.AppendLine("            return created;");
+            builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        throw new InvalidOperationException($\"未注册服务：{serviceType.FullName}\");");
             builder.AppendLine("    }");

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 
 namespace MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
@@ -34,11 +34,13 @@ public sealed partial class MviDiContainerGenerator
             EmitFileHeader(builder, containerNamespace, services);
             EmitFeatureFields(builder, features);
             EmitConstructor(builder, services, features);
+            EmitServiceFactoryTable(builder, services);
             EmitResolveMethods(builder, services, features);
             EmitCreateScope(builder);
             EmitCreateWith(builder, services);
             EmitFeatureFactories(builder, features);
-            EmitScopeClass(builder, services);
+            EmitScopeClass(builder);
+            EmitServiceFactoryReceiverInterface(builder);
 
             return builder.ToString();
         }
@@ -134,12 +136,12 @@ public sealed partial class MviDiContainerGenerator
         {
             if (features.Count == 0)
             {
-                EmitResolveMethods(builder, services);
+                EmitResolveMethods(builder);
                 return;
             }
 
             EmitResolveGeneric(builder);
-            EmitResolveByTypeWithFeatures(builder, services, features);
+            EmitResolveByTypeWithFeatures(builder, features);
         }
 
         /// <summary>
@@ -147,7 +149,6 @@ public sealed partial class MviDiContainerGenerator
         /// </summary>
         private static void EmitResolveByTypeWithFeatures(
             StringBuilder builder,
-            IReadOnlyList<Models.DiServiceInfo> services,
             IReadOnlyList<Models.MviFeatureInfo> features)
         {
             builder.AppendLine("    /// <summary>");
@@ -178,27 +179,17 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine("        }");
             builder.AppendLine();
 
-            foreach (Models.DiServiceInfo service in services)
-            {
-                builder.Append("        if (serviceType == typeof(").Append(service.ServiceTypeName)
-                    .AppendLine("))");
-                if (service.Lifetime == Models.GeneratedLifetime.Singleton)
-                {
-                    builder.Append("        {").AppendLine();
-                    builder.Append("            object created = new ").Append(service.ImplementationTypeName).Append('(');
-                    builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
-                    builder.AppendLine(");");
-                    builder.Append("            _singletons[serviceType] = created;").AppendLine();
-                    builder.Append("            return created;").AppendLine();
-                    builder.Append("        }").AppendLine();
-                }
-                else
-                {
-                    builder.Append("            return new ").Append(service.ImplementationTypeName).Append('(');
-                    builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
-                    builder.AppendLine(");");
-                }
-            }
+            builder.AppendLine("        if (_factories.TryGetValue(serviceType, out (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory) entry))");
+            builder.AppendLine("        {");
+            builder.AppendLine("            object created = entry.Factory(this);");
+            builder.AppendLine("            if (entry.Lifetime == ServiceLifetime.Singleton)");
+            builder.AppendLine("            {");
+            builder.AppendLine("                _singletons[serviceType] = created;");
+            builder.AppendLine("            }");
+            builder.AppendLine();
+            builder.AppendLine("            return created;");
+            builder.AppendLine("        }");
+            builder.AppendLine();
 
             foreach (Models.MviFeatureInfo feature in features)
             {

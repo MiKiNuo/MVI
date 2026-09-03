@@ -81,7 +81,8 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     }
 
     /// <summary>
-    /// 验证作用域拥有独立缓存、在作用域内解析构造依赖并释放缓存实例。
+    /// 验证作用域拥有独立缓存、在作用域内解析构造依赖并释放缓存实例；
+    /// 服务经静态工厂字典路由（含生命周期判定），工厂内构造依赖经接收器解析。
     /// </summary>
     [Test]
     public async Task Generate_Should_EmitOwnedScopedLifetimeAsync()
@@ -92,8 +93,12 @@ public sealed class MviDiContainerGeneratorBehaviorTests
         string generatedCode = runResult.GeneratedTrees.Single().GetText().ToString();
 
         await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(generatedCode).Contains("CreateServiceFactories");
+        await Assert.That(generatedCode).Contains(
+            "internal static readonly Dictionary<Type, (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory)> _factories");
+        await Assert.That(generatedCode).Contains(
+            "static receiver => new global::TestApp.ScopedConsumer(receiver.Resolve<global::TestApp.ScopedDependency>())");
         await Assert.That(generatedCode).Contains("private readonly Dictionary<Type, object> _scoped = new();");
-        await Assert.That(generatedCode).Contains("object created = new global::TestApp.ScopedConsumer(this.Resolve<global::TestApp.ScopedDependency>());");
         await Assert.That(generatedCode).Contains("_scoped[serviceType] = created;");
         await Assert.That(generatedCode).Contains("if (instance is IDisposable disposable)");
         await Assert.That(generatedCode).Contains("return _container.Resolve(serviceType);");
