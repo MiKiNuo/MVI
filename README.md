@@ -13,6 +13,20 @@
 
 ## 为什么做这个项目？
 
+### 完整 Feature 递归组合
+
+组合中的每个子 Feature 都有独立 Store、状态、ViewModel 和 EffectDispatcher，可以独立运行或嵌入不同宿主。父子及兄弟的业务通信统一经过中介者；Slot 只负责展示，视图离树不等于业务实例关闭。
+
+- `MviCompositionScope` 是一个显式通信范围。通过 `CreateEndpoint(Guid)` 建立实例端点，`Register<TRequest,TResponse>` 注册目标处理器，`Bind<TRequest>` 将来源接到确定目标；业务代码只依赖端点的 `IMviMediator.SendAsync`。
+- 通知实现 `IMviNotification`。宿主 `Subscribe<TNotification>` 显式订阅，端点 `PublishAsync` 返回每个订阅的接纳结果。通知不跨范围自动传播，发布完成不表示后续业务完成。接纳回调应短小，只调用本实例 `Store.TryPost`，队列满时抛出明确异常；后台失败由 `Store.Errors` 观察。
+- `[MviFeature]` 生成 `Create<FeatureName>InstanceAsync(endpoint)` 与传入初始状态的重载。例如 `LoginReducer` 对应 `CreateLoginInstanceAsync`。每次使用新端点，返回 `MviFeatureInstance<TViewModel>`；旧 `Resolve` 继续保留单实例语义。
+- `Own` 建立资源所有权树，`DisposeAsync` 等待子实例和在途操作释放。需要未保存确认时使用 `TryCloseAsync`，宿主经中介者提供准备、版本核验并冻结编辑、撤回、提交四类控制请求。该协议不自动推断业务编辑版本，也不构成后台事务。
+- 多个自动装配中间件必须用 `[MviMiddlewareOrder(n)]` 声明唯一顺序。MVI0018–MVI0020 拒绝装配歧义；MVI0021 阻止可静态识别的兄弟状态绑定和异类 Store 依赖，不能代替完整业务边界测试。
+
+可运行的业务示例位于 `sample/MiKiNuo.Mvi.Samples.Avalonia/Features/CompositionDemo`：`MedicineSearchDemoHost` 独立运行检索功能；`PrescriptionDemoHost` 组合检索、明细与父级摘要 MVI。它们复用相同业务实现，测试通过宿主接口验证工作区隔离和通知。示例名称与数量仅用于演示，不包含医疗规则。
+
+同一业务对象多开默认使用不同实例，是否共享草稿由宿主明确选择。各 Store 独立提交，“全部保存”的部分失败或事务策略由具体业务定义。
+
 在 HIS、EMR、LIS、MES、ERP、WMS、工业上位机、桌面管理系统、游戏 UI 等复杂客户端系统中，界面通常不是一个简单页面，而是由大量子模块组成：
 
 ```text

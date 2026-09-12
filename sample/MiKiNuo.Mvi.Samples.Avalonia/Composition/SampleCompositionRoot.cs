@@ -1,8 +1,9 @@
-using MiKiNuo.Mvi.Application.MVI.Store;
+﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Threading;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Composition;
 
@@ -48,6 +49,11 @@ public sealed class SampleCompositionRoot
         NavigateToPageRequest request,
         CancellationToken cancellationToken)
     {
+        if (request.Page == ShellPage.Home)
+        {
+            await _container.Resolve<IMviStore<HomeState, HomeIntent, HomeEffect>>()
+                .DispatchAsync(new HomeIntent.ShowUser(request.DisplayName ?? string.Empty), cancellationToken).ConfigureAwait(false);
+        }
         IMviStore<AppShellState, AppShellIntent, UnitEffect> shellStore =
             _container.Resolve<IMviStore<AppShellState, AppShellIntent, UnitEffect>>();
 

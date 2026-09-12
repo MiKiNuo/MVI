@@ -126,6 +126,18 @@ public static class DiagnosticIdCatalog
     /// <summary>禁止使用 StatePath 默认实例（default 字面量 / default(T) / 无参 new）。</summary>
     public const string MviStatePathDefaultInstance = "MVI0017";
 
+    /// <summary>Feature 匹配多个副作用分发器。</summary>
+    public const string MviFeatureDispatcherAmbiguous = "MVI0018";
+
+    /// <summary>Feature 匹配多个视图模型。</summary>
+    public const string MviFeatureViewModelAmbiguous = "MVI0019";
+
+    /// <summary>多个 Feature 中间件缺少唯一的显式顺序。</summary>
+    public const string MviMiddlewareOrderInvalid = "MVI0020";
+
+    /// <summary>跨 Feature 直接通信绕过中介者。</summary>
+    public const string MviCrossFeatureCommunication = "MVI0021";
+
     /// <summary>
     /// 获取全部已发布的诊断 ID 列表。
     /// 列表顺序与诊断类别（ARCH → DOC → CODE → MVI）保持一致，便于人工审查。
@@ -168,5 +180,9 @@ public static class DiagnosticIdCatalog
         MviEffectHandlerSignatureInvalid,
         MviFeatureStateInitialMissing,
         MviStatePathDefaultInstance,
+        MviFeatureDispatcherAmbiguous,
+        MviFeatureViewModelAmbiguous,
+        MviMiddlewareOrderInvalid,
+        MviCrossFeatureCommunication,
     ];
 }

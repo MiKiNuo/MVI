@@ -487,6 +487,7 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             builder.AppendLine();
             builder.AppendLine("        __mviSlotViewRegistry ??= resolver.Resolve<IMviViewRegistry>();");
             builder.AppendLine("        IMviViewRegistry registry = __mviSlotViewRegistry;");
+            builder.AppendLine("        global::MiKiNuo.Mvi.Application.MVI.Threading.IMviUiDispatcher __mviSlotDispatcher = resolver.Resolve<global::MiKiNuo.Mvi.Application.MVI.Threading.IMviUiDispatcher>();");
             builder.AppendLine();
 
             foreach (SlotFieldModel slot in model.Slots)
@@ -517,7 +518,7 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             if (slot.Observes.Count == 0)
             {
                 // 一次性绑定：直接在 OnBindSlots 末尾调用一次 rebind，不订阅 PropertyChanged。
-                builder.Append("    ").Append(rebindMethodName).AppendLine("();");
+                builder.Append("    __mviSlotDispatcher.Post(() => { try { ").Append(rebindMethodName).AppendLine("(); } catch { bindings.Dispose(); throw; } });");
                 return;
             }
 
@@ -535,14 +536,47 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             string factoryCall)
         {
             // 局部函数：重新解析子 ViewModel → 创建子 View → 挂载到槽位
+            builder.AppendLine("    object? " + rebindMethodName + "Model = null;");
+            builder.AppendLine("    object? " + rebindMethodName + "View = null;");
+            builder.AppendLine("    bool " + rebindMethodName + "Active = true;");
+            builder.AppendLine("    void " + rebindMethodName + "Clear()");
+            builder.AppendLine("    {");
+            string bindingContract = model.Platform == SlotPlatform.Godot
+                ? "global::MiKiNuo.Mvi.Platforms.Godot.Binding.IMviGodotViewBinding"
+                : "global::MiKiNuo.Mvi.Platforms.Avalonia.Views.IMviAvaloniaViewBinding";
+            builder.AppendLine("        if (" + rebindMethodName + "View is " + bindingContract + " binding) binding.Unbind();");
+            if (model.Platform == SlotPlatform.Godot)
+            {
+                builder.AppendLine("        if (" + rebindMethodName + "View is Node old && GodotObject.IsInstanceValid(old))");
+                builder.AppendLine("        {");
+                builder.AppendLine("            if (old.GetParent() == " + slotExpression + ") " + slotExpression + "!.RemoveChild(old);");
+                builder.AppendLine("            if (!old.IsQueuedForDeletion()) old.QueueFree();");
+                builder.AppendLine("        }");
+            }
+            else
+            {
+                builder.AppendLine("        if (ReferenceEquals(" + slotExpression + "!.Content, " + rebindMethodName + "View)) " + slotExpression + ".Content = null;");
+            }
+            builder.AppendLine("        " + rebindMethodName + "Model = null;");
+            builder.AppendLine("        " + rebindMethodName + "View = null;");
+            builder.AppendLine("    }");
+            builder.AppendLine("    bindings.Add(() => { " + rebindMethodName + "Active = false; __mviSlotDispatcher.Post(" + rebindMethodName + "Clear); });");
             builder.Append("    void ").Append(rebindMethodName).AppendLine("()");
             builder.AppendLine("    {");
+            builder.AppendLine("        if (!" + rebindMethodName + "Active) return;");
             // 槽位字段在 View 构造完成后保证非 null（构造函数负责 FindControl 并赋值），
             // 但字段声明为可空以支持 InitializeComponent 前的默认状态，此处用 ! 抑制空警告。
             builder.AppendLine("        object? childViewModel = " + factoryCall + ";");
-            builder.Append("        if (childViewModel is null) { ").Append(ClearSlotExpression(slotExpression + "!", model.Platform)).AppendLine("; return; }");
+            string validView = model.Platform == SlotPlatform.Godot
+                ? rebindMethodName + "View is Node current && GodotObject.IsInstanceValid(current) && !current.IsQueuedForDeletion() && current.GetParent() == " + slotExpression
+                : rebindMethodName + "View is not null && ReferenceEquals(" + slotExpression + "!.Content, " + rebindMethodName + "View)";
+            builder.AppendLine("        if (ReferenceEquals(childViewModel, " + rebindMethodName + "Model) && " + validView + ") return;");
+            builder.AppendLine("        " + rebindMethodName + "Clear();");
+            builder.AppendLine("        if (childViewModel is null) return;");
             builder.AppendLine("        object view = registry.CreateView(childViewModel);");
             builder.Append("        ").Append(MountSlotExpression(slotExpression + "!", model.Platform)).AppendLine(";");
+            builder.AppendLine("        " + rebindMethodName + "Model = childViewModel;");
+            builder.AppendLine("        " + rebindMethodName + "View = view;");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -567,18 +601,18 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
             {
                 builder.Append("            if (string.Equals(args.PropertyName, \"")
                     .Append(Escape(propertyName))
-                    .Append("\", StringComparison.Ordinal)) { ")
+                    .Append("\", StringComparison.Ordinal)) { __mviSlotDispatcher.Post(")
                     .Append(rebindMethodName)
-                    .AppendLine("(); return; }");
+                    .AppendLine("); return; }");
             }
 
             builder.AppendLine("            return; // 属性名不在 Observes 列表中，忽略");
             builder.AppendLine("        }");
-            builder.Append("        ").Append(rebindMethodName).AppendLine("();");
+            builder.Append("        __mviSlotDispatcher.Post(").Append(rebindMethodName).AppendLine(");");
             builder.AppendLine("    };");
             builder.AppendLine("    viewModel.PropertyChanged += " + handlerLocalName + ";");
-            builder.Append("    ").Append(rebindMethodName).AppendLine("();");
             builder.Append("    bindings.Add(() => viewModel.PropertyChanged -= ").Append(handlerLocalName).AppendLine(");");
+            builder.Append("    __mviSlotDispatcher.Post(() => { try { ").Append(rebindMethodName).AppendLine("(); } catch { bindings.Dispose(); throw; } });");
         }
 
         private static string MountSlotExpression(string slotExpression, SlotPlatform platform)
@@ -592,16 +626,6 @@ public sealed class MviCompositeSlotBindingGenerator : IIncrementalGenerator
                 // 之前裸调 slot.AddChild(view) 会触发 CS1503，Godot 编译必失败。
                 SlotPlatform.Godot => slotExpression + ".AddChild((Node)view)",
                 _ => slotExpression + ".Content = view",
-            };
-        }
-
-        private static string ClearSlotExpression(string slotExpression, SlotPlatform platform)
-        {
-            return platform switch
-            {
-                SlotPlatform.Avalonia => slotExpression + ".Content = null",
-                SlotPlatform.Godot => "foreach (Node __n in " + slotExpression + ".GetChildren()) __n.QueueFree()",
-                _ => slotExpression + ".Content = null",
             };
         }
 

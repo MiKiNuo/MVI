@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Reducer;
+﻿using MiKiNuo.Mvi.Application.MVI.Reducer;
 using MiKiNuo.Mvi.Domain.DI;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -11,6 +11,10 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
 public sealed partial class HomeReducer
     : MviReducerBase<HomeState, HomeIntent, HomeEffect>
 {
+    /// <summary>接收主页自己的显示数据。</summary>
+    [MviReduce(typeof(HomeIntent.ShowUser))]
+    private MviReduceResult<HomeState, HomeEffect> HandleShowUser(HomeState state, HomeIntent.ShowUser intent)
+        => Unchanged(state with { DisplayName = intent.DisplayName });
     /// <summary>
     /// 处理退出登录意图：声明跳转登录页副作用。
     /// </summary>
@@ -19,6 +23,6 @@ public sealed partial class HomeReducer
         HomeState state,
         HomeIntent.Logout intent)
     {
-        return WithEffect(state, new HomeEffect.ShowLoginPage());
+        return WithEffect(HomeState.Initial, new HomeEffect.ShowLoginPage());
     }
 }

@@ -1,12 +1,14 @@
-using MiKiNuo.Mvi.Domain.MVI.State;
+﻿using MiKiNuo.Mvi.Domain.MVI.State;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
 
 /// <summary>
-/// 表示主页状态。主页自身无业务数据，用户显示名经兄弟绑定来自应用壳。
+/// 表示主页自己的状态，显示名通过中介导航请求传入。
 /// </summary>
 public sealed record HomeState : IMviState
 {
+    /// <summary>获取当前用户显示名。</summary>
+    public string DisplayName { get; init; } = string.Empty;
     /// <summary>
     /// 获取初始状态。
     /// </summary>

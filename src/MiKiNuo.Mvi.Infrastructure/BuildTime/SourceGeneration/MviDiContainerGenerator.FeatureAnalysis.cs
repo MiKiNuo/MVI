@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.Diagnostics;
@@ -17,6 +17,10 @@ public sealed partial class MviDiContainerGenerator
     /// </summary>
     internal static class FeatureAnalysis
     {
+        private static readonly DiagnosticDescriptor MiddlewareOrderRule = new(
+            DiagnosticIdCatalog.MviMiddlewareOrderInvalid,
+            "中间件执行顺序不明确", "Feature“{0}”的多个中间件必须通过 MviMiddlewareOrder 声明唯一顺序。",
+            "MviFeature", DiagnosticSeverity.Error, true);
         private const string ReducerBaseMetadataName =
             "MiKiNuo.Mvi.Application.MVI.Reducer.MviReducerBase<TState, TIntent, TEffect>";
 
@@ -36,6 +40,20 @@ public sealed partial class MviDiContainerGenerator
             category: "MviFeature",
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
+
+        /// <summary>多个匹配分发器的装配错误。</summary>
+        private static readonly DiagnosticDescriptor DispatcherAmbiguousRule = new(
+            DiagnosticIdCatalog.MviFeatureDispatcherAmbiguous,
+            "Feature 匹配多个副作用分发器",
+            "Feature“{0}”匹配多个 EffectDispatcher：{1}。请保留唯一候选，已跳过该 Feature 装配。",
+            "MviFeature", DiagnosticSeverity.Error, true);
+
+        /// <summary>多个匹配视图模型的装配错误。</summary>
+        private static readonly DiagnosticDescriptor ViewModelAmbiguousRule = new(
+            DiagnosticIdCatalog.MviFeatureViewModelAmbiguous,
+            "Feature 匹配多个视图模型",
+            "Feature“{0}”匹配多个 ViewModel：{1}。请保留唯一候选，已跳过该 Feature 装配。",
+            "MviFeature", DiagnosticSeverity.Error, true);
 
         /// <summary>
         /// 收集全部 Feature 装配模型。
@@ -103,19 +121,43 @@ public sealed partial class MviDiContainerGenerator
                 ? reducerSymbol.Name.Substring(0, reducerSymbol.Name.Length - "Reducer".Length)
                 : reducerSymbol.Name;
 
-            INamedTypeSymbol? dispatcher = allClasses
+            List<INamedTypeSymbol> dispatchers = allClasses
                 .Where(candidate => MatchesDispatcher(candidate, intentType, effectType))
-                .OrderBy(static candidate => candidate.Name, System.StringComparer.Ordinal)
-                .FirstOrDefault();
+                .ToList();
+            if (dispatchers.Count > 1)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(DispatcherAmbiguousRule,
+                    reducerSymbol.Locations.FirstOrDefault(), featureName,
+                    string.Join(", ", dispatchers.Select(static candidate => candidate.ToDisplayString()))));
+                return null;
+            }
 
-            INamedTypeSymbol? viewModel = allClasses
+            INamedTypeSymbol? dispatcher = dispatchers.SingleOrDefault();
+
+            List<INamedTypeSymbol> viewModels = allClasses
                 .Where(candidate => MatchesViewModel(candidate, stateType, intentType, effectType))
-                .OrderBy(static candidate => candidate.Name, System.StringComparer.Ordinal)
-                .FirstOrDefault();
+                .ToList();
+            if (viewModels.Count > 1)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(ViewModelAmbiguousRule,
+                    reducerSymbol.Locations.FirstOrDefault(), featureName,
+                    string.Join(", ", viewModels.Select(static candidate => candidate.ToDisplayString()))));
+                return null;
+            }
 
-            List<Models.FeatureComponentInfo> middlewares = allClasses
+            INamedTypeSymbol? viewModel = viewModels.SingleOrDefault();
+
+            List<INamedTypeSymbol> middlewareTypes = allClasses
                 .Where(candidate => MatchesMiddleware(candidate, stateType, intentType, effectType))
-                .OrderBy(static candidate => candidate.Name, System.StringComparer.Ordinal)
+                .ToList();
+            if (middlewareTypes.Count > 1 && (middlewareTypes.Any(candidate => GetMiddlewareOrder(candidate) is null)
+                || middlewareTypes.Select(GetMiddlewareOrder).Distinct().Count() != middlewareTypes.Count))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(MiddlewareOrderRule, reducerSymbol.Locations.FirstOrDefault(), featureName));
+                return null;
+            }
+            List<Models.FeatureComponentInfo> middlewares = middlewareTypes
+                .OrderBy(candidate => GetMiddlewareOrder(candidate) ?? 0)
                 .Select(static candidate => new Models.FeatureComponentInfo(
                     candidate.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
                     BuildConstructorExpressions(candidate)))
@@ -156,6 +198,14 @@ public sealed partial class MviDiContainerGenerator
             }
 
             return false;
+        }
+
+        private static int? GetMiddlewareOrder(INamedTypeSymbol symbol)
+        {
+            AttributeData? attribute = symbol.GetAttributes().FirstOrDefault(candidate =>
+                candidate.AttributeClass?.ToDisplayString() == "MiKiNuo.Mvi.Domain.DI.MviMiddlewareOrderAttribute");
+            return attribute is not null && attribute.ConstructorArguments.Length == 1
+                && attribute.ConstructorArguments[0].Value is int order ? order : null;
         }
 
         private static bool MatchesDispatcher(

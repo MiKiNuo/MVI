@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
@@ -12,7 +12,7 @@ namespace MiKiNuo.Mvi.Tests;
 /// </summary>
 public sealed class MviFeatureContainerGeneratorTests
 {
-    private const string FeatureSource = """
+    internal const string FeatureSource = """
         namespace FeatureTest
         {
             using MiKiNuo.Mvi.Application.MVI.Effect;
@@ -113,7 +113,7 @@ public sealed class MviFeatureContainerGeneratorTests
         await Assert.That(generated).DoesNotContain("CreateTestStore");
     }
 
-    private static MetadataReference[] GetFrameworkReferences()
+    internal static MetadataReference[] GetFrameworkReferences()
     {
         return
         [

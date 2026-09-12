@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using global::Godot;
 using MiKiNuo.Mvi.Application.DI;
 using MiKiNuo.Mvi.Application.MVI.Command;
@@ -10,7 +10,7 @@ namespace MiKiNuo.Mvi.Platforms.Godot.Binding;
 /// 表示 Godot Control 版本的 MVI View 基类。
 /// </summary>
 /// <typeparam name="TViewModel">ViewModel 类型。</typeparam>
-public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGodotBindable<TViewModel>
+public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGodotBindable<TViewModel>, IMviGodotViewBinding
     where TViewModel : class
 {
     private MviDisposableBag? _bindingBag;
@@ -77,8 +77,20 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
     public override void _ExitTree()
 #pragma warning restore CODE0002
     {
-        Unbind();
+        _bindingBag?.Dispose();
+        _bindingBag = null;
+        OnUnbind();
         base._ExitTree();
+    }
+
+    /// <summary>重新进入场景树时恢复最近一次绑定。</summary>
+#pragma warning disable CODE0002 // Godot 固定生命周期方法名。
+    public override void _EnterTree()
+#pragma warning restore CODE0002
+    {
+        base._EnterTree();
+        if (_bindingBag is null && ViewModel is not null && _resolver is not null)
+            Bind(ViewModel, _resolver);
     }
 
     /// <summary>

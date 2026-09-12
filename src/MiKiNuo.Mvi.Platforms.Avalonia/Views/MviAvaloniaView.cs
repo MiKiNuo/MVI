@@ -11,10 +11,11 @@ namespace MiKiNuo.Mvi.Platforms.Avalonia.Views;
 /// 与 Godot <c>GodotMviControlView</c> 共用同一套释放语义（重入、Dispose-after-Add 竞态等）。
 /// </summary>
 /// <typeparam name="TViewModel">视图模型类型。</typeparam>
-public abstract class MviAvaloniaView<TViewModel> : UserControl
+public abstract class MviAvaloniaView<TViewModel> : UserControl, IMviAvaloniaViewBinding
     where TViewModel : class
 {
     private MviDisposableBag? _bindings;
+    private IMviResolver? _resolver;
 
     /// <summary>
     /// 获取强类型 ViewModel。
@@ -56,6 +57,7 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
             OnBind(viewModel, bindingBag);
             OnBindSlots(viewModel, bindingBag, resolver);
             _bindings = bindingBag;
+            _resolver = resolver;
             bindingBag = null;
         }
         finally
@@ -105,6 +107,23 @@ public abstract class MviAvaloniaView<TViewModel> : UserControl
     {
         ClearBindings();
         base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>重新入树时恢复同一业务实例的绑定。</summary>
+    /// <param name="e">附件事件参数。</param>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        if (_bindings is null && _resolver is not null && DataContext is TViewModel viewModel)
+            Bind(viewModel, _resolver);
+    }
+
+    /// <summary>显式解除视图绑定，不释放业务 ViewModel 或 Store。</summary>
+    public void Unbind()
+    {
+        ClearBindings();
+        _resolver = null;
+        DataContext = null;
     }
 
     private void ClearBindings()

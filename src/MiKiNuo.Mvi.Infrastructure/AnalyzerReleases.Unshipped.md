@@ -22,3 +22,7 @@ MVI0014 | MviEffect | Error | 多个处理方法标记同一副作用子类型�
 MVI0015 | MviEffect | Error | 副作用处理方法签名不符合约定，必须是 (TEffect.Xxx effect, CancellationToken cancellationToken) => ValueTask。
 MVI0016 | MviFeature | Error | Feature 状态类型缺少公开静态 Initial 属性，生成的容器无法构造 Store，已跳过该 Feature 装配。
 MVI0017 | MviStatePath | Warning | 禁止使用 StatePath 默认实例（default 字面量 / default(T) / 无参 new），默认实例访问 Getter 会抛 InvalidOperationException。
+MVI0018 | MviFeature | Error | Feature 匹配多个副作用分发器，拒绝歧义装配。
+MVI0019 | MviFeature | Error | Feature 匹配多个视图模型，拒绝歧义装配。
+MVI0020 | MviFeature | Error | 多个中间件必须声明唯一的 MviMiddlewareOrder 顺序。
+MVI0021 | MviComposition | Error | 业务 Feature 不得通过兄弟绑定或异类 Store 直接通信。

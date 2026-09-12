@@ -39,6 +39,7 @@ public sealed partial class MviDiContainerGenerator
             EmitCreateScope(builder);
             EmitCreateWith(builder, services);
             EmitFeatureFactories(builder, features);
+            EmitInstanceFactories(builder, features, services);
             EmitScopeClass(builder);
             EmitServiceFactoryReceiverInterface(builder);
 

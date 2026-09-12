@@ -1,4 +1,4 @@
-using TUnit.Assertions;
+﻿using TUnit.Assertions;
 using TUnit.Core;
 
 namespace MiKiNuo.Mvi.Tests;
@@ -40,8 +40,9 @@ public sealed class MviCompositeSlotBindingGeneratorTests
         await Assert.That(content).Contains("MviSlotHost");
         await Assert.That(content).Contains(".Content = ");
 
-        // Godot: Control 节点 Clear + AddChild
-        await Assert.That(content).Contains("GetChildren");
+        // Godot: 仅移除槽位自有节点，不清空宿主的其他子节点。
+        await Assert.That(content).DoesNotContain("GetChildren");
+        await Assert.That(content).Contains("RemoveChild");
         await Assert.That(content).Contains("AddChild");
     }
 
@@ -77,7 +78,7 @@ public sealed class MviCompositeSlotBindingGeneratorTests
         // 2) 更精准：MountSlotExpression 函数体的 Godot 分支不应再拼接 AvaloniaSlotHostMetadataName
         int mountIndex = content.IndexOf("private static string MountSlotExpression", StringComparison.Ordinal);
         await Assert.That(mountIndex).IsGreaterThanOrEqualTo(0);
-        int mountEnd = content.IndexOf("private static string ClearSlotExpression", mountIndex, StringComparison.Ordinal);
+        int mountEnd = content.IndexOf("private static string Escape", mountIndex, StringComparison.Ordinal);
         await Assert.That(mountEnd).IsGreaterThan(mountIndex);
         string mountBody = content.Substring(mountIndex, mountEnd - mountIndex);
         int godotBranchStart = mountBody.IndexOf("SlotPlatform.Godot", StringComparison.Ordinal);
