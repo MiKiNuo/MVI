@@ -65,3 +65,4 @@ mono_crash.*.json
 /.gsd
 /CONTEXT.md
 /docs
+/TestResults

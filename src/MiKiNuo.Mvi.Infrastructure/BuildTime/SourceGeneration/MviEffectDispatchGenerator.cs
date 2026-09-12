@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -33,7 +33,8 @@ public sealed class MviEffectDispatchGenerator : IIncrementalGenerator
                 static (syntaxContext, cancellationToken) => GetCandidate(syntaxContext, cancellationToken))
             .Where(static candidate => candidate is not null);
 
-        context.RegisterSourceOutput(candidates, Execute);
+        context.RegisterSourceOutput(candidates.Combine(context.CompilationProvider),
+            static (productionContext, input) => Execute(productionContext, input.Left, input.Right));
     }
 
     private static INamedTypeSymbol? GetCandidate(
@@ -52,7 +53,7 @@ public sealed class MviEffectDispatchGenerator : IIncrementalGenerator
         return dispatcherSymbol;
     }
 
-    private static void Execute(SourceProductionContext context, INamedTypeSymbol? dispatcherSymbol)
+    private static void Execute(SourceProductionContext context, INamedTypeSymbol? dispatcherSymbol, Compilation compilation)
     {
         if (dispatcherSymbol is null)
         {
@@ -77,7 +78,7 @@ public sealed class MviEffectDispatchGenerator : IIncrementalGenerator
             return;
         }
 
-        List<EffectHandlerModel> handlers = CollectHandlers(dispatcherSymbol, effectType, context);
+        List<EffectHandlerModel> handlers = CollectHandlers(dispatcherSymbol, effectType, compilation, context);
         ReportMissingHandlers(effectType, handlers, dispatcherSymbol, context);
 
         string source = Emission.Emit(dispatcherSymbol, intentType, effectType, handlers);
@@ -128,6 +129,7 @@ public sealed class MviEffectDispatchGenerator : IIncrementalGenerator
     private static List<EffectHandlerModel> CollectHandlers(
         INamedTypeSymbol dispatcherSymbol,
         INamedTypeSymbol effectType,
+        Compilation compilation,
         SourceProductionContext context)
     {
         List<EffectHandlerModel> handlers = new();
@@ -148,7 +150,7 @@ public sealed class MviEffectDispatchGenerator : IIncrementalGenerator
                 continue;
             }
 
-            if (!ValidateMethodSignature(method, effectSubtype))
+            if (!ValidateMethodSignature(method, effectSubtype, compilation))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     Rules.HandlerSignatureInvalidRule,
@@ -200,9 +202,12 @@ public sealed class MviEffectDispatchGenerator : IIncrementalGenerator
 
     private static bool ValidateMethodSignature(
         IMethodSymbol method,
-        INamedTypeSymbol effectSubtype)
+        INamedTypeSymbol effectSubtype,
+        Compilation compilation)
     {
-        if (method.Parameters.Length != 2)
+        if (method.Parameters.Length != 2
+            || method.Parameters[0].RefKind != RefKind.None
+            || method.Parameters[1].RefKind != RefKind.None)
         {
             return false;
         }
@@ -212,12 +217,14 @@ public sealed class MviEffectDispatchGenerator : IIncrementalGenerator
             return false;
         }
 
-        if (method.Parameters[1].Type.Name != "CancellationToken")
+        if (!SymbolEqualityComparer.Default.Equals(method.Parameters[1].Type,
+            compilation.GetTypeByMetadataName("System.Threading.CancellationToken")))
         {
             return false;
         }
 
-        return method.ReturnType.Name == "ValueTask";
+        return SymbolEqualityComparer.Default.Equals(method.ReturnType,
+            compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask"));
     }
 
     private static void ReportMissingHandlers(

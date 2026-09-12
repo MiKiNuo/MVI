@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Domain.MVI.Effect;
+﻿using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Domain.MVI.Intent;
 
 namespace MiKiNuo.Mvi.Application.MVI.Effect;
@@ -20,6 +20,7 @@ namespace MiKiNuo.Mvi.Application.MVI.Effect;
 /// <see cref="DispatchIntentAsync"/> 回流新意图，
 /// 回流意图作为普通派发重新进入 Store，中间件全程可见。
 /// 回流入口由 MviStore 构造时自动接线，无需手动设置。
+/// 每个派发器实例只能接线一次，不可在不同 Store 之间复用。
 /// </para>
 /// </remarks>
 public abstract class MviEffectDispatcherBase<TIntent, TEffect>
@@ -32,7 +33,11 @@ public abstract class MviEffectDispatcherBase<TIntent, TEffect>
     void IMviIntentSinkAttachable<TIntent>.Attach(IMviIntentSink<TIntent> sink)
     {
         ArgumentNullException.ThrowIfNull(sink);
-        _intentSink = sink;
+        if (Interlocked.CompareExchange(ref _intentSink, sink, null) is not null)
+        {
+            throw new InvalidOperationException(
+                $"副作用分发器 {GetType().FullName} 已附加到 Store，不能重复接线。请为每个 Store 创建独立的分发器实例。");
+        }
     }
 
     /// <summary>

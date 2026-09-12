@@ -88,7 +88,18 @@ public sealed class MviStore<TState, TIntent, TEffect>
 
         if (effectDispatcher is IMviIntentSinkAttachable<TIntent> attachable)
         {
-            attachable.Attach(this);
+            try
+            {
+                attachable.Attach(this);
+            }
+            catch
+            {
+                _state.Dispose();
+                _dispatchGate.Dispose();
+                _lifetime.Dispose();
+                _errors.Dispose();
+                throw;
+            }
         }
         _notifications = Channel.CreateBounded<TIntent>(new BoundedChannelOptions(notificationCapacity)
         {

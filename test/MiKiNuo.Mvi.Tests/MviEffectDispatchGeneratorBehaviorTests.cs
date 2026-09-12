@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -235,6 +235,77 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
         GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0015")).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证携带返回值的异步处理方法不能作为无返回值副作用处理方法。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_RejectGenericValueTaskAsync()
+    {
+        string source = RuntimeStubs + ValidDispatcher
+            .Replace("private System.Threading.Tasks.ValueTask HandleNavigateToHome", "private System.Threading.Tasks.ValueTask<int> HandleNavigateToHome")
+            .Replace("return System.Threading.Tasks.ValueTask.CompletedTask;", "return default;");
+
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+
+        await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(1);
+    }
+
+    /// <summary>
+    /// 验证同名的自定义取消标记不能冒充框架取消标记。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_RejectUnrelatedCancellationTokenAsync()
+    {
+        string source = RuntimeStubs + ValidDispatcher.Replace(
+            "System.Threading.CancellationToken cancellationToken", "Other.CancellationToken cancellationToken")
+            + "namespace Other { public struct CancellationToken { } }";
+
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+
+        await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(2);
+    }
+
+    /// <summary>
+    /// 验证同名的自定义异步返回值不能冒充框架异步返回值。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_RejectUnrelatedValueTaskAsync()
+    {
+        string source = RuntimeStubs + ValidDispatcher
+            .Replace("System.Threading.Tasks.ValueTask", "Other.ValueTask")
+            .Replace("return Other.ValueTask.CompletedTask;", "return default;")
+            + "namespace Other { public struct ValueTask { } }";
+
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+
+        await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(2);
+    }
+
+    /// <summary>
+    /// 验证副作用处理方法的两个参数均必须按值传递。
+    /// </summary>
+    /// <param name="modifier">被验证的引用传递修饰符。</param>
+    /// <param name="parameter">被验证的参数声明。</param>
+    [Test]
+    [Arguments("ref", "LoginEffect.NavigateToHome effect")]
+    [Arguments("out", "LoginEffect.NavigateToHome effect")]
+    [Arguments("in", "LoginEffect.NavigateToHome effect")]
+    [Arguments("ref", "System.Threading.CancellationToken cancellationToken")]
+    [Arguments("out", "System.Threading.CancellationToken cancellationToken")]
+    [Arguments("in", "System.Threading.CancellationToken cancellationToken")]
+    public async Task Generator_Should_RejectByReferenceParametersAsync(string modifier, string parameter)
+    {
+        ArgumentNullException.ThrowIfNull(parameter);
+        string source = RuntimeStubs + ValidDispatcher
+            .Replace(parameter, modifier + " " + parameter)
+            .Replace("return System.Threading.Tasks.ValueTask.CompletedTask;", "throw new System.NotImplementedException();");
+
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+
+        int expectedDiagnostics = parameter.StartsWith("LoginEffect", StringComparison.Ordinal) ? 1 : 2;
+        await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(expectedDiagnostics);
     }
 
     /// <summary>
