@@ -28,6 +28,27 @@ public sealed partial class MviDiContainerGenerator
             IReadOnlyList<Models.DiServiceInfo> services,
             IReadOnlyList<Models.MviFeatureInfo> features)
         {
+            return GenerateContainerSource(
+                assemblyName,
+                services,
+                features,
+                System.Array.Empty<Models.CompositionInfo>());
+        }
+
+        /// <summary>
+        /// 生成支持 Feature 与组合装配的 DI 容器源码。
+        /// </summary>
+        /// <param name="assemblyName">目标程序集名称。</param>
+        /// <param name="services">DI 服务信息集合。</param>
+        /// <param name="features">Feature 装配模型集合。</param>
+        /// <param name="compositions">组合装配模型集合。</param>
+        /// <returns>生成的 C# 源码。</returns>
+        public static string GenerateContainerSource(
+            string assemblyName,
+            IReadOnlyList<Models.DiServiceInfo> services,
+            IReadOnlyList<Models.MviFeatureInfo> features,
+            IReadOnlyList<Models.CompositionInfo> compositions)
+        {
             StringBuilder builder = new();
             string containerNamespace = string.IsNullOrEmpty(assemblyName) ? "GeneratedContainer" : assemblyName;
 
@@ -38,8 +59,8 @@ public sealed partial class MviDiContainerGenerator
             EmitResolveMethods(builder, services, features);
             EmitCreateScope(builder);
             EmitCreateWith(builder, services);
-            EmitFeatureFactories(builder, features);
             EmitInstanceFactories(builder, features, services);
+            EmitCompositionBuilders(builder, compositions);
             EmitScopeClass(builder);
             EmitServiceFactoryReceiverInterface(builder);
 
@@ -47,7 +68,7 @@ public sealed partial class MviDiContainerGenerator
         }
 
         /// <summary>
-        /// 发射 Feature 装配所需的字段与辅助方法（仅当存在 Feature 时）。
+        /// 发射 Feature 装配所需的字段（仅当存在 Feature 时）。
         /// </summary>
         private static void EmitFeatureFields(
             StringBuilder builder,
@@ -59,24 +80,6 @@ public sealed partial class MviDiContainerGenerator
             }
 
             builder.AppendLine("    private readonly " + UiDispatcherTypeName + " _uiDispatcher;");
-            builder.AppendLine("    private readonly " + MediatorTypeName + " _mediator;");
-            builder.AppendLine();
-            builder.AppendLine("    /// <summary>");
-            builder.AppendLine("    /// 获取跨 Feature 协调中介者，供组合根注册路由。");
-            builder.AppendLine("    /// </summary>");
-            builder.AppendLine("    public " + MediatorTypeName + " Mediator => _mediator;");
-            builder.AppendLine();
-            builder.AppendLine("    private object GetSingleton(System.Type serviceType, System.Func<object> factory)");
-            builder.AppendLine("    {");
-            builder.AppendLine("        if (_singletons.TryGetValue(serviceType, out object? existing))");
-            builder.AppendLine("        {");
-            builder.AppendLine("            return existing;");
-            builder.AppendLine("        }");
-            builder.AppendLine();
-            builder.AppendLine("        object created = factory();");
-            builder.AppendLine("        _singletons[serviceType] = created;");
-            builder.AppendLine("        return created;");
-            builder.AppendLine("    }");
             builder.AppendLine();
         }
 
@@ -98,14 +101,11 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine("    /// 初始化由源生成器生成的泛型 DI 容器。");
             builder.AppendLine("    /// </summary>");
             builder.AppendLine("    /// <param name=\"uiDispatcher\">UI 调度器，缺省时使用内联调度器。</param>");
-            builder.AppendLine("    /// <param name=\"mediator\">中介者，缺省时由容器创建。</param>");
             builder.AppendLine("    public GeneratedMviContainer(");
-            builder.AppendLine("        " + UiDispatcherTypeName + "? uiDispatcher = null,");
-            builder.AppendLine("        " + MediatorTypeName + "? mediator = null)");
+            builder.AppendLine("        " + UiDispatcherTypeName + "? uiDispatcher = null)");
             builder.AppendLine("    {");
             builder.AppendLine("        _uiDispatcher = uiDispatcher");
             builder.AppendLine("            ?? global::MiKiNuo.Mvi.Application.MVI.Threading.MviInlineUiDispatcher.Instance;");
-            builder.AppendLine("        _mediator = mediator ?? new global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediator();");
             builder.AppendLine("    }");
             builder.AppendLine();
             builder.AppendLine("    /// <summary>");
@@ -142,15 +142,14 @@ public sealed partial class MviDiContainerGenerator
             }
 
             EmitResolveGeneric(builder);
-            EmitResolveByTypeWithFeatures(builder, features);
+            EmitResolveByTypeWithFeatures(builder);
         }
 
         /// <summary>
-        /// 发射带 Feature 分支的 Resolve(Type) 方法。
+        /// 发射带 UI 调度器分支的 Resolve(Type) 方法。
         /// </summary>
         private static void EmitResolveByTypeWithFeatures(
-            StringBuilder builder,
-            IReadOnlyList<Models.MviFeatureInfo> features)
+            StringBuilder builder)
         {
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// 解析指定类型的服务。");
@@ -174,11 +173,6 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine("            return _uiDispatcher;");
             builder.AppendLine("        }");
             builder.AppendLine();
-            builder.AppendLine("        if (serviceType == typeof(" + MediatorTypeName + "))");
-            builder.AppendLine("        {");
-            builder.AppendLine("            return _mediator;");
-            builder.AppendLine("        }");
-            builder.AppendLine();
 
             builder.AppendLine("        if (_factories.TryGetValue(serviceType, out (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory) entry))");
             builder.AppendLine("        {");
@@ -192,121 +186,9 @@ public sealed partial class MviDiContainerGenerator
             builder.AppendLine("        }");
             builder.AppendLine();
 
-            foreach (Models.MviFeatureInfo feature in features)
-            {
-                builder.Append("        if (serviceType == typeof(").Append(feature.StoreTypeName).AppendLine("))");
-                builder.AppendLine("        {");
-                builder.Append("            return GetSingleton(serviceType, Create").Append(feature.FeatureName).AppendLine("Store);");
-                builder.AppendLine("        }");
-                builder.AppendLine();
-                builder.Append("        if (serviceType == typeof(").Append(feature.Reducer.TypeName).AppendLine("))");
-                builder.AppendLine("        {");
-                builder.Append("            return GetSingleton(serviceType, Create").Append(feature.FeatureName).AppendLine("Reducer);");
-                builder.AppendLine("        }");
-                builder.AppendLine();
-
-                if (feature.EffectDispatcher is not null)
-                {
-                    builder.Append("        if (serviceType == typeof(").Append(feature.EffectDispatcher.TypeName).AppendLine("))");
-                    builder.AppendLine("        {");
-                    builder.Append("            return GetSingleton(serviceType, Create").Append(feature.FeatureName).AppendLine("EffectDispatcher);");
-                    builder.AppendLine("        }");
-                    builder.AppendLine();
-                }
-
-                if (feature.ViewModel is not null)
-                {
-                    builder.Append("        if (serviceType == typeof(").Append(feature.ViewModel.TypeName).AppendLine("))");
-                    builder.AppendLine("        {");
-                    builder.Append("            return GetSingleton(serviceType, Create").Append(feature.FeatureName).AppendLine("ViewModel);");
-                    builder.AppendLine("        }");
-                    builder.AppendLine();
-                }
-            }
-
             builder.AppendLine("        throw new InvalidOperationException($\"未注册服务：{serviceType.FullName}\");");
             builder.AppendLine("    }");
             builder.AppendLine();
-        }
-
-        /// <summary>
-        /// 发射各 Feature 的工厂方法（Store / Reducer / EffectDispatcher / ViewModel）。
-        /// </summary>
-        private static void EmitFeatureFactories(
-            StringBuilder builder,
-            IReadOnlyList<Models.MviFeatureInfo> features)
-        {
-            foreach (Models.MviFeatureInfo feature in features)
-            {
-                string name = feature.FeatureName;
-                string storeImplType = "global::MiKiNuo.Mvi.Application.MVI.Store.MviStore<"
-                    + feature.StateTypeName + ", " + feature.IntentTypeName + ", " + feature.EffectTypeName + ">";
-                string middlewareType = "global::MiKiNuo.Mvi.Application.MVI.Middleware.IMviMiddleware<"
-                    + feature.StateTypeName + ", " + feature.IntentTypeName + ", " + feature.EffectTypeName + ">";
-
-                builder.Append("    private object Create").Append(name).AppendLine("Reducer()");
-                builder.AppendLine("    {");
-                builder.Append("        return ").Append(feature.Reducer.NewExpression()).AppendLine(";");
-                builder.AppendLine("    }");
-                builder.AppendLine();
-
-                if (feature.EffectDispatcher is not null)
-                {
-                    builder.Append("    private object Create").Append(name).AppendLine("EffectDispatcher()");
-                    builder.AppendLine("    {");
-                    builder.Append("        return ").Append(feature.EffectDispatcher.NewExpression()).AppendLine(";");
-                    builder.AppendLine("    }");
-                    builder.AppendLine();
-                }
-
-                builder.Append("    private object Create").Append(name).AppendLine("Store()");
-                builder.AppendLine("    {");
-                builder.Append("        return new ").Append(storeImplType).AppendLine("(");
-                builder.Append("            ").Append(feature.StateTypeName).AppendLine(".Initial,");
-                builder.Append("            this.Resolve<").Append(feature.Reducer.TypeName).AppendLine(">(),");
-
-                if (feature.EffectDispatcher is not null)
-                {
-                    builder.Append("            this.Resolve<").Append(feature.EffectDispatcher.TypeName).AppendLine(">(),");
-                }
-                else if (feature.EffectTypeName.EndsWith("UnitEffect", System.StringComparison.Ordinal))
-                {
-                    builder.AppendLine("            global::MiKiNuo.Mvi.Application.MVI.Effect.NullEffectDispatcher.Instance,");
-                }
-                else
-                {
-                    builder.Append("            throw new System.InvalidOperationException(\"Feature ")
-                        .Append(name).AppendLine(" 未发现匹配的 EffectDispatcher，请为 Effect 类型提供 MviEffectDispatcherBase 子类。\"),");
-                }
-
-                if (feature.Middlewares.Count == 0)
-                {
-                    builder.Append("            System.Array.Empty<").Append(middlewareType).AppendLine(">());");
-                }
-                else
-                {
-                    builder.Append("            new ").Append(middlewareType).AppendLine("[]");
-                    builder.AppendLine("            {");
-                    foreach (Models.FeatureComponentInfo middleware in feature.Middlewares)
-                    {
-                        builder.Append("                ").Append(middleware.NewExpression()).AppendLine(",");
-                    }
-
-                    builder.AppendLine("            });");
-                }
-
-                builder.AppendLine("    }");
-                builder.AppendLine();
-
-                if (feature.ViewModel is not null)
-                {
-                    builder.Append("    private object Create").Append(name).AppendLine("ViewModel()");
-                    builder.AppendLine("    {");
-                    builder.Append("        return ").Append(feature.ViewModel.NewExpression()).AppendLine(";");
-                    builder.AppendLine("    }");
-                    builder.AppendLine();
-                }
-            }
         }
     }
 }

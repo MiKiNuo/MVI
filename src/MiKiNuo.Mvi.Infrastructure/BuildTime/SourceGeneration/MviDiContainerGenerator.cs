@@ -37,26 +37,43 @@ public sealed partial class MviDiContainerGenerator : IIncrementalGenerator
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (syntaxContext, _) => (INamedTypeSymbol)syntaxContext.TargetSymbol);
 
+        IncrementalValuesProvider<INamedTypeSymbol> compositionDeclarations = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                "MiKiNuo.Mvi.Domain.DI.MviCompositionAttribute",
+                static (node, _) => node is ClassDeclarationSyntax,
+                static (syntaxContext, _) => (INamedTypeSymbol)syntaxContext.TargetSymbol);
+
         IncrementalValueProvider<(
-            (System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo>, System.Collections.Immutable.ImmutableArray<INamedTypeSymbol>) Left,
-            Compilation Right)> combined =
+            (System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> Services,
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> Reducers) Features,
+            (System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> Compositions,
+            Compilation Compilation) Runtime)> combined =
             services.Collect()
                 .Combine(featureReducers.Collect())
-                .Combine(context.CompilationProvider);
+                .Combine(compositionDeclarations.Collect().Combine(context.CompilationProvider));
 
         context.RegisterSourceOutput(combined, static (productionContext, payload) =>
         {
-            System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> discoveredServices = payload.Left.Item1;
-            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> reducerSymbols = payload.Left.Item2;
-            Compilation compilation = payload.Right;
+            System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> discoveredServices = payload.Features.Services;
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> reducerSymbols = payload.Features.Reducers;
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> compositionSymbols = payload.Runtime.Compositions;
+            Compilation compilation = payload.Runtime.Compilation;
 
-            if (discoveredServices.IsDefaultOrEmpty && reducerSymbols.IsDefaultOrEmpty)
+            if (discoveredServices.IsDefaultOrEmpty && reducerSymbols.IsDefaultOrEmpty && compositionSymbols.IsDefaultOrEmpty)
             {
                 return;
             }
 
             IReadOnlyList<Models.MviFeatureInfo> features = FeatureAnalysis.CollectFeatures(
                 reducerSymbols,
+                compilation,
+                productionContext);
+
+            IReadOnlyList<Models.CompositionInfo> compositions = CompositionAnalysis.CollectCompositions(
+                compositionSymbols.IsDefaultOrEmpty
+                    ? System.Array.Empty<INamedTypeSymbol>()
+                    : compositionSymbols,
+                features,
                 compilation,
                 productionContext);
 
@@ -67,10 +84,19 @@ public sealed partial class MviDiContainerGenerator : IIncrementalGenerator
             string source = Emission.GenerateContainerSource(
                 assemblyName,
                 discoveredServices.IsDefaultOrEmpty ? System.Array.Empty<Models.DiServiceInfo>() : discoveredServices,
-                features);
+                features,
+                compositions);
             productionContext.AddSource(
                 "GeneratedMviContainer.g.cs",
                 SourceText.From(source, Encoding.UTF8));
+
+            string? handlesSource = Emission.GenerateCompositionHandlesSource(compositions);
+            if (handlesSource is not null)
+            {
+                productionContext.AddSource(
+                    "GeneratedMviCompositions.g.cs",
+                    SourceText.From(handlesSource, Encoding.UTF8));
+            }
         });
     }
 }

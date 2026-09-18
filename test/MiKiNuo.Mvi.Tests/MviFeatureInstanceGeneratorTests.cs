@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -8,12 +6,12 @@ using TUnit.Core;
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 验证生成实例工厂的运行时隔离及旧解析兼容。
+/// 验证生成实例工厂的运行时隔离。
 /// </summary>
 public sealed class MviFeatureInstanceGeneratorTests
 {
     /// <summary>
-    /// 验证同类型实例独立且旧容器解析仍复用同一对象。
+    /// 验证同类型实例独立：状态、身份与视图模型互不共享。
     /// </summary>
     [Test]
     public async Task GeneratedFactory_Should_IsolateInstancesAsync()
@@ -36,8 +34,7 @@ public sealed class MviFeatureInstanceGeneratorTests
                     await first.ViewModel.Increment();
                     return first.ViewModel.Count == 1 && second.ViewModel.Count == 40
                         && first.Id != second.Id
-                        && !object.ReferenceEquals(first.ViewModel, second.ViewModel)
-                        && object.ReferenceEquals(container.Resolve<FeatureTest.TestViewModel>(), container.Resolve<FeatureTest.TestViewModel>());
+                        && !object.ReferenceEquals(first.ViewModel, second.ViewModel);
                 }
             }
             """;
@@ -82,18 +79,8 @@ public sealed class MviFeatureInstanceGeneratorTests
     /// <returns>运行时验收结果。</returns>
     private static async Task<bool> RunProbeAsync(string source)
     {
-        CSharpCompilation compilation = GeneratorTestHost.CreateCompilation(source,
+        return await GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
+            source,
             MviFeatureContainerGeneratorTests.GetFrameworkReferences());
-        GeneratorDriverRunResult result = CSharpGeneratorDriver.Create(new MviDiContainerGenerator())
-            .RunGenerators(compilation).GetRunResult();
-        CSharpParseOptions options = new(LanguageVersion.Preview);
-        compilation = compilation.AddSyntaxTrees(result.GeneratedTrees.Select(tree =>
-            CSharpSyntaxTree.ParseText(tree.GetText(), options)));
-        using MemoryStream stream = new();
-        Microsoft.CodeAnalysis.Emit.EmitResult emitted = compilation.Emit(stream);
-        await Assert.That(emitted.Success).IsTrue().Because(string.Join("\n", emitted.Diagnostics));
-        Assembly assembly = System.Reflection.Assembly.Load(stream.ToArray());
-        MethodInfo method = assembly.GetType("InstanceProbe")!.GetMethod("Run")!;
-        return await (Task<bool>)method.Invoke(null, null)!;
     }
 }

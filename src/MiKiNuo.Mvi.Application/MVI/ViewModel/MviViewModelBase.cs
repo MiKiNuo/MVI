@@ -19,7 +19,6 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
     where TEffect : IMviEffect
 {
     private readonly IDisposable _stateSubscription;
-    private readonly List<IDisposable> _siblingSubscriptions = new();
     private readonly IMviUiDispatcher _uiDispatcher;
     private bool _isDisposed;
 
@@ -130,31 +129,6 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
     }
 
     /// <summary>
-    /// 绑定兄弟 Store 的状态到当前 ViewModel。
-    /// </summary>
-    /// <typeparam name="TSiblingState">兄弟状态类型。</typeparam>
-    /// <typeparam name="TSiblingIntent">兄弟意图类型。</typeparam>
-    /// <typeparam name="TSiblingEffect">兄弟副作用类型。</typeparam>
-    /// <param name="siblingStore">兄弟 Store。</param>
-    /// <param name="applySiblingState">状态应用回调。</param>
-    /// <returns>订阅句柄（自动由基类管理释放）。</returns>
-    protected IDisposable BindSiblingState<TSiblingState, TSiblingIntent, TSiblingEffect>(
-        IMviStore<TSiblingState, TSiblingIntent, TSiblingEffect> siblingStore,
-        Action<TSiblingState> applySiblingState)
-        where TSiblingState : IMviState
-        where TSiblingIntent : IMviIntent
-        where TSiblingEffect : IMviEffect
-    {
-        ArgumentNullException.ThrowIfNull(siblingStore);
-        ArgumentNullException.ThrowIfNull(applySiblingState);
-
-        IDisposable subscription = siblingStore.States
-            .Subscribe(applySiblingState);
-        _siblingSubscriptions.Add(subscription);
-        return subscription;
-    }
-
-    /// <summary>
     /// ViewModel 释放的最终扩展点，由 <see cref="Dispose"/> 在 <see cref="DisposeGeneratedCommands"/> 之后调用。
     /// </summary>
     /// <remarks>
@@ -202,13 +176,6 @@ public abstract class MviViewModelBase<TState, TIntent, TEffect> : MviComponent,
 
         _stateSubscription.Dispose();
         DisposeGeneratedCommands();
-
-        // 释放所有 sibling Store 订阅
-        foreach (IDisposable subscription in _siblingSubscriptions)
-        {
-            subscription.Dispose();
-        }
-        _siblingSubscriptions.Clear();
 
         OnDispose();
         base.Dispose();

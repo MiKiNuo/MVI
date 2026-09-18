@@ -1,4 +1,4 @@
-### New Rules
+﻿### New Rules
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|--------------------
@@ -26,3 +26,8 @@ MVI0018 | MviFeature | Error | Feature 匹配多个副作用分发器，拒绝�
 MVI0019 | MviFeature | Error | Feature 匹配多个视图模型，拒绝歧义装配。
 MVI0020 | MviFeature | Error | 多个中间件必须声明唯一的 MviMiddlewareOrder 顺序。
 MVI0021 | MviComposition | Error | 业务 Feature 不得通过兄弟绑定或异类 Store 直接通信。
+MVI0022 | MviComposition | Error | 组合内同一请求契约存在多个提供方，拒绝自动绑定。
+MVI0023 | MviComposition | Error | 组合内请求契约存在消费方但未找到提供方，请求将无路由可达。
+MVI0024 | MviComposition | Error | 组合接线方法签名或可见性非法：路由处理器须为 (TRequest, CancellationToken) => ValueTask<TResponse>，接纳器须为 (TNotification) => void，可见性 internal 或 public。
+MVI0025 | MviComposition | Error | 组合声明类必须标记 partial 修饰符，否则源生成器无法 emit 组合句柄。
+MVI0026 | MviComposition | Error | 组合成员不是已发现的 [MviFeature] Reducer（或缺少匹配 ViewModel），已跳过该成员。

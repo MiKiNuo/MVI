@@ -1,18 +1,13 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Application.MVI.Mediator;
-using MiKiNuo.Mvi.Application.MVI.Threading;
-using MiKiNuo.Mvi.Domain.MVI.Effect;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
+﻿using MiKiNuo.Mvi.Application.MVI.Threading;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Composition;
 
 /// <summary>
-/// 表示示例应用组合根：创建生成的 DI 容器并注册跨 Feature 导航路由。
+/// 表示示例应用组合根：创建生成的 DI 容器并启动应用组合。
 /// </summary>
 /// <remarks>
-/// 各 Feature 的 Store / Reducer / EffectDispatcher / ViewModel 由
-/// [MviFeature] 源生成器装配进 GeneratedMviContainer，此处只做路由接线。
+/// 各 Feature 实例与跨 Feature 接线由 [MviComposition] 源生成器装配，
+/// 此处只做组合启动与窗口创建。
 /// </remarks>
 public sealed class SampleCompositionRoot
 {
@@ -26,14 +21,6 @@ public sealed class SampleCompositionRoot
     {
         ArgumentNullException.ThrowIfNull(uiDispatcher);
         _container = new GeneratedMviContainer(uiDispatcher);
-        if (_container.Mediator is MviMediator mediator)
-        {
-            mediator.Register<NavigateToPageRequest, bool>(HandleNavigateToPageAsync);
-        }
-        else
-        {
-            throw new InvalidOperationException("容器中介者不支持路由注册。");
-        }
     }
 
     /// <summary>
@@ -42,30 +29,11 @@ public sealed class SampleCompositionRoot
     /// <returns>主窗口。</returns>
     public MainWindow CreateMainWindow()
     {
-        return new MainWindow(_container.Resolve<AppShellViewModel>(), _container);
-    }
-
-    private async ValueTask<bool> HandleNavigateToPageAsync(
-        NavigateToPageRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (request.Page == ShellPage.Home)
-        {
-            await _container.Resolve<IMviStore<HomeState, HomeIntent, HomeEffect>>()
-                .DispatchAsync(new HomeIntent.ShowUser(request.DisplayName ?? string.Empty), cancellationToken).ConfigureAwait(false);
-        }
-        IMviStore<AppShellState, AppShellIntent, UnitEffect> shellStore =
-            _container.Resolve<IMviStore<AppShellState, AppShellIntent, UnitEffect>>();
-
-        AppShellIntent intent = request.Page switch
-        {
-            ShellPage.Register => new AppShellIntent.ShowRegister(),
-            ShellPage.ResetPassword => new AppShellIntent.ShowResetPassword(),
-            ShellPage.Home => new AppShellIntent.ShowHome(request.DisplayName ?? string.Empty),
-            _ => new AppShellIntent.ShowLogin(),
-        };
-
-        await shellStore.DispatchAsync(intent, cancellationToken).ConfigureAwait(false);
-        return true;
+        AppComposition composition = _container
+            .CreateAppCompositionAsync()
+            .AsTask()
+            .GetAwaiter()
+            .GetResult();
+        return new MainWindow(composition, _container);
     }
 }

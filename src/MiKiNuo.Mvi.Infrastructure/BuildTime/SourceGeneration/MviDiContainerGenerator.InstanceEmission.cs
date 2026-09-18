@@ -31,6 +31,7 @@ public sealed partial class MviDiContainerGenerator
                 string result = "global::System.Threading.Tasks.ValueTask<" + handle + ">";
                 string endpoint = "global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediatorEndpoint";
                 string method = "Create" + feature.FeatureName + "InstanceAsync";
+                string coreMethod = "Create" + feature.FeatureName + "InstanceCoreAsync";
                 builder.AppendLine("    /// <summary>以默认状态创建独立 Feature 实例，接管端点所有权。</summary>");
                 builder.AppendLine("    /// <param name=\"endpoint\">该实例独占的中介端点。</param>");
                 builder.AppendLine("    /// <returns>拥有独立状态和资源的实例。</returns>");
@@ -41,6 +42,16 @@ public sealed partial class MviDiContainerGenerator
                 builder.AppendLine("    /// <param name=\"initialState\">不可变初始状态。</param>");
                 builder.AppendLine("    /// <returns>拥有独立状态和资源的实例。</returns>");
                 builder.AppendLine("    public async " + result + " " + method + "(" + endpoint + " endpoint, " + feature.StateTypeName + " initialState)");
+                builder.AppendLine("    {");
+                builder.AppendLine("        (" + handle + " instance, _) = await " + coreMethod + "(endpoint, initialState).ConfigureAwait(false);");
+                builder.AppendLine("        return instance;");
+                builder.AppendLine("    }");
+                builder.AppendLine("    /// <summary>创建实例并返回实例服务表，供组合构建器完成接线。</summary>");
+                builder.AppendLine("    /// <param name=\"endpoint\">该实例独占的中介端点。</param>");
+                builder.AppendLine("    /// <param name=\"initialState\">不可变初始状态。</param>");
+                builder.AppendLine("    /// <returns>实例与其构造期服务表。</returns>");
+                builder.AppendLine("    internal async global::System.Threading.Tasks.ValueTask<(" + handle + " Instance, InstanceServices Services)> "
+                    + coreMethod + "(" + endpoint + " endpoint, " + feature.StateTypeName + " initialState)");
                 builder.AppendLine("    {");
                 builder.AppendLine("        ArgumentNullException.ThrowIfNull(endpoint);");
                 builder.AppendLine("        ArgumentNullException.ThrowIfNull(initialState);");
@@ -72,7 +83,7 @@ public sealed partial class MviDiContainerGenerator
                 builder.AppendLine("            " + feature.ViewModel.TypeName + " vm = services.Resolve<" + feature.ViewModel.TypeName + ">();");
                 builder.AppendLine("            " + handle + " instance = new(endpoint.InstanceId, vm, services.Resources);");
                 builder.AppendLine("            _ = instance.Lifetime.Register(endpoint.Dispose);");
-                builder.AppendLine("            return instance;");
+                builder.AppendLine("            return (instance, services);");
                 builder.AppendLine("        }");
                 builder.AppendLine("        catch (Exception failure)");
                 builder.AppendLine("        {");
@@ -111,49 +122,49 @@ public sealed partial class MviDiContainerGenerator
             }
             builder.AppendLine("    };");
             builder.AppendLine("""
-                    private sealed class InstanceServices : IMviServiceFactoryReceiver
+                internal sealed class InstanceServices : IMviServiceFactoryReceiver
+                {
+                    private readonly GeneratedMviContainer _root;
+                    private readonly Dictionary<Type, object> _cache = new();
+                    private readonly HashSet<Type> _constructing = new();
+                    public Dictionary<Type, Func<object>> Factories { get; } = new();
+                    public List<object> Resources { get; } = new();
+                    public InstanceServices(GeneratedMviContainer root, global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediatorEndpoint endpoint)
                     {
-                        private readonly GeneratedMviContainer _root;
-                        private readonly Dictionary<Type, object> _cache = new();
-                        private readonly HashSet<Type> _constructing = new();
-                        public Dictionary<Type, Func<object>> Factories { get; } = new();
-                        public List<object> Resources { get; } = new();
-                        public InstanceServices(GeneratedMviContainer root, global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediatorEndpoint endpoint)
+                        _root = root;
+                        _cache.Add(typeof(global::MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator), endpoint);
+                        _cache.Add(typeof(global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediatorEndpoint), endpoint);
+                        _cache.Add(typeof(global::MiKiNuo.Mvi.Application.MVI.Threading.IMviUiDispatcher), root._uiDispatcher);
+                        Resources.Add(endpoint);
+                    }
+                    public TService Resolve<TService>() where TService : notnull => (TService)Resolve(typeof(TService));
+                    private object Resolve(Type type)
+                    {
+                        if (_cache.TryGetValue(type, out object? cached)) return cached;
+                        if (!_constructing.Add(type)) throw new InvalidOperationException($"Feature 构造依赖循环：{type}");
+                        try
                         {
-                            _root = root;
-                            _cache.Add(typeof(global::MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator), endpoint);
-                            _cache.Add(typeof(global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediatorEndpoint), endpoint);
-                            _cache.Add(typeof(global::MiKiNuo.Mvi.Application.MVI.Threading.IMviUiDispatcher), root._uiDispatcher);
-                            Resources.Add(endpoint);
-                        }
-                        public TService Resolve<TService>() where TService : notnull => (TService)Resolve(typeof(TService));
-                        private object Resolve(Type type)
-                        {
-                            if (_cache.TryGetValue(type, out object? cached)) return cached;
-                            if (!_constructing.Add(type)) throw new InvalidOperationException($"Feature 构造依赖循环：{type}");
-                            try
+                            object created;
+                            bool cache;
+                            if (Factories.TryGetValue(type, out Func<object>? factory))
                             {
-                                object created;
-                                bool cache;
-                                if (Factories.TryGetValue(type, out Func<object>? factory))
+                                created = factory();
+                                cache = true;
+                            }
+                            else if (_factories.TryGetValue(type, out (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory) entry))
+                            {
+                                if (entry.Lifetime == ServiceLifetime.Singleton)
                                 {
-                                    created = factory();
-                                    cache = true;
+                                    if (_instanceCapturingSingletons.Contains(type)) throw new InvalidOperationException($"单例不能捕获 Feature 或作用域依赖：{type}");
+                                    return _root.Resolve(type);
                                 }
-                                else if (_factories.TryGetValue(type, out (ServiceLifetime Lifetime, Func<IMviServiceFactoryReceiver, object> Factory) entry))
-                                {
-                                    if (entry.Lifetime == ServiceLifetime.Singleton)
-                                    {
-                                        if (_instanceCapturingSingletons.Contains(type)) throw new InvalidOperationException($"单例不能捕获 Feature 或作用域依赖：{type}");
-                                        return _root.Resolve(type);
-                                    }
-                                    created = entry.Factory(this);
-                                    cache = entry.Lifetime == ServiceLifetime.Scoped;
-                                }
-                                else throw new InvalidOperationException($"实例内未注册服务：{type}");
-                                if (cache) _cache.Add(type, created);
-                                if (!Resources.Exists(resource => ReferenceEquals(resource, created))) Resources.Add(created);
-                                return created;
+                                created = entry.Factory(this);
+                                cache = entry.Lifetime == ServiceLifetime.Scoped;
+                            }
+                            else throw new InvalidOperationException($"实例内未注册服务：{type}");
+                            if (cache) _cache.Add(type, created);
+                            if (!Resources.Exists(resource => ReferenceEquals(resource, created))) Resources.Add(created);
+                            return created;
                             }
                             finally { _constructing.Remove(type); }
                         }

@@ -1,4 +1,4 @@
-// 源生成器行为测试共享宿主：封装编译对象创建与生成器驱动逻辑。
+﻿// 源生成器行为测试共享宿主：封装编译对象创建与生成器驱动逻辑。
 // 消除各行为测试中重复的反射加载与基础引用组装代码。
 
 using Microsoft.CodeAnalysis;
@@ -85,6 +85,41 @@ internal static class GeneratorTestHost
         bool emitSuccess = finalCompilation.Emit(stream).Success;
 
         return (runResult, emitSuccess);
+    }
+
+    /// <summary>
+    /// 驱动生成器、将生成代码合并编译为程序集并执行其中的
+    /// <c>InstanceProbe.Run()</c> 公开验收入口。
+    /// </summary>
+    /// <typeparam name="TGenerator">生成器类型。</typeparam>
+    /// <param name="source">测试源代码（须含 InstanceProbe.Run）。</param>
+    /// <param name="extraReferences">额外元数据引用。</param>
+    /// <returns>探针返回的验收结果。</returns>
+    public static async Task<bool> RunGeneratorProbeAsync<TGenerator>(
+        string source, params MetadataReference[] extraReferences)
+        where TGenerator : IIncrementalGenerator, new()
+    {
+        TGenerator generator = new();
+        CSharpCompilation compilation = CreateCompilation(source, extraReferences);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        GeneratorDriverRunResult runResult = driver.RunGenerators(compilation).GetRunResult();
+
+        CSharpParseOptions parseOptions = new(LanguageVersion.Preview);
+        foreach (SyntaxTree tree in runResult.GeneratedTrees)
+        {
+            compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(tree.GetText(), parseOptions));
+        }
+
+        using MemoryStream stream = new();
+        Microsoft.CodeAnalysis.Emit.EmitResult emitted = compilation.Emit(stream);
+        if (!emitted.Success)
+        {
+            throw new InvalidOperationException("生成代码编译失败：" + string.Join("\n", emitted.Diagnostics));
+        }
+
+        System.Reflection.Assembly assembly = System.Reflection.Assembly.Load(stream.ToArray());
+        System.Reflection.MethodInfo method = assembly.GetType("InstanceProbe")!.GetMethod("Run")!;
+        return await (Task<bool>)method.Invoke(null, null)!;
     }
 
     /// <summary>

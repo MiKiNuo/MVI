@@ -1,4 +1,6 @@
-﻿using MiKiNuo.Mvi.Application.MVI.Middleware;
+﻿using MiKiNuo.Mvi.Application.MVI.Composition;
+using MiKiNuo.Mvi.Application.MVI.Mediator;
+using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Benchmarks.Composition;
 using MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi.LoginReplica;
@@ -122,45 +124,48 @@ public sealed class BenchmarkMviScenarioSmokeTests
     }
 
     /// <summary>
-    /// 验证 [MviFeature] 生成容器装配登录复刻对象图：Store、ViewModel 与认证服务均为单例。
+    /// 验证 [MviFeature] 实例工厂每次创建独立的登录复刻对象图。
     /// </summary>
     [Test]
-    public async Task FeatureContainer_Should_AssembleLoginReplicaAsSingletonsAsync()
+    public async Task FeatureContainer_Should_AssembleIndependentLoginReplicaInstancesAsync()
     {
         GeneratedMviContainer container = new();
+        using MviCompositionScope scope = new();
 
-        IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect> firstStore =
-            container.Resolve<IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect>>();
-        IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect> secondStore =
-            container.Resolve<IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect>>();
-        BenchLoginViewModel firstViewModel = container.Resolve<BenchLoginViewModel>();
-        BenchLoginViewModel secondViewModel = container.Resolve<BenchLoginViewModel>();
+        MviFeatureInstance<BenchLoginViewModel> first =
+            await container.CreateBenchLoginInstanceAsync(scope.CreateEndpoint(Guid.NewGuid()));
+        MviFeatureInstance<BenchLoginViewModel> second =
+            await container.CreateBenchLoginInstanceAsync(scope.CreateEndpoint(Guid.NewGuid()));
 
-        await Assert.That(ReferenceEquals(firstStore, secondStore)).IsTrue();
-        await Assert.That(ReferenceEquals(firstViewModel, secondViewModel)).IsTrue();
+        await Assert.That(ReferenceEquals(first, second)).IsFalse();
+        await Assert.That(ReferenceEquals(first.ViewModel, second.ViewModel)).IsFalse();
+        await Assert.That(first.Id).IsNotEqualTo(second.Id);
+
+        await first.DisposeAsync();
+        await second.DisposeAsync();
     }
 
     /// <summary>
-    /// 验证登录复刻场景完成完整 MVI 回环：提交 → 副作用 → 假认证 → 成功回流，ViewModel 属性同步。
+    /// 验证登录复刻场景完成完整 MVI 回环：绑定输入 → 提交命令 → 假认证 → 成功回流，ViewModel 属性同步。
     /// </summary>
     [Test]
     public async Task FeatureContainer_LoginReplica_Should_CompleteLoginLoopAsync()
     {
         GeneratedMviContainer container = new();
-        IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect> store =
-            container.Resolve<IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect>>();
-        BenchLoginViewModel viewModel = container.Resolve<BenchLoginViewModel>();
-        BenchLoginEffectDispatcher dispatcher = container.Resolve<BenchLoginEffectDispatcher>();
+        using MviCompositionScope scope = new();
+        MviFeatureInstance<BenchLoginViewModel> instance =
+            await container.CreateBenchLoginInstanceAsync(scope.CreateEndpoint(Guid.NewGuid()));
+        BenchLoginViewModel viewModel = instance.ViewModel;
 
-        await store.DispatchAsync(new BenchLoginIntent.ChangeUserName("bench"));
-        await store.DispatchAsync(new BenchLoginIntent.ChangePassword("pass"));
-        await store.DispatchAsync(new BenchLoginIntent.Submit());
+        viewModel.UserName = "bench";
+        viewModel.Password = "pass";
+        await WaitForConditionAsync(() => viewModel.CanSubmit);
+        await viewModel.SubmitCommand.ExecuteAsync(null);
 
-        await Assert.That(store.CurrentState.IsBusy).IsFalse();
-        await Assert.That(store.CurrentState.ErrorMessage).IsNull();
-        await Assert.That(store.CurrentState.DisplayName).IsEqualTo("Bench User");
-        await Assert.That(dispatcher.HandledCount).IsEqualTo(1);
-        await Assert.That(viewModel.UserName).IsEqualTo("bench");
+        await Assert.That(viewModel.IsBusy).IsFalse();
+        await Assert.That(viewModel.ErrorMessage).IsNull();
+
+        await instance.DisposeAsync();
     }
 
     /// <summary>
@@ -170,16 +175,34 @@ public sealed class BenchmarkMviScenarioSmokeTests
     public async Task FeatureContainer_LoginReplica_Should_ReflectFailureAsync()
     {
         GeneratedMviContainer container = new();
-        IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect> store =
-            container.Resolve<IMviStore<BenchLoginState, BenchLoginIntent, BenchLoginEffect>>();
+        using MviCompositionScope scope = new();
+        MviFeatureInstance<BenchLoginViewModel> instance =
+            await container.CreateBenchLoginInstanceAsync(scope.CreateEndpoint(Guid.NewGuid()));
+        BenchLoginViewModel viewModel = instance.ViewModel;
 
-        await store.DispatchAsync(new BenchLoginIntent.ChangeUserName("bench"));
-        await store.DispatchAsync(new BenchLoginIntent.ChangePassword("fail"));
-        await store.DispatchAsync(new BenchLoginIntent.Submit());
+        viewModel.UserName = "bench";
+        viewModel.Password = "fail";
+        await WaitForConditionAsync(() => viewModel.CanSubmit);
+        await viewModel.SubmitCommand.ExecuteAsync(null);
 
-        await Assert.That(store.CurrentState.IsBusy).IsFalse();
-        await Assert.That(store.CurrentState.ErrorMessage).IsEqualTo("认证失败。");
-        await Assert.That(store.CurrentState.CanSubmit).IsTrue();
+        await Assert.That(viewModel.IsBusy).IsFalse();
+        await Assert.That(viewModel.ErrorMessage).IsEqualTo("认证失败。");
+        await Assert.That(viewModel.CanSubmit).IsTrue();
+
+        await instance.DisposeAsync();
+    }
+
+    private static async Task WaitForConditionAsync(Func<bool> condition)
+    {
+        for (int attempt = 0; attempt < 200; attempt++)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(10);
+        }
     }
 
     private static MviStore<MinimalState, MinimalIntent, MinimalEffect> CreateMinimalStore(

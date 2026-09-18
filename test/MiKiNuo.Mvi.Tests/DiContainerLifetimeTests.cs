@@ -1,19 +1,13 @@
-using MiKiNuo.Mvi.Application.MVI.Mediator;
-using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.DI;
-using MiKiNuo.Mvi.Domain.MVI.Effect;
+﻿using MiKiNuo.Mvi.Domain.DI;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
-using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
 using TUnit.Assertions;
 using TUnit.Core;
 
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示 [MviFeature] 生成容器的生命周期与装配回归测试。
+/// 表示 [MviFeature]/[MviComposition] 生成容器的生命周期与装配回归测试。
 /// </summary>
 public sealed class DiContainerLifetimeTests
 {
@@ -33,65 +27,54 @@ public sealed class DiContainerLifetimeTests
     }
 
     /// <summary>
-    /// 验证 Feature 的 Store 与 ViewModel 由容器装配且为单例。
+    /// 验证组合构建器一次创建全部成员实例，实例身份互不重复。
     /// </summary>
     [Test]
-    public async Task Container_Should_AssembleFeatureAsSingletonsAsync()
+    public async Task Composition_Should_AssembleAllMemberInstancesAsync()
     {
         GeneratedMviContainer container = new();
 
-        IMviStore<LoginState, LoginIntent, LoginEffect> firstStore =
-            container.Resolve<IMviStore<LoginState, LoginIntent, LoginEffect>>();
-        IMviStore<LoginState, LoginIntent, LoginEffect> secondStore =
-            container.Resolve<IMviStore<LoginState, LoginIntent, LoginEffect>>();
-        LoginViewModel firstViewModel = container.Resolve<LoginViewModel>();
-        LoginViewModel secondViewModel = container.Resolve<LoginViewModel>();
+        AppComposition composition = await container.CreateAppCompositionAsync();
 
-        await Assert.That(ReferenceEquals(firstStore, secondStore)).IsTrue();
-        await Assert.That(ReferenceEquals(firstViewModel, secondViewModel)).IsTrue();
+        await Assert.That(composition.AppShell).IsNotNull();
+        await Assert.That(composition.Login).IsNotNull();
+        await Assert.That(composition.Register).IsNotNull();
+        await Assert.That(composition.ResetPassword).IsNotNull();
+        await Assert.That(composition.Home).IsNotNull();
+
+        Guid[] ids =
+        [
+            composition.AppShell.Id,
+            composition.Login.Id,
+            composition.Register.Id,
+            composition.ResetPassword.Id,
+            composition.Home.Id,
+        ];
+        await Assert.That(ids.Distinct().Count()).IsEqualTo(5);
+
+        await composition.DisposeAsync();
     }
 
     /// <summary>
-    /// 验证 UnitEffect Feature（应用壳）自动接入空副作用分发器并可正常派发。
+    /// 验证实例工厂每次创建独立的 Feature 实例。
     /// </summary>
     [Test]
-    public async Task Container_Should_AssembleUnitEffectFeatureAsync()
+    public async Task InstanceFactory_Should_CreateIndependentInstancesAsync()
     {
         GeneratedMviContainer container = new();
+        using MiKiNuo.Mvi.Application.MVI.Mediator.MviCompositionScope scope = new();
 
-        IMviStore<AppShellState, AppShellIntent, UnitEffect> shellStore =
-            container.Resolve<IMviStore<AppShellState, AppShellIntent, UnitEffect>>();
+        MiKiNuo.Mvi.Application.MVI.Composition.MviFeatureInstance<MiKiNuo.Mvi.Samples.Avalonia.Features.Login.LoginViewModel> first =
+            await container.CreateLoginInstanceAsync(scope.CreateEndpoint(Guid.NewGuid()));
+        MiKiNuo.Mvi.Application.MVI.Composition.MviFeatureInstance<MiKiNuo.Mvi.Samples.Avalonia.Features.Login.LoginViewModel> second =
+            await container.CreateLoginInstanceAsync(scope.CreateEndpoint(Guid.NewGuid()));
 
-        await shellStore.DispatchAsync(new AppShellIntent.ShowRegister());
+        await Assert.That(ReferenceEquals(first, second)).IsFalse();
+        await Assert.That(ReferenceEquals(first.ViewModel, second.ViewModel)).IsFalse();
+        await Assert.That(first.Id).IsNotEqualTo(second.Id);
 
-        await Assert.That(shellStore.CurrentState.CurrentPage).IsEqualTo(ShellPage.Register);
-    }
-
-    /// <summary>
-    /// 验证主页 ViewModel 的兄弟 Store 构造参数由容器解析。
-    /// </summary>
-    [Test]
-    public async Task Container_Should_ResolveViewModelWithSiblingStoreDependencyAsync()
-    {
-        GeneratedMviContainer container = new();
-
-        HomeViewModel homeViewModel = container.Resolve<HomeViewModel>();
-
-        await Assert.That(homeViewModel).IsNotNull();
-        await Assert.That(homeViewModel.DisplayName).IsEqualTo(string.Empty);
-    }
-
-    /// <summary>
-    /// 验证容器内置中介者可通过属性与 Resolve 两种方式访问同一实例。
-    /// </summary>
-    [Test]
-    public async Task Container_Should_ExposeSharedMediatorAsync()
-    {
-        GeneratedMviContainer container = new();
-
-        IMviMediator resolved = container.Resolve<IMviMediator>();
-
-        await Assert.That(ReferenceEquals(resolved, container.Mediator)).IsTrue();
+        await first.DisposeAsync();
+        await second.DisposeAsync();
     }
 
     /// <summary>

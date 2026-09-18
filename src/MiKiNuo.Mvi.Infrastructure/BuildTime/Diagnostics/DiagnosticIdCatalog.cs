@@ -138,6 +138,21 @@ public static class DiagnosticIdCatalog
     /// <summary>跨 Feature 直接通信绕过中介者。</summary>
     public const string MviCrossFeatureCommunication = "MVI0021";
 
+    /// <summary>组合内同一请求契约存在多个提供方。</summary>
+    public const string MviCompositionRouteAmbiguous = "MVI0022";
+
+    /// <summary>组合内请求契约存在消费方但未找到提供方。</summary>
+    public const string MviCompositionRouteMissing = "MVI0023";
+
+    /// <summary>组合接线方法（路由处理器/通知接纳器）签名或可见性非法。</summary>
+    public const string MviCompositionHandlerInvalid = "MVI0024";
+
+    /// <summary>组合声明类未标记 partial 修饰符。</summary>
+    public const string MviCompositionNotPartial = "MVI0025";
+
+    /// <summary>组合成员不是已发现的 [MviFeature] Reducer。</summary>
+    public const string MviCompositionMemberUnknown = "MVI0026";
+
     /// <summary>
     /// 获取全部已发布的诊断 ID 列表。
     /// 列表顺序与诊断类别（ARCH → DOC → CODE → MVI）保持一致，便于人工审查。
@@ -184,5 +199,10 @@ public static class DiagnosticIdCatalog
         MviFeatureViewModelAmbiguous,
         MviMiddlewareOrderInvalid,
         MviCrossFeatureCommunication,
+        MviCompositionRouteAmbiguous,
+        MviCompositionRouteMissing,
+        MviCompositionHandlerInvalid,
+        MviCompositionNotPartial,
+        MviCompositionMemberUnknown,
     ];
 }

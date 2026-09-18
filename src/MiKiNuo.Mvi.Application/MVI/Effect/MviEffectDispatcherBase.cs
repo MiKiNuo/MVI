@@ -60,6 +60,24 @@ public abstract class MviEffectDispatcherBase<TIntent, TEffect>
     }
 
     /// <summary>
+    /// 同步接纳本地意图进入所属 Store 的通知队列，供通知接纳器等同步回调使用。
+    /// </summary>
+    /// <param name="intent">接纳的意图。</param>
+    /// <returns>成功进入队列时为真；Store 关闭或队列已满时为假。</returns>
+    /// <exception cref="InvalidOperationException">分发器未附加到 Store 时抛出。</exception>
+    protected bool TryAcceptIntent(TIntent intent)
+    {
+        ArgumentNullException.ThrowIfNull(intent);
+        if (_intentSink is null)
+        {
+            throw new InvalidOperationException(
+                $"副作用分发器 {GetType().FullName} 尚未附加到 Store，无法接纳意图。请通过 MviStore 构造函数接线。");
+        }
+
+        return _intentSink.TryPost(intent);
+    }
+
+    /// <summary>
     /// 派发副作用。
     /// </summary>
     /// <param name="effect">副作用。</param>

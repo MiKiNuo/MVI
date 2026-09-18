@@ -75,7 +75,7 @@ public sealed class MviFeatureContainerGeneratorTests
         """;
 
     /// <summary>
-    /// 验证生成器为 [MviFeature] 标记的 Reducer 装配 Store/Reducer/EffectDispatcher/ViewModel。
+    /// 验证生成器为 [MviFeature] 标记的 Reducer 装配实例工厂。
     /// </summary>
     [Test]
     public async Task Generator_Should_AssembleFeatureIntoContainerAsync()
@@ -87,9 +87,8 @@ public sealed class MviFeatureContainerGeneratorTests
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
 
-        await Assert.That(generated).Contains("CreateTestStore");
-        await Assert.That(generated).Contains("CreateTestEffectDispatcher");
-        await Assert.That(generated).Contains("CreateTestViewModel");
+        await Assert.That(generated).Contains("CreateTestInstanceAsync");
+        await Assert.That(generated).Contains("CreateTestInstanceCoreAsync");
         await Assert.That(generated).Contains("TestState.Initial");
         await Assert.That(emitSuccess).IsTrue();
     }
@@ -110,7 +109,7 @@ public sealed class MviFeatureContainerGeneratorTests
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0016")).IsTrue();
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
-        await Assert.That(generated).DoesNotContain("CreateTestStore");
+        await Assert.That(generated).DoesNotContain("CreateTestInstanceAsync");
     }
 
     internal static MetadataReference[] GetFrameworkReferences()

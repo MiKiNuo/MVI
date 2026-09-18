@@ -12,7 +12,7 @@ public sealed class MviCommunicationBoundaryAnalyzer : DiagnosticAnalyzer
 {
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticIdCatalog.MviCrossFeatureCommunication, "跨 Feature 通信必须经过中介者",
-        "Feature“{0}”不得直接使用其他 Store 或 BindSiblingState；请通过 Mediator 契约通信。",
+        "Feature“{0}”不得直接使用其他 Store；请通过 Mediator 契约通信。",
         "MviComposition", DiagnosticSeverity.Error, true);
 
     /// <summary>获取支持的规则。</summary>
@@ -34,9 +34,7 @@ public sealed class MviCommunicationBoundaryAnalyzer : DiagnosticAnalyzer
         IInvocationOperation operation = (IInvocationOperation)context.Operation;
         INamedTypeSymbol? feature = FindFeature(context.ContainingSymbol.ContainingType);
         if (feature is null) return;
-        bool siblingBinding = operation.TargetMethod.Name == "BindSiblingState"
-            && operation.TargetMethod.ContainingType.ContainingNamespace.ToDisplayString() == "MiKiNuo.Mvi.Application.MVI.ViewModel";
-        if (siblingBinding || IsForeignStore(operation.Instance?.Type, feature)
+        if (IsForeignStore(operation.Instance?.Type, feature)
             || IsForeignStore(operation.Type, feature))
             context.ReportDiagnostic(Diagnostic.Create(Rule, operation.Syntax.GetLocation(), context.ContainingSymbol.ContainingType.Name));
     }

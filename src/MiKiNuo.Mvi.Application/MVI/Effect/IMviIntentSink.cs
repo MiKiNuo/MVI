@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Domain.MVI.Intent;
+﻿using MiKiNuo.Mvi.Domain.MVI.Intent;
 
 namespace MiKiNuo.Mvi.Application.MVI.Effect;
 
@@ -16,6 +16,13 @@ public interface IMviIntentSink<in TIntent>
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>表示异步派发过程的任务。</returns>
     public ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 尝试同步接纳通知意图进入有界队列，不等待业务处理完成。
+    /// </summary>
+    /// <param name="intent">通知适配后的本地意图。</param>
+    /// <returns>成功进入队列时为真；存储关闭或队列已满时为假。</returns>
+    public bool TryPost(TIntent intent);
 }
 
 /// <summary>

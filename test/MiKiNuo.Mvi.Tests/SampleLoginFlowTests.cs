@@ -1,8 +1,9 @@
-using MiKiNuo.Mvi.Application.MVI.Effect;
+﻿using MiKiNuo.Mvi.Application.MVI.Effect;
 using MiKiNuo.Mvi.Application.MVI.Mediator;
 using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Domain.MVI.Effect;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Home;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Login;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Register;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Shell;
@@ -70,31 +71,26 @@ public sealed class SampleLoginFlowTests
     }
 
     /// <summary>
-    /// 验证完整登录链路：输入 → 提交 → 联网(伪) → 回流成功 → Mediator 导航主页；
+    /// 验证完整登录链路：输入 → 提交 → 联网(伪) → 回流成功 → 组合范围路由导航主页；
     /// 且回流意图对中间件可见（追踪链完整）。
     /// </summary>
     [Test]
     public async Task LoginFlow_Should_CompleteEndToEndWithMediatorNavigationAsync()
     {
-        MviMediator mediator = new();
+        using MviCompositionScope scope = new();
+        MviMediatorEndpoint shellEndpoint = scope.CreateEndpoint(Guid.NewGuid());
+        MviMediatorEndpoint loginEndpoint = scope.CreateEndpoint(Guid.NewGuid());
+
+        AppShellEffectDispatcher shellDispatcher = new(shellEndpoint);
         using MviStore<AppShellState, AppShellIntent, UnitEffect> shellStore = new(
             AppShellState.Initial,
             new AppShellReducer(),
-            NullEffectDispatcher.Instance);
-        mediator.Register<NavigateToPageRequest, bool>(async (request, cancellationToken) =>
-        {
-            AppShellIntent intent = request.Page switch
-            {
-                ShellPage.Home => new AppShellIntent.ShowHome(request.DisplayName ?? string.Empty),
-                ShellPage.Register => new AppShellIntent.ShowRegister(),
-                _ => new AppShellIntent.ShowLogin(),
-            };
-            await shellStore.DispatchAsync(intent, cancellationToken);
-            return true;
-        });
+            shellDispatcher);
+        scope.Register<NavigateToPageRequest, bool>(shellEndpoint.InstanceId, shellDispatcher.HandleNavigateToPageAsync);
+        scope.Bind<NavigateToPageRequest>(loginEndpoint.InstanceId, shellEndpoint.InstanceId);
 
         LoginAuditMiddleware auditMiddleware = new();
-        LoginEffectDispatcher effectDispatcher = new(new FakeSuccessAuthService(), mediator);
+        LoginEffectDispatcher effectDispatcher = new(new FakeSuccessAuthService(), loginEndpoint);
         using MviStore<LoginState, LoginIntent, LoginEffect> loginStore = new(
             LoginState.Initial,
             new LoginReducer(),
@@ -112,6 +108,59 @@ public sealed class SampleLoginFlowTests
         // 回流意图 Succeeded 必须出现在中间件追踪链中。
         await Assert.That(auditMiddleware.Trail).Contains(nameof(LoginIntent.Submit));
         await Assert.That(auditMiddleware.Trail).Contains(nameof(LoginIntent.Succeeded));
+    }
+
+    /// <summary>
+    /// 验证导航主页后应用壳发布事实通知，主页经订阅接纳显示名。
+    /// </summary>
+    [Test]
+    public async Task LoginFlow_Should_NotifyHomeFeatureOnHomeNavigationAsync()
+    {
+        using MviCompositionScope scope = new();
+        MviMediatorEndpoint shellEndpoint = scope.CreateEndpoint(Guid.NewGuid());
+        MviMediatorEndpoint loginEndpoint = scope.CreateEndpoint(Guid.NewGuid());
+        MviMediatorEndpoint homeEndpoint = scope.CreateEndpoint(Guid.NewGuid());
+
+        AppShellEffectDispatcher shellDispatcher = new(shellEndpoint);
+        using MviStore<AppShellState, AppShellIntent, UnitEffect> shellStore = new(
+            AppShellState.Initial,
+            new AppShellReducer(),
+            shellDispatcher);
+        scope.Register<NavigateToPageRequest, bool>(shellEndpoint.InstanceId, shellDispatcher.HandleNavigateToPageAsync);
+        scope.Bind<NavigateToPageRequest>(loginEndpoint.InstanceId, shellEndpoint.InstanceId);
+
+        HomeEffectDispatcher homeDispatcher = new(homeEndpoint);
+        using MviStore<HomeState, HomeIntent, HomeEffect> homeStore = new(
+            HomeState.Initial,
+            new HomeReducer(),
+            homeDispatcher);
+        scope.Subscribe<HomeEnteredNotification>(homeEndpoint.InstanceId, homeDispatcher.OnHomeEntered);
+
+        LoginEffectDispatcher effectDispatcher = new(new FakeSuccessAuthService(), loginEndpoint);
+        using MviStore<LoginState, LoginIntent, LoginEffect> loginStore = new(
+            LoginState.Initial,
+            new LoginReducer(),
+            effectDispatcher);
+
+        await loginStore.DispatchAsync(new LoginIntent.ChangeUserName("emilys"));
+        await loginStore.DispatchAsync(new LoginIntent.ChangePassword("emilyspass"));
+        await loginStore.DispatchAsync(new LoginIntent.Submit());
+
+        await WaitForConditionAsync(() => homeStore.CurrentState.DisplayName == "Emily Johnson");
+        await Assert.That(homeStore.CurrentState.DisplayName).IsEqualTo("Emily Johnson");
+    }
+
+    private static async Task WaitForConditionAsync(Func<bool> condition)
+    {
+        for (int attempt = 0; attempt < 200; attempt++)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(10);
+        }
     }
 
     /// <summary>
