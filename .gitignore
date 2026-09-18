@@ -66,3 +66,4 @@ mono_crash.*.json
 /CONTEXT.md
 /docs
 /TestResults
+/.workbuddy
