@@ -50,7 +50,7 @@ public sealed partial class MviDiContainerGenerator
                         + "Endpoint = scope.CreateEndpoint(global::System.Guid.NewGuid());");
                     builder.AppendLine("            (" + FeatureInstanceTypeName + "<" + member.Feature.ViewModel!.TypeName + "> "
                         + variableName + ", InstanceServices " + variableName + "Services) =");
-                    builder.AppendLine("                await Create" + member.Feature.FeatureName + "InstanceCoreAsync("
+                    builder.AppendLine("                await " + member.Feature.InstanceCoreMethodName + "("
                         + variableName + "Endpoint, " + member.Feature.StateTypeName + ".Initial).ConfigureAwait(false);");
                     builder.AppendLine("            created.Add(" + variableName + ");");
                 }

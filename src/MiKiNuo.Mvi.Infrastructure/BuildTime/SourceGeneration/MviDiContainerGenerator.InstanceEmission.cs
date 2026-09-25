@@ -30,8 +30,8 @@ public sealed partial class MviDiContainerGenerator
                 string handle = "global::MiKiNuo.Mvi.Application.MVI.Composition.MviFeatureInstance<" + feature.ViewModel.TypeName + ">";
                 string result = "global::System.Threading.Tasks.ValueTask<" + handle + ">";
                 string endpoint = "global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediatorEndpoint";
-                string method = "Create" + feature.FeatureName + "InstanceAsync";
-                string coreMethod = "Create" + feature.FeatureName + "InstanceCoreAsync";
+                string method = feature.InstanceMethodName;
+                string coreMethod = feature.InstanceCoreMethodName;
                 builder.AppendLine("    /// <summary>以默认状态创建独立 Feature 实例，接管端点所有权。</summary>");
                 builder.AppendLine("    /// <param name=\"endpoint\">该实例独占的中介端点。</param>");
                 builder.AppendLine("    /// <returns>拥有独立状态和资源的实例。</returns>");
@@ -187,13 +187,15 @@ public sealed partial class MviDiContainerGenerator
                 || service.ConstructorParameterTypeNames.Any(dependency => CapturesInstance(dependency, owned, services, visited));
         }
 
-        /// <summary>注册实例独占组件的延迟工厂。</summary>
+        /// <summary>注册实例独占组件的延迟工厂，构造实参经实例服务表解析。</summary>
         /// <param name="builder">代码缓冲。</param>
         /// <param name="component">组件信息。</param>
         private static void EmitInstanceComponent(StringBuilder builder, Models.FeatureComponentInfo component)
         {
-            builder.AppendLine("            services.Factories.Add(typeof(" + component.TypeName + "), () => "
-                + component.NewExpression().Replace("this.Resolve<", "services.Resolve<") + ");");
+            string arguments = string.Join(", ", component.ConstructorParameterTypeNames
+                .Select(parameterType => "services.Resolve<" + parameterType + ">()"));
+            builder.AppendLine("            services.Factories.Add(typeof(" + component.TypeName + "), () => new "
+                + component.TypeName + "(" + arguments + "));");
         }
     }
 }

@@ -27,13 +27,9 @@ public sealed partial class MviDiContainerGenerator
             /// <param name="implementationTypeName">实现类型（完整限定名）。</param>
             /// <param name="lifetime">生命周期。</param>
             /// <param name="namespace">类型所在命名空间（用于补全 using）。</param>
-            /// <param name="constructorArgumentExpressions">
-            /// 构造实现类型时需要传入的参数表达式集合（已生成 C# 表达式字符串）。
-            /// 为空集合时发射端回退为 <c>new T()</c>。
-            /// </param>
             /// <param name="constructorParameterTypeNames">
-            /// 与 <paramref name="constructorArgumentExpressions"/> 一一对应的参数类型完整限定名集合，
-            /// 供 <c>CreateWith</c> 反射式按参数实例化时做 <c>args[i] is T</c> 模式匹配。
+            /// 构造参数类型完整限定名集合；实参表达式由发射端按解析接收方渲染，
+            /// 同时供 <c>CreateWith</c> 反射式按参数实例化时做 <c>args[i] is T</c> 模式匹配。
             /// </param>
             public DiServiceInfo(
                 string assemblyName,
@@ -41,7 +37,6 @@ public sealed partial class MviDiContainerGenerator
                 string implementationTypeName,
                 GeneratedLifetime lifetime,
                 string? @namespace,
-                IReadOnlyList<string> constructorArgumentExpressions,
                 IReadOnlyList<string> constructorParameterTypeNames)
             {
                 AssemblyName = assemblyName;
@@ -49,7 +44,6 @@ public sealed partial class MviDiContainerGenerator
                 ImplementationTypeName = implementationTypeName;
                 Lifetime = lifetime;
                 Namespace = @namespace;
-                ConstructorArgumentExpressions = constructorArgumentExpressions;
                 ConstructorParameterTypeNames = constructorParameterTypeNames;
             }
 
@@ -68,15 +62,7 @@ public sealed partial class MviDiContainerGenerator
             /// <summary>生命周期。</summary>
             public GeneratedLifetime Lifetime { get; }
 
-            /// <summary>
-            /// 构造实现类型时需要传入的参数表达式集合（已生成 C# 表达式字符串）。
-            /// 为空集合时发射端回退为 <c>new T()</c>。
-            /// </summary>
-            public IReadOnlyList<string> ConstructorArgumentExpressions { get; }
-
-            /// <summary>
-            /// 与 <see cref="ConstructorArgumentExpressions"/> 一一对应的参数类型完整限定名集合。
-            /// </summary>
+            /// <summary>构造参数类型完整限定名集合（按构造函数参数顺序）。</summary>
             public IReadOnlyList<string> ConstructorParameterTypeNames { get; }
 
             /// <summary>

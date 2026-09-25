@@ -69,6 +69,22 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     }
 
     /// <summary>
+    /// 验证 CreateWith 零参分支对带构造参的服务按参数类型名渲染 this.Resolve 表达式（发射端职责）。
+    /// </summary>
+    [Test]
+    public async Task Generate_Should_RenderCreateWithZeroArgsFromParameterTypesAsync()
+    {
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
+                ScopedServiceSource + "\n" + StubDefinitions);
+        string generatedCode = runResult.GeneratedTrees.Single().GetText().ToString();
+
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(generatedCode).Contains(
+            "return new global::TestApp.ScopedConsumer(this.Resolve<global::TestApp.ScopedDependency>());");
+    }
+
+    /// <summary>
     /// 验证无 [DiService] 的编译不触发生成器。
     /// </summary>
     [Test]

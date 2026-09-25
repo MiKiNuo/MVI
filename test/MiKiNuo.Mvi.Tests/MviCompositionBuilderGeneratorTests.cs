@@ -176,6 +176,43 @@ public sealed class MviCompositionBuilderGeneratorTests
     }
 
     /// <summary>
+    /// 验证组合构建器体内调用的实例核心方法名与容器内声明的内部方法一一对应：
+    /// 实例工厂发射与组合发射两侧必须共享同一方法名事实，任何单侧改名都会导致此测试变红。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_CallOnlyDeclaredInstanceCoreMethodsAsync()
+    {
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
+                CompositionSource,
+                MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+
+        string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        string[] declared = System.Text.RegularExpressions.Regex.Matches(
+                generated,
+                @"internal async global::System\.Threading\.Tasks\.ValueTask<\([^)]+\)> (Create\w+InstanceCoreAsync)\(")
+            .Select(match => match.Groups[1].Value)
+            .Distinct()
+            .ToArray();
+        string[] invoked = System.Text.RegularExpressions.Regex.Matches(
+                generated,
+                @"await (Create\w+InstanceCoreAsync)\(")
+            .Select(match => match.Groups[1].Value)
+            .Distinct()
+            .ToArray();
+
+        await Assert.That(declared.Length).IsEqualTo(2);
+        await Assert.That(invoked.Length).IsEqualTo(2);
+        foreach (string method in invoked)
+        {
+            await Assert.That(declared.Contains(method)).IsTrue();
+        }
+
+        await Assert.That(emitSuccess).IsTrue();
+    }
+
+    /// <summary>
     /// 验证唯一提供方的请求契约自动完成注册与消费方绑定。
     /// </summary>
     [Test]

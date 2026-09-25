@@ -112,6 +112,26 @@ public sealed class MviFeatureContainerGeneratorTests
         await Assert.That(generated).DoesNotContain("CreateTestInstanceAsync");
     }
 
+    /// <summary>
+    /// 验证实例工厂内组件注册直接以 services.Resolve 渲染构造实参（发射端职责，模型只携带参数类型名）。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_EmitInstanceComponentFactoriesWithServicesResolveAsync()
+    {
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
+                FeatureSource,
+                GetFrameworkReferences());
+
+        string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        await Assert.That(generated).Contains(
+            "services.Factories.Add(typeof(global::FeatureTest.TestViewModel), () => new global::FeatureTest.TestViewModel(services.Resolve<");
+        await Assert.That(generated).Contains(
+            "services.Resolve<global::MiKiNuo.Mvi.Application.MVI.Threading.IMviUiDispatcher>()");
+        await Assert.That(emitSuccess).IsTrue();
+    }
+
     internal static MetadataReference[] GetFrameworkReferences()
     {
         return

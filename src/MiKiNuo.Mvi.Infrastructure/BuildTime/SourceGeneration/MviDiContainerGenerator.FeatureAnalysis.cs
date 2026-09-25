@@ -160,7 +160,7 @@ public sealed partial class MviDiContainerGenerator
                 .OrderBy(candidate => GetMiddlewareOrder(candidate) ?? 0)
                 .Select(static candidate => new Models.FeatureComponentInfo(
                     candidate.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                    BuildConstructorExpressions(candidate)))
+                    BuildConstructorParameterTypeNames(candidate)))
                 .ToList();
 
             return new Models.MviFeatureInfo(
@@ -170,17 +170,17 @@ public sealed partial class MviDiContainerGenerator
                 effectType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
                 new Models.FeatureComponentInfo(
                     reducerSymbol.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                    BuildConstructorExpressions(reducerSymbol)),
+                    BuildConstructorParameterTypeNames(reducerSymbol)),
                 dispatcher is null
                     ? null
                     : new Models.FeatureComponentInfo(
                         dispatcher.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                        BuildConstructorExpressions(dispatcher)),
+                        BuildConstructorParameterTypeNames(dispatcher)),
                 viewModel is null
                     ? null
                     : new Models.FeatureComponentInfo(
                         viewModel.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                        BuildConstructorExpressions(viewModel)),
+                        BuildConstructorParameterTypeNames(viewModel)),
                 middlewares);
         }
 
@@ -282,7 +282,7 @@ public sealed partial class MviDiContainerGenerator
             return null;
         }
 
-        private static IReadOnlyList<string> BuildConstructorExpressions(INamedTypeSymbol classSymbol)
+        private static IReadOnlyList<string> BuildConstructorParameterTypeNames(INamedTypeSymbol classSymbol)
         {
             IMethodSymbol? selected = classSymbol.Constructors
                 .Where(static constructor => constructor.DeclaredAccessibility == Accessibility.Public)
@@ -294,7 +294,7 @@ public sealed partial class MviDiContainerGenerator
                 return System.Array.Empty<string>();
             }
 
-            List<string> arguments = new(selected.Parameters.Length);
+            List<string> parameterTypeNames = new(selected.Parameters.Length);
             foreach (IParameterSymbol parameter in selected.Parameters)
             {
                 ITypeSymbol parameterType = parameter.Type;
@@ -303,12 +303,11 @@ public sealed partial class MviDiContainerGenerator
                     parameterType = parameterType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
                 }
 
-                string typeName = parameterType.ToDisplayString(
-                    GeneratorSyntaxHelpers.FullyQualifiedNullableFormat);
-                arguments.Add("this.Resolve<" + typeName + ">()");
+                parameterTypeNames.Add(parameterType.ToDisplayString(
+                    GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
             }
 
-            return arguments;
+            return parameterTypeNames;
         }
     }
 }

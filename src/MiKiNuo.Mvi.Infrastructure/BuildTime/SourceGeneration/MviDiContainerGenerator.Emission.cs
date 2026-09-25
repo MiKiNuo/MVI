@@ -198,7 +198,7 @@ public sealed partial class MviDiContainerGenerator
                 builder.Append("        factories.TryAdd(typeof(").Append(service.ServiceTypeName)
                     .Append("), (ServiceLifetime.").Append(service.Lifetime.ToServiceLifetimeName())
                     .Append(", static receiver => new ").Append(service.ImplementationTypeName).Append('(');
-                builder.Append(BuildFactoryArguments(service));
+                builder.Append(BuildResolveArguments(service, "receiver"));
                 builder.AppendLine(")));");
             }
 
@@ -208,16 +208,17 @@ public sealed partial class MviDiContainerGenerator
         }
 
         /// <summary>
-        /// 构建工厂构造参数表达式：每个构造参数经接收器解析。
+        /// 构建构造参数表达式：每个构造参数经指定解析接收方（<c>receiver</c> / <c>this</c>）解析。
         /// </summary>
         /// <param name="service">DI 服务信息。</param>
+        /// <param name="resolver">生成代码中的解析接收方表达式。</param>
         /// <returns>逗号分隔的构造实参表达式。</returns>
-        private static string BuildFactoryArguments(Models.DiServiceInfo service)
+        private static string BuildResolveArguments(Models.DiServiceInfo service, string resolver)
         {
             List<string> arguments = new(service.ConstructorParameterTypeNames.Count);
             foreach (string parameterTypeName in service.ConstructorParameterTypeNames)
             {
-                arguments.Add("receiver.Resolve<" + parameterTypeName + ">()");
+                arguments.Add(resolver + ".Resolve<" + parameterTypeName + ">()");
             }
 
             return string.Join(", ", arguments);
@@ -330,7 +331,7 @@ public sealed partial class MviDiContainerGenerator
                     .AppendLine("))");
                 builder.Append("            {").AppendLine();
                 builder.Append("                return new ").Append(service.ImplementationTypeName).Append('(');
-                builder.Append(string.Join(", ", service.ConstructorArgumentExpressions));
+                builder.Append(BuildResolveArguments(service, "this"));
                 builder.AppendLine(");");
                 builder.Append("            }").AppendLine();
             }

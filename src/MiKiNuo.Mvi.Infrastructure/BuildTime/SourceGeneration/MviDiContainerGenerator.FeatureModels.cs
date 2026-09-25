@@ -73,6 +73,12 @@ public sealed partial class MviDiContainerGenerator
             public string StoreTypeName =>
                 "global::MiKiNuo.Mvi.Application.MVI.Store.IMviStore<"
                 + StateTypeName + ", " + IntentTypeName + ", " + EffectTypeName + ">";
+
+            /// <summary>获取实例工厂公开方法名（实例工厂发射与组合发射共享此单一事实）。</summary>
+            public string InstanceMethodName => "Create" + FeatureName + "InstanceAsync";
+
+            /// <summary>获取实例工厂内部核心方法名（实例工厂发射与组合发射共享此单一事实）。</summary>
+            public string InstanceCoreMethodName => "Create" + FeatureName + "InstanceCoreAsync";
         }
 
         /// <summary>
@@ -84,27 +90,20 @@ public sealed partial class MviDiContainerGenerator
             /// 初始化组件信息。
             /// </summary>
             /// <param name="typeName">组件类型完整限定名。</param>
-            /// <param name="constructorExpressions">构造实参表达式集合（Resolve 调用）。</param>
+            /// <param name="constructorParameterTypeNames">构造参数类型完整限定名集合；实参表达式由发射端按解析接收方渲染。</param>
             public FeatureComponentInfo(
                 string typeName,
-                IReadOnlyList<string> constructorExpressions)
+                IReadOnlyList<string> constructorParameterTypeNames)
             {
                 TypeName = typeName;
-                ConstructorExpressions = constructorExpressions;
+                ConstructorParameterTypeNames = constructorParameterTypeNames;
             }
 
             /// <summary>组件类型完整限定名。</summary>
             public string TypeName { get; }
 
-            /// <summary>构造实参表达式集合。</summary>
-            public IReadOnlyList<string> ConstructorExpressions { get; }
-
-            /// <summary>生成 <c>new T(args...)</c> 表达式。</summary>
-            /// <returns>构造表达式字符串。</returns>
-            public string NewExpression()
-            {
-                return "new " + TypeName + "(" + string.Join(", ", ConstructorExpressions) + ")";
-            }
+            /// <summary>构造参数类型完整限定名集合。</summary>
+            public IReadOnlyList<string> ConstructorParameterTypeNames { get; }
         }
     }
 }
