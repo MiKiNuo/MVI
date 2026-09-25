@@ -6,72 +6,13 @@ using TUnit.Core;
 namespace MiKiNuo.Mvi.Tests;
 
 /// <summary>
-/// 表示 [MviEffect] 副作用分派源生成器的行为测试。
+/// 表示 [MviEffect] 副作用分派源生成器的行为测试（引用真实框架程序集）。
 /// </summary>
 public sealed class MviEffectDispatchGeneratorBehaviorTests
 {
-    private const string RuntimeStubs = """
-        namespace MiKiNuo.Mvi.Domain.MVI.Intent
-        {
-            public interface IMviIntent { }
-        }
-
-        namespace MiKiNuo.Mvi.Domain.MVI.Effect
-        {
-            public interface IMviEffect { }
-
-            [System.AttributeUsage(System.AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
-            public sealed class MviEffectAttribute : System.Attribute
-            {
-                public MviEffectAttribute(System.Type effectType) { EffectType = effectType; }
-                public System.Type EffectType { get; }
-            }
-        }
-
-        namespace MiKiNuo.Mvi.Application.MVI.Effect
-        {
-            public interface IMviEffectDispatcher<in TEffect> where TEffect : MiKiNuo.Mvi.Domain.MVI.Effect.IMviEffect
-            {
-                System.Threading.Tasks.ValueTask DispatchAsync(
-                    TEffect effect,
-                    System.Threading.CancellationToken cancellationToken = default);
-            }
-
-            public interface IMviIntentSink<in TIntent> where TIntent : MiKiNuo.Mvi.Domain.MVI.Intent.IMviIntent
-            {
-                System.Threading.Tasks.ValueTask DispatchAsync(
-                    TIntent intent,
-                    System.Threading.CancellationToken cancellationToken = default);
-            }
-
-            public abstract class MviEffectDispatcherBase<TIntent, TEffect>
-                : IMviEffectDispatcher<TEffect>
-                where TIntent : MiKiNuo.Mvi.Domain.MVI.Intent.IMviIntent
-                where TEffect : MiKiNuo.Mvi.Domain.MVI.Effect.IMviEffect
-            {
-                public System.Threading.Tasks.ValueTask DispatchAsync(
-                    TEffect effect,
-                    System.Threading.CancellationToken cancellationToken = default)
-                {
-                    return DispatchCoreAsync(effect, cancellationToken);
-                }
-
-                protected System.Threading.Tasks.ValueTask DispatchIntentAsync(
-                    TIntent intent,
-                    System.Threading.CancellationToken cancellationToken = default)
-                {
-                    return System.Threading.Tasks.ValueTask.CompletedTask;
-                }
-
-                protected abstract System.Threading.Tasks.ValueTask DispatchCoreAsync(
-                    TEffect effect,
-                    System.Threading.CancellationToken cancellationToken);
-            }
-        }
-
+    private const string FeatureContracts = """
         namespace TestFeature
         {
-            using MiKiNuo.Mvi.Application.MVI.Effect;
             using MiKiNuo.Mvi.Domain.MVI.Effect;
             using MiKiNuo.Mvi.Domain.MVI.Intent;
 
@@ -125,7 +66,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviEffectDispatchGenerator>(
-                RuntimeStubs + ValidDispatcher);
+                FeatureContracts + ValidDispatcher, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
@@ -140,7 +81,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     [Test]
     public async Task Generator_Should_WarnWhenEffectSubtypeMissingHandlerAsync()
     {
-        const string source = RuntimeStubs + """
+        const string source = FeatureContracts + """
 
             namespace TestFeature
             {
@@ -161,7 +102,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
             }
             """;
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0013")).IsTrue();
     }
@@ -172,7 +113,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     [Test]
     public async Task Generator_Should_ErrorWhenEffectSubtypeDuplicatedAsync()
     {
-        const string source = RuntimeStubs + """
+        const string source = FeatureContracts + """
 
             namespace TestFeature
             {
@@ -201,7 +142,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
             }
             """;
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0014")).IsTrue();
     }
@@ -212,7 +153,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     [Test]
     public async Task Generator_Should_ErrorWhenHandlerSignatureInvalidAsync()
     {
-        const string source = RuntimeStubs + """
+        const string source = FeatureContracts + """
 
             namespace TestFeature
             {
@@ -232,7 +173,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
             }
             """;
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0015")).IsTrue();
     }
@@ -243,11 +184,11 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     [Test]
     public async Task Generator_Should_RejectGenericValueTaskAsync()
     {
-        string source = RuntimeStubs + ValidDispatcher
+        string source = FeatureContracts + ValidDispatcher
             .Replace("private System.Threading.Tasks.ValueTask HandleNavigateToHome", "private System.Threading.Tasks.ValueTask<int> HandleNavigateToHome")
             .Replace("return System.Threading.Tasks.ValueTask.CompletedTask;", "return default;");
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(1);
     }
@@ -258,11 +199,11 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     [Test]
     public async Task Generator_Should_RejectUnrelatedCancellationTokenAsync()
     {
-        string source = RuntimeStubs + ValidDispatcher.Replace(
+        string source = FeatureContracts + ValidDispatcher.Replace(
             "System.Threading.CancellationToken cancellationToken", "Other.CancellationToken cancellationToken")
             + "namespace Other { public struct CancellationToken { } }";
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(2);
     }
@@ -273,12 +214,12 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     [Test]
     public async Task Generator_Should_RejectUnrelatedValueTaskAsync()
     {
-        string source = RuntimeStubs + ValidDispatcher
+        string source = FeatureContracts + ValidDispatcher
             .Replace("System.Threading.Tasks.ValueTask", "Other.ValueTask")
             .Replace("return Other.ValueTask.CompletedTask;", "return default;")
             + "namespace Other { public struct ValueTask { } }";
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(2);
     }
@@ -298,11 +239,11 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     public async Task Generator_Should_RejectByReferenceParametersAsync(string modifier, string parameter)
     {
         ArgumentNullException.ThrowIfNull(parameter);
-        string source = RuntimeStubs + ValidDispatcher
+        string source = FeatureContracts + ValidDispatcher
             .Replace(parameter, modifier + " " + parameter)
             .Replace("return System.Threading.Tasks.ValueTask.CompletedTask;", "throw new System.NotImplementedException();");
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         int expectedDiagnostics = parameter.StartsWith("LoginEffect", StringComparison.Ordinal) ? 1 : 2;
         await Assert.That(runResult.Diagnostics.Count(d => d.Id == "MVI0015")).IsEqualTo(expectedDiagnostics);
@@ -314,7 +255,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
     [Test]
     public async Task Generator_Should_ErrorWhenDispatcherNotPartialAsync()
     {
-        const string source = RuntimeStubs + """
+        const string source = FeatureContracts + """
 
             namespace TestFeature
             {
@@ -335,7 +276,7 @@ public sealed class MviEffectDispatchGeneratorBehaviorTests
             }
             """;
 
-        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source);
+        GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviEffectDispatchGenerator>(source, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0012")).IsTrue();
     }

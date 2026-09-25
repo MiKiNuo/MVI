@@ -1,6 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using MiKiNuo.Mvi.Application.MVI.Store;
-using MiKiNuo.Mvi.Domain.MVI.State;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -83,7 +81,7 @@ public sealed class MviFeatureContainerGeneratorTests
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
                 FeatureSource,
-                GetFrameworkReferences());
+                GeneratorTestHost.FrameworkReferences);
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
 
@@ -105,7 +103,7 @@ public sealed class MviFeatureContainerGeneratorTests
 
         GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviDiContainerGenerator>(
             brokenSource,
-            GetFrameworkReferences());
+            GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0016")).IsTrue();
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
@@ -121,7 +119,7 @@ public sealed class MviFeatureContainerGeneratorTests
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
                 FeatureSource,
-                GetFrameworkReferences());
+                GeneratorTestHost.FrameworkReferences);
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
 
@@ -130,16 +128,5 @@ public sealed class MviFeatureContainerGeneratorTests
         await Assert.That(generated).Contains(
             "services.Resolve<global::MiKiNuo.Mvi.Application.MVI.Threading.IMviUiDispatcher>()");
         await Assert.That(emitSuccess).IsTrue();
-    }
-
-    internal static MetadataReference[] GetFrameworkReferences()
-    {
-        return
-        [
-            MetadataReference.CreateFromFile(typeof(IMviState).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(IMviStore<,,>).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(R3.Observable).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
-        ];
     }
 }

@@ -1,6 +1,5 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using MiKiNuo.Mvi.Infrastructure.BuildTime.SourceGeneration;
-using MiKiNuo.Mvi.Tests.TestSupport;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -20,7 +19,7 @@ public sealed class MviStatePathsGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviStatePathsGenerator>(
-                StubDefinitions + "\n" + NestedStateSource);
+                NestedStateSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -40,7 +39,7 @@ public sealed class MviStatePathsGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviStatePathsGenerator>(
-                StubDefinitions + "\n" + LeafBoundaryStateSource);
+                LeafBoundaryStateSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(emitSuccess).IsTrue();
 
@@ -60,7 +59,7 @@ public sealed class MviStatePathsGeneratorBehaviorTests
     {
         GeneratorDriverRunResult runResult =
             GeneratorTestHost.RunGenerator<MviStatePathsGenerator>(
-                StubDefinitions + "\n" + CyclicStateSource);
+                CyclicStateSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0010")).IsTrue();
     }
@@ -73,7 +72,7 @@ public sealed class MviStatePathsGeneratorBehaviorTests
     {
         GeneratorDriverRunResult runResult =
             GeneratorTestHost.RunGenerator<MviStatePathsGenerator>(
-                StubDefinitions + "\n" + GenericStateSource);
+                GenericStateSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(0);
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0011")).IsTrue();
@@ -87,16 +86,10 @@ public sealed class MviStatePathsGeneratorBehaviorTests
     {
         GeneratorDriverRunResult runResult =
             GeneratorTestHost.RunGenerator<MviStatePathsGenerator>(
-                StubDefinitions + "\npublic sealed record PlainData(int Value);");
+                "public sealed record PlainData(int Value);", GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(0);
     }
-
-    /// <summary>
-    /// 桩类型定义：共享桩核（MVI 状态契约 + StatePath 运行时）。
-    /// </summary>
-    private const string StubDefinitions =
-        GeneratorTestStubs.StateContracts + "\n" + GeneratorTestStubs.StatePathRuntime;
 
     /// <summary>
     /// 含嵌套 record 的状态源码。

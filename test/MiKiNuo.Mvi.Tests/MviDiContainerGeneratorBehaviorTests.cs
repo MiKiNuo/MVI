@@ -20,7 +20,7 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
-                ServiceSource + "\n" + StubDefinitions);
+                ServiceSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -34,7 +34,7 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
-                ServiceSource + "\n" + StubDefinitions);
+                ServiceSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -48,7 +48,7 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
-                ServiceSource + "\n" + StubDefinitions);
+                ServiceSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -62,7 +62,7 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
-                ServiceSource + "\n" + StubDefinitions);
+                ServiceSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -76,7 +76,7 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
-                ScopedServiceSource + "\n" + StubDefinitions);
+                ScopedServiceSource, GeneratorTestHost.FrameworkReferences);
         string generatedCode = runResult.GeneratedTrees.Single().GetText().ToString();
 
         await Assert.That(emitSuccess).IsTrue();
@@ -91,7 +91,7 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     public async Task Generate_Should_NotProduceCode_ForCompilationWithoutDiServiceAsync()
     {
         GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviDiContainerGenerator>(
-            StubDefinitions + "\n" + PlainSource);
+            PlainSource, GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(result.GeneratedTrees.Length).IsEqualTo(0);
     }
@@ -105,7 +105,7 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
-                ScopedServiceSource + "\n" + StubDefinitions);
+                ScopedServiceSource, GeneratorTestHost.FrameworkReferences);
         string generatedCode = runResult.GeneratedTrees.Single().GetText().ToString();
 
         await Assert.That(emitSuccess).IsTrue();
@@ -119,11 +119,6 @@ public sealed class MviDiContainerGeneratorBehaviorTests
         await Assert.That(generatedCode).Contains("if (instance is IDisposable disposable)");
         await Assert.That(generatedCode).Contains("return _container.Resolve(serviceType);");
     }
-
-    /// <summary>
-    /// 桩类型定义：模拟 DI 特性、生命周期枚举与应用层 DI 接口。
-    /// </summary>
-    private const string StubDefinitions = TestSupport.GeneratorTestStubs.DiContainerRuntime;
 
     /// <summary>
     /// 测试源代码：含 [DiService] 标记的服务类。

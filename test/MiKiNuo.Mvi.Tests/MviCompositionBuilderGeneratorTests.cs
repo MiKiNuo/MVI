@@ -163,7 +163,7 @@ public sealed class MviCompositionBuilderGeneratorTests
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
                 CompositionSource,
-                MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+                GeneratorTestHost.FrameworkReferences);
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
 
@@ -185,7 +185,7 @@ public sealed class MviCompositionBuilderGeneratorTests
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
                 CompositionSource,
-                MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+                GeneratorTestHost.FrameworkReferences);
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
 
@@ -221,7 +221,7 @@ public sealed class MviCompositionBuilderGeneratorTests
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
                 CompositionSource,
-                MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+                GeneratorTestHost.FrameworkReferences);
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
 
@@ -240,7 +240,7 @@ public sealed class MviCompositionBuilderGeneratorTests
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
                 CompositionSource,
-                MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+                GeneratorTestHost.FrameworkReferences);
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
 
@@ -261,7 +261,7 @@ public sealed class MviCompositionBuilderGeneratorTests
 
         GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviDiContainerGenerator>(
             ambiguousSource,
-            MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+            GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0022")).IsTrue();
     }
@@ -278,7 +278,7 @@ public sealed class MviCompositionBuilderGeneratorTests
 
         GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviDiContainerGenerator>(
             orphanSource,
-            MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+            GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0023")).IsTrue();
     }
@@ -295,7 +295,7 @@ public sealed class MviCompositionBuilderGeneratorTests
 
         GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviDiContainerGenerator>(
             invalidSource,
-            MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+            GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0024")).IsTrue();
     }
@@ -312,7 +312,7 @@ public sealed class MviCompositionBuilderGeneratorTests
 
         GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviDiContainerGenerator>(
             nonPartialSource,
-            MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+            GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0025")).IsTrue();
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
@@ -332,7 +332,7 @@ public sealed class MviCompositionBuilderGeneratorTests
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
                 repeatedSource,
-                MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+                GeneratorTestHost.FrameworkReferences);
 
         string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
         await Assert.That(generated).Contains("server2");
@@ -387,7 +387,7 @@ public sealed class MviCompositionBuilderGeneratorTests
         await Assert.That(
             GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
                 failingSource,
-                MviFeatureContainerGeneratorTests.GetFrameworkReferences())).IsTrue();
+                GeneratorTestHost.FrameworkReferences)).IsTrue();
     }
 
     /// <summary>
@@ -402,7 +402,7 @@ public sealed class MviCompositionBuilderGeneratorTests
 
         GeneratorDriverRunResult runResult = GeneratorTestHost.RunGenerator<MviDiContainerGenerator>(
             unknownMemberSource,
-            MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+            GeneratorTestHost.FrameworkReferences);
 
         await Assert.That(runResult.Diagnostics.Any(d => d.Id == "MVI0026")).IsTrue();
     }

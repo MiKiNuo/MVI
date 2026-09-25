@@ -12,6 +12,18 @@ namespace MiKiNuo.Mvi.Tests;
 internal static class GeneratorTestHost
 {
     /// <summary>
+    /// 获取真实框架程序集引用（Domain / Application / R3 / INPC），
+    /// 使生成器测试直接对真实接口编译，消除手写桩与真实接口漂移的风险。
+    /// </summary>
+    public static MetadataReference[] FrameworkReferences =>
+    [
+        MetadataReference.CreateFromFile(typeof(Domain.MVI.State.IMviState).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(Application.MVI.Store.IMviStore<,,>).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(R3.Observable).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
+    ];
+
+    /// <summary>
     /// 创建测试用编译对象。
     /// </summary>
     /// <param name="source">测试源代码。</param>

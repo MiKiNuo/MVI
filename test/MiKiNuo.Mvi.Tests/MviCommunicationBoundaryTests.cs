@@ -17,7 +17,7 @@ public sealed class MviCommunicationBoundaryTests
         string source = MviFeatureContainerGeneratorTests.FeatureSource.Replace(
             "protected override void ApplyStateCore(TestState state)",
             "public void Connect(IMviStore<MiKiNuo.Mvi.Domain.MVI.State.UnitState, TestIntent, TestEffect> other) { _ = other; } protected override void ApplyStateCore(TestState state)");
-        Compilation compilation = GeneratorTestHost.CreateCompilation(source, MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+        Compilation compilation = GeneratorTestHost.CreateCompilation(source, GeneratorTestHost.FrameworkReferences);
         ImmutableArray<Diagnostic> diagnostics = await compilation.WithAnalyzers(
             ImmutableArray.Create<DiagnosticAnalyzer>(new MviCommunicationBoundaryAnalyzer())).GetAnalyzerDiagnosticsAsync();
         await Assert.That(diagnostics.Any(diagnostic => diagnostic.Id == "MVI0021")).IsTrue();

@@ -81,6 +81,6 @@ public sealed class MviFeatureInstanceGeneratorTests
     {
         return await GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
             source,
-            MviFeatureContainerGeneratorTests.GetFrameworkReferences());
+            GeneratorTestHost.FrameworkReferences);
     }
 }
