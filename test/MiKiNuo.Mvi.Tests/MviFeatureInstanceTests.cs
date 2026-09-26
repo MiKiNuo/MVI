@@ -68,6 +68,57 @@ public sealed class MviFeatureInstanceTests
         await Assert.That(string.Join(",", released)).IsEqualTo("子,父,孤儿");
     }
 
+    /// <summary>显式声明的停止动作在释放时先于资源回收调用。</summary>
+    [Test]
+    public async Task DisposeInvokesDeclaredStopsBeforeResourcesAsync()
+    {
+        List<string> calls = [];
+        MviFeatureInstance<string> instance = new(
+            Guid.NewGuid(), "视图",
+            [new Resource("资源", calls)],
+            [() => calls.Add("停止")]);
+        await instance.DisposeAsync();
+        await Assert.That(string.Join(",", calls)).IsEqualTo("停止,资源");
+    }
+
+    /// <summary>未显式声明停止动作的资源不被反查调用任何停止方法。</summary>
+    [Test]
+    public async Task DisposeDoesNotProbeUndeclaredStopsAsync()
+    {
+        StoppableResource resource = new();
+        MviFeatureInstance<string> instance = new(Guid.NewGuid(), "视图", [resource]);
+        await instance.DisposeAsync();
+        await Assert.That(resource.StopCalled).IsFalse();
+        await Assert.That(resource.Disposed).IsTrue();
+    }
+
+    /// <summary>Own 接管的资源可随所有权一并声明停止动作。</summary>
+    [Test]
+    public async Task OwnAcceptsStopActionForLateResourceAsync()
+    {
+        List<string> calls = [];
+        MviFeatureInstance<string> instance = new(Guid.NewGuid(), "视图", [new Resource("初始", calls)]);
+        await Assert.That(await instance.Own(new Resource("后挂", calls), () => calls.Add("后挂停止"))).IsTrue();
+        await instance.DisposeAsync();
+        await Assert.That(string.Join(",", calls)).IsEqualTo("后挂停止,后挂,初始");
+    }
+
+    /// <summary>记录停止与释放的探针资源。</summary>
+    private sealed class StoppableResource : IDisposable
+    {
+        /// <summary>停止是否被调用。</summary>
+        public bool StopCalled { get; private set; }
+
+        /// <summary>是否已释放。</summary>
+        public bool Disposed { get; private set; }
+
+        /// <summary>探针停止方法，不应被实例反查调用。</summary>
+        public void Stop() => StopCalled = true;
+
+        /// <summary>记录释放。</summary>
+        public void Dispose() => Disposed = true;
+    }
+
     /// <summary>记录资源释放方式。</summary>
     /// <param name="name">资源名称。</param>
     /// <param name="released">释放记录。</param>

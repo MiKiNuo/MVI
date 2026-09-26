@@ -7,13 +7,15 @@ public abstract class MviFeatureInstance : IAsyncDisposable
     private static readonly object OwnershipGate = new();
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<object> _resources;
+    private readonly List<Action> _stops;
     private Task? _disposeTask;
     private MviFeatureInstance? _owner;
 
     /// <summary>创建实例资源所有者。</summary>
     /// <param name="id">实例身份。</param>
     /// <param name="resources">按创建顺序排列的独占资源。</param>
-    protected MviFeatureInstance(Guid id, IReadOnlyList<object> resources)
+    /// <param name="stopActions">释放资源前须执行的停止动作（如 Store 停止准入），按声明顺序调用。</param>
+    protected MviFeatureInstance(Guid id, IReadOnlyList<object> resources, IReadOnlyList<Action>? stopActions = null)
     {
         ArgumentNullException.ThrowIfNull(resources);
         if (id == Guid.Empty) throw new ArgumentException("实例标识不能为空。", nameof(id));
@@ -22,6 +24,7 @@ public abstract class MviFeatureInstance : IAsyncDisposable
         Id = id;
         Lifetime = _lifetime.Token;
         _resources = resources.Distinct(ReferenceEqualityComparer.Instance).ToList();
+        _stops = stopActions?.ToList() ?? [];
     }
 
     /// <summary>获取实例身份。</summary>
@@ -35,8 +38,9 @@ public abstract class MviFeatureInstance : IAsyncDisposable
 
     /// <summary>接管新资源或子实例；关闭后拒收并等待孤儿释放。</summary>
     /// <param name="resource">所有权转交给当前实例的资源。</param>
+    /// <param name="stopAction">随所有权一并声明的停止动作（如 Store 停止准入）；无则为 null。</param>
     /// <returns>是否成功接管。</returns>
-    public async ValueTask<bool> Own(object resource)
+    public async ValueTask<bool> Own(object resource, Action? stopAction = null)
     {
         ArgumentNullException.ThrowIfNull(resource);
         lock (OwnershipGate)
@@ -54,6 +58,7 @@ public abstract class MviFeatureInstance : IAsyncDisposable
             {
                 if (resource is MviFeatureInstance owned) owned._owner = this;
                 _resources.Add(resource);
+                if (stopAction is not null) _stops.Add(stopAction);
                 return true;
             }
         }
@@ -98,7 +103,11 @@ public abstract class MviFeatureInstance : IAsyncDisposable
     private async Task ReleaseAsync()
     {
         List<Exception> failures = [];
-        foreach (Store.IMviStoreLifetime store in _resources.OfType<Store.IMviStoreLifetime>()) store.Stop();
+        foreach (Action stop in _stops)
+        {
+            try { stop(); }
+            catch (Exception exception) { failures.Add(exception); }
+        }
         try { await _lifetime.CancelAsync().ConfigureAwait(false); }
         catch (Exception exception) { failures.Add(exception); }
         foreach (MviFeatureInstance child in _resources.OfType<MviFeatureInstance>().Reverse())
@@ -140,7 +149,9 @@ public sealed class MviFeatureInstance<TViewModel> : MviFeatureInstance
     /// <param name="id">实例身份。</param>
     /// <param name="vm">实例视图模型。</param>
     /// <param name="resources">按创建顺序排列的独占资源，包含需要释放的视图模型。</param>
-    public MviFeatureInstance(Guid id, TViewModel vm, IReadOnlyList<object> resources) : base(id, resources)
+    /// <param name="stopActions">释放资源前须执行的停止动作（如 Store 停止准入），按声明顺序调用。</param>
+    public MviFeatureInstance(Guid id, TViewModel vm, IReadOnlyList<object> resources, IReadOnlyList<Action>? stopActions = null)
+        : base(id, resources, stopActions)
     {
         ViewModel = vm;
     }

@@ -80,8 +80,10 @@ public sealed partial class MviDiContainerGenerator
                 builder.AppendLine("                initialState, services.Resolve<" + feature.Reducer.TypeName + ">(), " + dispatcher + ",");
                 builder.AppendLine("                new " + middlewareType + "[] { " + string.Join(", ", feature.Middlewares.Select(middleware => "services.Resolve<" + middleware.TypeName + ">()")) + " }));");
                 EmitInstanceComponent(builder, feature.ViewModel);
+                builder.AppendLine("            " + feature.StoreTypeName + " store = services.Resolve<" + feature.StoreTypeName + ">();");
+                builder.AppendLine("            services.Stops.Add(((" + store + ")store).Stop);");
                 builder.AppendLine("            " + feature.ViewModel.TypeName + " vm = services.Resolve<" + feature.ViewModel.TypeName + ">();");
-                builder.AppendLine("            " + handle + " instance = new(endpoint.InstanceId, vm, services.Resources);");
+                builder.AppendLine("            " + handle + " instance = new(endpoint.InstanceId, vm, services.Resources, services.Stops);");
                 builder.AppendLine("            _ = instance.Lifetime.Register(endpoint.Dispose);");
                 builder.AppendLine("            return (instance, services);");
                 builder.AppendLine("        }");
@@ -89,7 +91,7 @@ public sealed partial class MviDiContainerGenerator
                 builder.AppendLine("        {");
                 builder.AppendLine("            try");
                 builder.AppendLine("            {");
-                builder.AppendLine("                await new global::MiKiNuo.Mvi.Application.MVI.Composition.MviFeatureInstance<object>(endpoint.InstanceId, services, services.Resources).DisposeAsync().ConfigureAwait(false);");
+                builder.AppendLine("                await new global::MiKiNuo.Mvi.Application.MVI.Composition.MviFeatureInstance<object>(endpoint.InstanceId, services, services.Resources, services.Stops).DisposeAsync().ConfigureAwait(false);");
                 builder.AppendLine("            }");
                 builder.AppendLine("            catch (Exception cleanup) { throw new AggregateException(failure, cleanup); }");
                 builder.AppendLine("            throw;");
@@ -129,6 +131,7 @@ public sealed partial class MviDiContainerGenerator
                     private readonly HashSet<Type> _constructing = new();
                     public Dictionary<Type, Func<object>> Factories { get; } = new();
                     public List<object> Resources { get; } = new();
+                    public List<global::System.Action> Stops { get; } = new();
                     public InstanceServices(GeneratedMviContainer root, global::MiKiNuo.Mvi.Application.MVI.Mediator.MviMediatorEndpoint endpoint)
                     {
                         _root = root;

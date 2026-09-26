@@ -22,7 +22,7 @@ namespace MiKiNuo.Mvi.Application.MVI.Store;
 /// <typeparam name="TIntent">意图类型。</typeparam>
 /// <typeparam name="TEffect">副作用类型。</typeparam>
 public sealed class MviStore<TState, TIntent, TEffect>
-    : IMviStore<TState, TIntent, TEffect>, IMviIntentSink<TIntent>, IAsyncDisposable, IMviStoreLifetime
+    : IMviStore<TState, TIntent, TEffect>, IMviIntentSink<TIntent>, IAsyncDisposable
     where TState : IMviState
     where TIntent : IMviIntent
     where TEffect : IMviEffect
@@ -225,10 +225,8 @@ public sealed class MviStore<TState, TIntent, TEffect>
         GC.SuppressFinalize(this);
     }
 
-    void IMviStoreLifetime.Stop() => Stop();
-
-    /// <summary>关闭准入与取消操作，最终资源回收仍由 Dispose 发起。</summary>
-    private void Stop()
+    /// <summary>关闭准入与取消操作，最终资源回收仍由 Dispose 发起；供实例所有者声明为停止动作。</summary>
+    public void Stop()
     {
         lock (_lifetimeGate)
         {

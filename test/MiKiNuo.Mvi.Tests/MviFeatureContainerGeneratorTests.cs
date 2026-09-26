@@ -127,6 +127,7 @@ public sealed class MviFeatureContainerGeneratorTests
             "services.Factories.Add(typeof(global::FeatureTest.TestViewModel), () => new global::FeatureTest.TestViewModel(services.Resolve<");
         await Assert.That(generated).Contains(
             "services.Resolve<global::MiKiNuo.Mvi.Application.MVI.Threading.IMviUiDispatcher>()");
+        await Assert.That(generated).Contains("services.Stops.Add(");
         await Assert.That(emitSuccess).IsTrue();
     }
 }

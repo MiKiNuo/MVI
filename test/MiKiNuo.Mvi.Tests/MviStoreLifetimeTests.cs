@@ -23,8 +23,8 @@ public sealed class MviStoreLifetimeTests
         SlowEffectDispatcher childDispatcher = new();
         MviStore<StoreTestState, StoreTestIntent, StoreTestEffect> childStore = new(
             StoreTestState.Initial, new StoreTestReducer(), childDispatcher);
-        MviFeatureInstance<string> parent = new(Guid.NewGuid(), "父", [parentStore]);
-        MviFeatureInstance<string> child = new(Guid.NewGuid(), "子", [childStore]);
+        MviFeatureInstance<string> parent = new(Guid.NewGuid(), "父", [parentStore], [parentStore.Stop]);
+        MviFeatureInstance<string> child = new(Guid.NewGuid(), "子", [childStore], [childStore.Stop]);
         await parent.Own(child);
         Task parentDispatch = parentStore.DispatchAsync(new StoreTestIntent.Increment()).AsTask();
         await middleware.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -60,7 +60,15 @@ public sealed class MviStoreLifetimeTests
         await using MviStore<StoreTestState, StoreTestIntent, StoreTestEffect> store = new(
             StoreTestState.Initial, new StoreTestReducer(), new SlowEffectDispatcher(), [middleware], 1);
         await Assert.That(store.TryPost(new StoreTestIntent.Increment())).IsTrue();
-        await middleware.Started.Task;
+        await middleware.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        TaskCompletionSource changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using IDisposable subscription = store.States.Subscribe(state =>
+        {
+            if (state.Count == 2)
+            {
+                changed.TrySetResult();
+            }
+        });
         try
         {
             await Assert.That(store.TryPost(new StoreTestIntent.Increment())).IsTrue();
@@ -70,14 +78,6 @@ public sealed class MviStoreLifetimeTests
         {
             middleware.Release.TrySetResult();
         }
-        TaskCompletionSource changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        using IDisposable subscription = store.States.Subscribe(state =>
-        {
-            if (state.Count == 2)
-            {
-                changed.TrySetResult();
-            }
-        });
         await changed.Task.WaitAsync(TimeSpan.FromSeconds(5));
     }
 

@@ -11,8 +11,8 @@ public sealed class MviCompositionScope : IDisposable
     private readonly object _deliveryGate = new();
     /// <summary>实例生命周期。</summary>
     private readonly Dictionary<Guid, CancellationTokenSource> _members = new();
-    /// <summary>只注册一次后只读的契约处理器。</summary>
-    private readonly Dictionary<(Guid Target, Type Request), MviMediator> _routes = new();
+    /// <summary>只注册一次后只读的契约路由。</summary>
+    private readonly Dictionary<(Guid Target, Type Request), MviMediator.Route> _routes = new();
     /// <summary>来源请求的目标绑定。</summary>
     private readonly Dictionary<(Guid Source, Type Request), Guid> _bindings = new();
     /// <summary>已使用的实例标识，关闭后禁止复用。</summary>
@@ -48,7 +48,7 @@ public sealed class MviCompositionScope : IDisposable
         lock (_gate)
         {
             GetMember(target);
-            if (!_routes.TryAdd((target, typeof(TRequest)), new MviMediator().Register(handler)))
+            if (!_routes.TryAdd((target, typeof(TRequest)), MviMediator.CreateRoute(handler)))
                 throw new InvalidOperationException("目标请求处理器重复注册。");
         }
     }
@@ -171,21 +171,21 @@ public sealed class MviCompositionScope : IDisposable
     internal async ValueTask<TResponse> SendAsync<TResponse>(Guid source, IMviRequest<TResponse> request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        MviMediator route;
+        MviMediator.Route route;
         CancellationTokenSource lifetime;
         lock (_gate)
         {
             CancellationTokenSource origin = GetMember(source);
             if (!_bindings.TryGetValue((source, request.GetType()), out Guid target)) throw new MviMediatorRouteNotFoundException(request.GetType(), typeof(TResponse));
             CancellationTokenSource destination = GetMember(target);
-            if (!_routes.TryGetValue((target, request.GetType()), out MviMediator? found)) throw new MviMediatorRouteNotFoundException(request.GetType(), typeof(TResponse));
+            if (!_routes.TryGetValue((target, request.GetType()), out MviMediator.Route? found)) throw new MviMediatorRouteNotFoundException(request.GetType(), typeof(TResponse));
             route = found;
             lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, origin.Token, destination.Token);
         }
         using (lifetime)
         {
             lifetime.Token.ThrowIfCancellationRequested();
-            return await route.SendAsync(request, lifetime.Token).AsTask().WaitAsync(lifetime.Token).ConfigureAwait(false);
+            return await MviMediator.InvokeAsync(route, request, lifetime.Token).AsTask().WaitAsync(lifetime.Token).ConfigureAwait(false);
         }
     }
 

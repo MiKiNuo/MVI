@@ -59,18 +59,16 @@ public sealed partial class MviDiContainerGenerator
         /// 收集全部 Feature 装配模型。
         /// </summary>
         /// <param name="reducerSymbols">标记 [MviFeature] 的 Reducer 类型符号集合。</param>
-        /// <param name="compilation">当前编译对象。</param>
+        /// <param name="componentCandidates">带基类或接口列表的类符号候选集合（EffectDispatcher / ViewModel / Middleware 的发现来源）。</param>
         /// <param name="context">源生成上下文。</param>
         /// <returns>Feature 装配模型集合。</returns>
         public static IReadOnlyList<Models.MviFeatureInfo> CollectFeatures(
             IEnumerable<INamedTypeSymbol> reducerSymbols,
-            Compilation compilation,
+            IReadOnlyList<INamedTypeSymbol> componentCandidates,
             SourceProductionContext context)
         {
             List<Models.MviFeatureInfo> features = new();
-            List<INamedTypeSymbol> allClasses = GeneratorSyntaxHelpers
-                .EnumerateClassSymbols(compilation, context.CancellationToken)
-                .ToList();
+            IReadOnlyList<INamedTypeSymbol> allClasses = componentCandidates;
 
             HashSet<INamedTypeSymbol> seen = new(SymbolEqualityComparer.Default);
             foreach (INamedTypeSymbol reducerSymbol in reducerSymbols)

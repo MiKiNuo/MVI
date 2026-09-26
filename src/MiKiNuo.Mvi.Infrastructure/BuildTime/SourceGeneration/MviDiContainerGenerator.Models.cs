@@ -16,8 +16,9 @@ public sealed partial class MviDiContainerGenerator
     {
         /// <summary>
         /// 表示发现的 DI 服务信息。
+        /// 实现值相等：增量管线以此判断解析结果是否变化，无关编辑不应使下游失效。
         /// </summary>
-        public sealed class DiServiceInfo
+        public sealed class DiServiceInfo : IEquatable<DiServiceInfo>
         {
             /// <summary>
             /// 初始化 DI 服务信息。
@@ -72,6 +73,43 @@ public sealed partial class MviDiContainerGenerator
             {
                 string name = ServiceTypeName.Split('.').Last();
                 return "_" + char.ToLowerInvariant(name[0]) + name.Substring(1);
+            }
+
+            /// <summary>按值比较两个服务信息（含构造参数类型序列）。</summary>
+            /// <param name="other">另一个服务信息。</param>
+            /// <returns>全部字段相等时为真。</returns>
+            public bool Equals(DiServiceInfo? other)
+            {
+                return other is not null
+                    && AssemblyName == other.AssemblyName
+                    && ServiceTypeName == other.ServiceTypeName
+                    && ImplementationTypeName == other.ImplementationTypeName
+                    && Namespace == other.Namespace
+                    && Lifetime == other.Lifetime
+                    && ConstructorParameterTypeNames.SequenceEqual(other.ConstructorParameterTypeNames);
+            }
+
+            /// <inheritdoc />
+            public override bool Equals(object? obj)
+            {
+                return Equals(obj as DiServiceInfo);
+            }
+
+            /// <inheritdoc />
+            public override int GetHashCode()
+            {
+                int hash = 17;
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(AssemblyName);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ServiceTypeName);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ImplementationTypeName);
+                hash = (hash * 31) + (Namespace is null ? 0 : StringComparer.Ordinal.GetHashCode(Namespace));
+                hash = (hash * 31) + (int)Lifetime;
+                foreach (string parameterTypeName in ConstructorParameterTypeNames)
+                {
+                    hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(parameterTypeName);
+                }
+
+                return hash;
             }
         }
 

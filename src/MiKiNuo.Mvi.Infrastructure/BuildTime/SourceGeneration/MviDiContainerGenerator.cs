@@ -29,7 +29,8 @@ public sealed partial class MviDiContainerGenerator : IIncrementalGenerator
                 static (node, _) => node is TypeDeclarationSyntax,
                 static (syntaxContext, _) => Analysis.ParseDiService((INamedTypeSymbol)syntaxContext.TargetSymbol))
             .Where(static service => service is not null)
-            .Select(static (service, _) => service!);
+            .Select(static (service, _) => service!)
+            .WithTrackingName("MviDiServices");
 
         IncrementalValuesProvider<INamedTypeSymbol> featureReducers = context.SyntaxProvider
             .ForAttributeWithMetadataName(
@@ -43,19 +44,31 @@ public sealed partial class MviDiContainerGenerator : IIncrementalGenerator
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (syntaxContext, _) => (INamedTypeSymbol)syntaxContext.TargetSymbol);
 
+        // 定向候选管线：只收集带基类/接口列表的类，替代逐次全编译类枚举（EffectDispatcher / ViewModel / Middleware 的候选来源）。
+        IncrementalValuesProvider<INamedTypeSymbol> componentCandidates = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
+                static (syntaxContext, cancellationToken) =>
+                    syntaxContext.SemanticModel.GetDeclaredSymbol(syntaxContext.Node, cancellationToken) as INamedTypeSymbol)
+            .Where(static symbol => symbol is not null)
+            .Select(static (symbol, _) => symbol!);
+
         IncrementalValueProvider<(
-            (System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> Services,
-            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> Reducers) Features,
+            ((System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> Services,
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> Reducers) ServiceAndReducers,
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> Components) Features,
             (System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> Compositions,
             Compilation Compilation) Runtime)> combined =
             services.Collect()
                 .Combine(featureReducers.Collect())
+                .Combine(componentCandidates.Collect())
                 .Combine(compositionDeclarations.Collect().Combine(context.CompilationProvider));
 
         context.RegisterSourceOutput(combined, static (productionContext, payload) =>
         {
-            System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> discoveredServices = payload.Features.Services;
-            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> reducerSymbols = payload.Features.Reducers;
+            System.Collections.Immutable.ImmutableArray<Models.DiServiceInfo> discoveredServices = payload.Features.ServiceAndReducers.Services;
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> reducerSymbols = payload.Features.ServiceAndReducers.Reducers;
+            System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> componentSymbols = payload.Features.Components;
             System.Collections.Immutable.ImmutableArray<INamedTypeSymbol> compositionSymbols = payload.Runtime.Compositions;
             Compilation compilation = payload.Runtime.Compilation;
 
@@ -66,7 +79,9 @@ public sealed partial class MviDiContainerGenerator : IIncrementalGenerator
 
             IReadOnlyList<Models.MviFeatureInfo> features = FeatureAnalysis.CollectFeatures(
                 reducerSymbols,
-                compilation,
+                componentSymbols.IsDefaultOrEmpty
+                    ? System.Array.Empty<INamedTypeSymbol>()
+                    : componentSymbols,
                 productionContext);
 
             IReadOnlyList<Models.CompositionInfo> compositions = CompositionAnalysis.CollectCompositions(
