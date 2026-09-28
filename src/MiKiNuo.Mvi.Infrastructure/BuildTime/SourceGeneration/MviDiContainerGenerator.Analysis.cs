@@ -54,7 +54,10 @@ public sealed partial class MviDiContainerGenerator
                 }
             }
 
-            IReadOnlyList<string> constructorParameterTypeNames = BuildConstructorParameterTypeNames(classSymbol);
+            IReadOnlyList<string> constructorParameterTypeNames = BuildConstructorParameterTypeNames(
+                classSymbol,
+                honorDiConstructorAttribute: true,
+                stripTopLevelNullableAnnotation: false);
 
             return new Models.DiServiceInfo(
                 classSymbol.ContainingAssembly.Name,
@@ -66,30 +69,30 @@ public sealed partial class MviDiContainerGenerator
         }
 
         /// <summary>
-        /// 选择应使用的构造函数并记录参数类型完整限定名列表。
-        /// 优先使用 <c>[DiConstructor]</c> 标记的构造函数；否则挑选参数数量最多的可解析构造函数。
+        /// 构造依赖事实的共享构建：选择构造函数并记录参数类型的完整限定名。
+        /// 普通 DI 服务传入 <paramref name="honorDiConstructorAttribute"/> 为真，优先使用
+        /// <c>[DiConstructor]</c> 标记的构造函数；Feature 组件传入为假，仅挑选参数数量最多的公共构造函数。
+        /// <paramref name="stripTopLevelNullableAnnotation"/> 为真时移除参数类型的顶层可空注解
+        /// （Feature 组件策略：实例服务表按去注解后的类型解析）。
         /// 实参表达式由发射端按解析接收方（容器 / 作用域 / 实例服务表）渲染；
         /// 参数类型名同时供 <c>CreateWith</c> 做 <c>args[i] is T</c> 模式匹配。
         /// </summary>
         /// <param name="classSymbol">实现类符号。</param>
+        /// <param name="honorDiConstructorAttribute">是否优先采用 <c>[DiConstructor]</c> 标记的构造函数。</param>
+        /// <param name="stripTopLevelNullableAnnotation">是否移除参数类型的顶层可空注解。</param>
         /// <returns>参数类型完整限定名列表（按构造函数参数顺序）；无可用构造函数时为空。</returns>
-        private static IReadOnlyList<string> BuildConstructorParameterTypeNames(INamedTypeSymbol classSymbol)
+        internal static IReadOnlyList<string> BuildConstructorParameterTypeNames(
+            INamedTypeSymbol classSymbol,
+            bool honorDiConstructorAttribute,
+            bool stripTopLevelNullableAnnotation)
         {
             IMethodSymbol? selected = null;
 
-            AttributeData? diConstructorAttribute = GeneratorSyntaxHelpers.FindAttribute(classSymbol, "DiConstructor");
-            if (diConstructorAttribute is not null
-                && diConstructorAttribute.ApplicationSyntaxReference?.GetSyntax() is { } syntax)
+            if (honorDiConstructorAttribute)
             {
-                foreach (IMethodSymbol constructor in classSymbol.Constructors)
-                {
-                    if (constructor.Locations.Any(location => location.SourceTree == syntax.SyntaxTree)
-                        && constructor.Locations.Any(location => location.SourceSpan == syntax.Span))
-                    {
-                        selected = constructor;
-                        break;
-                    }
-                }
+                selected = classSymbol.Constructors
+                    .FirstOrDefault(static constructor =>
+                        GeneratorSyntaxHelpers.FindAttribute(constructor, "DiConstructor") is not null);
             }
 
             selected ??= classSymbol.Constructors
@@ -105,7 +108,14 @@ public sealed partial class MviDiContainerGenerator
             List<string> parameterTypeNames = new(selected.Parameters.Length);
             foreach (IParameterSymbol parameter in selected.Parameters)
             {
-                parameterTypeNames.Add(parameter.Type.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
+                ITypeSymbol parameterType = parameter.Type;
+                if (stripTopLevelNullableAnnotation
+                    && parameterType.NullableAnnotation == NullableAnnotation.Annotated)
+                {
+                    parameterType = parameterType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+                }
+
+                parameterTypeNames.Add(parameterType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
             }
 
             return parameterTypeNames;

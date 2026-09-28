@@ -130,4 +130,32 @@ public sealed class MviFeatureContainerGeneratorTests
         await Assert.That(generated).Contains("services.Stops.Add(");
         await Assert.That(emitSuccess).IsTrue();
     }
+
+    /// <summary>
+    /// 验证 Feature 组件存在多个公共构造函数时选择参数数量最多的构造函数（构造依赖事实的行为锁定）。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_PreferFeatureComponentConstructorWithMostParametersAsync()
+    {
+        string source = FeatureSource
+            .Replace(
+                "public override MviReduceResult<TestState, TestEffect> Reduce(TestState state, TestIntent intent)",
+                "public TestReducer() { } public TestReducer(TestDependency dependency) { } public override MviReduceResult<TestState, TestEffect> Reduce(TestState state, TestIntent intent)")
+            .Replace(
+                "[MviFeature]",
+                "[DiService(ServiceLifetime.Scoped)] public sealed class TestDependency { } [MviFeature]");
+
+        await Assert.That(source.Contains("TestDependency")).IsTrue();
+
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
+                source,
+                GeneratorTestHost.FrameworkReferences);
+
+        string generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(generated).Contains(
+            "new global::FeatureTest.TestReducer(services.Resolve<global::FeatureTest.TestDependency>())");
+    }
 }

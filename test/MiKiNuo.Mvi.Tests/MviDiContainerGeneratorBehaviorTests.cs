@@ -121,6 +121,40 @@ public sealed class MviDiContainerGeneratorBehaviorTests
     }
 
     /// <summary>
+    /// 验证普通 DI 服务存在多个公共构造函数时选择参数数量最多的构造函数（构造依赖事实的行为锁定）。
+    /// </summary>
+    [Test]
+    public async Task Generate_Should_PreferConstructorWithMostParametersAsync()
+    {
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
+                MultiConstructorServiceSource, GeneratorTestHost.FrameworkReferences);
+        string generatedCode = runResult.GeneratedTrees.Single().GetText().ToString();
+
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(generatedCode).Contains(
+            "new global::TestApp.MultiCtorConsumer(receiver.Resolve<global::TestApp.FirstDependency>(), receiver.Resolve<global::TestApp.SecondDependency>())");
+    }
+
+    /// <summary>
+    /// 验证普通 DI 服务标记 [DiConstructor] 时优先使用标记构造函数，即使其参数数量更少。
+    /// </summary>
+    [Test]
+    public async Task Generate_Should_PreferMarkedConstructorOverMostParametersAsync()
+    {
+        (GeneratorDriverRunResult runResult, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviDiContainerGenerator>(
+                MarkedConstructorServiceSource, GeneratorTestHost.FrameworkReferences);
+        string generatedCode = runResult.GeneratedTrees.Single().GetText().ToString();
+
+        await Assert.That(emitSuccess).IsTrue();
+        await Assert.That(generatedCode).Contains(
+            "new global::TestApp.MarkedCtorConsumer(receiver.Resolve<global::TestApp.FirstDependency>())");
+        await Assert.That(generatedCode.Contains(
+            "new global::TestApp.MarkedCtorConsumer(receiver.Resolve<global::TestApp.FirstDependency>(), receiver.Resolve<global::TestApp.SecondDependency>())")).IsFalse();
+    }
+
+    /// <summary>
     /// 测试源代码：含 [DiService] 标记的服务类。
     /// 放在桩定义之前拼接,确保 using 语句位于文件顶部。
     /// </summary>
@@ -174,4 +208,62 @@ public sealed class MviDiContainerGeneratorBehaviorTests
             }
         }
         """;
+
+    /// <summary>
+    /// 测试源代码：含多个公共构造函数的 DI 服务（未标记 DiConstructor）。
+    /// </summary>
+    private const string MultiConstructorServiceSource = """
+        using MiKiNuo.Mvi.Domain.DI;
+
+        namespace TestApp
+        {
+            [DiService(ServiceLifetime.Singleton)]
+            public sealed class FirstDependency
+            {
+            }
+
+            [DiService(ServiceLifetime.Singleton)]
+            public sealed class SecondDependency
+            {
+            }
+
+            [DiService(ServiceLifetime.Singleton)]
+            public sealed class MultiCtorConsumer
+            {
+                public MultiCtorConsumer(FirstDependency first) { }
+
+                public MultiCtorConsumer(FirstDependency first, SecondDependency second) { }
+            }
+        }
+        """;
+
+    /// <summary>
+    /// 测试源代码：含 [DiConstructor] 标记构造函数的 DI 服务。
+    /// </summary>
+    private const string MarkedConstructorServiceSource = """
+        using MiKiNuo.Mvi.Domain.DI;
+
+        namespace TestApp
+        {
+            [DiService(ServiceLifetime.Singleton)]
+            public sealed class FirstDependency
+            {
+            }
+
+            [DiService(ServiceLifetime.Singleton)]
+            public sealed class SecondDependency
+            {
+            }
+
+            [DiService(ServiceLifetime.Singleton)]
+            public sealed class MarkedCtorConsumer
+            {
+                public MarkedCtorConsumer(FirstDependency first, SecondDependency second) { }
+
+                [DiConstructor]
+                public MarkedCtorConsumer(FirstDependency first) { }
+            }
+        }
+        """;
+
 }

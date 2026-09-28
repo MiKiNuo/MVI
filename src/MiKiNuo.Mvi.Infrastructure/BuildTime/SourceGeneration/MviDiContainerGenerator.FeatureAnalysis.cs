@@ -158,7 +158,10 @@ public sealed partial class MviDiContainerGenerator
                 .OrderBy(candidate => GetMiddlewareOrder(candidate) ?? 0)
                 .Select(static candidate => new Models.FeatureComponentInfo(
                     candidate.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                    BuildConstructorParameterTypeNames(candidate)))
+                    Analysis.BuildConstructorParameterTypeNames(
+                        candidate,
+                        honorDiConstructorAttribute: false,
+                        stripTopLevelNullableAnnotation: true)))
                 .ToList();
 
             return new Models.MviFeatureInfo(
@@ -168,17 +171,26 @@ public sealed partial class MviDiContainerGenerator
                 effectType.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
                 new Models.FeatureComponentInfo(
                     reducerSymbol.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                    BuildConstructorParameterTypeNames(reducerSymbol)),
+                    Analysis.BuildConstructorParameterTypeNames(
+                        reducerSymbol,
+                        honorDiConstructorAttribute: false,
+                        stripTopLevelNullableAnnotation: true)),
                 dispatcher is null
                     ? null
                     : new Models.FeatureComponentInfo(
                         dispatcher.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                        BuildConstructorParameterTypeNames(dispatcher)),
+                        Analysis.BuildConstructorParameterTypeNames(
+                            dispatcher,
+                            honorDiConstructorAttribute: false,
+                            stripTopLevelNullableAnnotation: true)),
                 viewModel is null
                     ? null
                     : new Models.FeatureComponentInfo(
                         viewModel.ToDisplayString(GeneratorSyntaxHelpers.FullyQualifiedNullableFormat),
-                        BuildConstructorParameterTypeNames(viewModel)),
+                        Analysis.BuildConstructorParameterTypeNames(
+                            viewModel,
+                            honorDiConstructorAttribute: false,
+                            stripTopLevelNullableAnnotation: true)),
                 middlewares);
         }
 
@@ -278,34 +290,6 @@ public sealed partial class MviDiContainerGenerator
             }
 
             return null;
-        }
-
-        private static IReadOnlyList<string> BuildConstructorParameterTypeNames(INamedTypeSymbol classSymbol)
-        {
-            IMethodSymbol? selected = classSymbol.Constructors
-                .Where(static constructor => constructor.DeclaredAccessibility == Accessibility.Public)
-                .OrderByDescending(static constructor => constructor.Parameters.Length)
-                .FirstOrDefault();
-
-            if (selected is null || selected.Parameters.Length == 0)
-            {
-                return System.Array.Empty<string>();
-            }
-
-            List<string> parameterTypeNames = new(selected.Parameters.Length);
-            foreach (IParameterSymbol parameter in selected.Parameters)
-            {
-                ITypeSymbol parameterType = parameter.Type;
-                if (parameterType.NullableAnnotation == NullableAnnotation.Annotated)
-                {
-                    parameterType = parameterType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
-                }
-
-                parameterTypeNames.Add(parameterType.ToDisplayString(
-                    GeneratorSyntaxHelpers.FullyQualifiedNullableFormat));
-            }
-
-            return parameterTypeNames;
         }
     }
 }

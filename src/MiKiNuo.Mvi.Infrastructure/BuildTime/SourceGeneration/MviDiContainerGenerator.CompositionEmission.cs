@@ -79,16 +79,20 @@ public sealed partial class MviDiContainerGenerator
                 builder.AppendLine("            return new " + composition.TypeName + "(scope, "
                     + string.Join(", ", composition.Members.Select(member => member.VariableName)) + ");");
                 builder.AppendLine("        }");
-                builder.AppendLine("        catch");
+                builder.AppendLine("        catch (global::System.Exception failure)");
                 builder.AppendLine("        {");
-                builder.AppendLine("            for (int index = created.Count - 1; index >= 0; index--)");
+                builder.AppendLine("            global::System.Exception? cleanupFailure = null;");
+                builder.AppendLine("            try");
                 builder.AppendLine("            {");
-                builder.AppendLine("                try { await created[index].DisposeAsync().ConfigureAwait(false); }");
-                builder.AppendLine("                catch (global::System.Exception) { }");
+                builder.AppendLine("                await " + composition.TypeName + ".DisposeMembersAsync(created, scope).ConfigureAwait(false);");
+                builder.AppendLine("            }");
+                builder.AppendLine("            catch (global::System.Exception cleanup) { cleanupFailure = cleanup; }");
+                builder.AppendLine("            if (cleanupFailure is null)");
+                builder.AppendLine("            {");
+                builder.AppendLine("                throw;");
                 builder.AppendLine("            }");
                 builder.AppendLine();
-                builder.AppendLine("            scope.Dispose();");
-                builder.AppendLine("            throw;");
+                builder.AppendLine("            throw new global::System.AggregateException(failure, cleanupFailure);");
                 builder.AppendLine("        }");
                 builder.AppendLine("    }");
                 builder.AppendLine();
@@ -177,19 +181,45 @@ public sealed partial class MviDiContainerGenerator
             }
 
             builder.AppendLine("    /// <summary>");
-            builder.AppendLine("    /// 逆序释放全部成员实例并关闭组合范围。");
+            builder.AppendLine("    /// 逆序释放全部成员实例并关闭组合范围；任一成员或范围释放异常均不中断其余释放。");
             builder.AppendLine("    /// </summary>");
             builder.AppendLine("    /// <returns>释放任务。</returns>");
             builder.AppendLine("    public async global::System.Threading.Tasks.ValueTask DisposeAsync()");
             builder.AppendLine("    {");
-            for (int index = composition.Members.Count - 1; index >= 0; index--)
+            builder.Append("        await DisposeMembersAsync(new ");
+            builder.Append(FeatureInstanceTypeName);
+            builder.AppendLine("[]");
+            builder.AppendLine("        {");
+            foreach (Models.CompositionMemberInfo member in composition.Members)
             {
-                builder.AppendLine("        await " + composition.Members[index].PropertyName
-                    + ".DisposeAsync().ConfigureAwait(false);");
+                builder.AppendLine("            " + member.PropertyName + ",");
             }
 
-            builder.AppendLine("        _scope.Dispose();");
+            builder.AppendLine("        }, _scope).ConfigureAwait(false);");
             builder.AppendLine("        global::System.GC.SuppressFinalize(this);");
+            builder.AppendLine("    }");
+            builder.AppendLine();
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// 逆序释放全部成员实例并关闭组合范围：任一成员或范围释放异常均不中断其余释放，结束后聚合所有清理异常。");
+            builder.AppendLine("    /// 供正常关闭与构建回滚共用，确保两者清理语义一致。");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <param name=\"members\">按创建顺序排列的成员实例。</param>");
+            builder.AppendLine("    /// <param name=\"scope\">组合范围。</param>");
+            builder.AppendLine("    /// <returns>释放任务；任一清理异常时抛出聚合异常。</returns>");
+            builder.AppendLine("    internal static async global::System.Threading.Tasks.ValueTask DisposeMembersAsync(");
+            builder.AppendLine("        global::System.Collections.Generic.IReadOnlyList<" + FeatureInstanceTypeName + "> members,");
+            builder.AppendLine("        " + CompositionScopeTypeName + " scope)");
+            builder.AppendLine("    {");
+            builder.AppendLine("        global::System.Collections.Generic.List<global::System.Exception>? failures = null;");
+            builder.AppendLine("        for (int index = members.Count - 1; index >= 0; index--)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            try { await members[index].DisposeAsync().ConfigureAwait(false); }");
+            builder.AppendLine("            catch (global::System.Exception cleanup) { (failures ??= new()).Add(cleanup); }");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        try { scope.Dispose(); }");
+            builder.AppendLine("        catch (global::System.Exception cleanup) { (failures ??= new()).Add(cleanup); }");
+            builder.AppendLine("        if (failures is not null) throw new global::System.AggregateException(failures);");
             builder.AppendLine("    }");
             builder.AppendLine("}");
             builder.AppendLine();

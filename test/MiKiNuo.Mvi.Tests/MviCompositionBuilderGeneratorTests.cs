@@ -155,6 +155,77 @@ public sealed class MviCompositionBuilderGeneratorTests
         """;
 
     /// <summary>
+    /// 组合清理行为测试共享：可释放探针与录制器。各探针捕获各自实例端点用于观察范围关闭，
+    /// 并经由可控 <see cref="System.Threading.Tasks.TaskCompletionSource{TResult}"/> 验证逆序逐 await 释放。
+    /// </summary>
+    private const string DisposalProbeSource = @"
+        namespace CompositionTest
+        {
+            using System.Threading.Tasks;
+
+            internal static class DisposalRecorder
+            {
+                public static System.Collections.Generic.List<string>? Order;
+                public static MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator? CapturedEndpoint;
+                public static string? ThrowMember;
+                public static TaskCompletionSource<bool>? FirstRecorded;
+                public static TaskCompletionSource<bool>? FirstGate;
+                public static void Reset()
+                {
+                    Order = new System.Collections.Generic.List<string>();
+                    CapturedEndpoint = null;
+                    ThrowMember = null;
+                    FirstRecorded = null;
+                    FirstGate = null;
+                }
+            }
+
+            [MiKiNuo.Mvi.Domain.DI.DiService(MiKiNuo.Mvi.Domain.DI.ServiceLifetime.Scoped)]
+            public sealed class DisposalProbe : System.IAsyncDisposable
+            {
+                private readonly MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator _endpoint;
+                public string? MemberName;
+                public DisposalProbe(MiKiNuo.Mvi.Application.MVI.Mediator.IMviMediator mediator) { _endpoint = mediator; }
+                public async ValueTask DisposeAsync()
+                {
+                    DisposalRecorder.CapturedEndpoint = _endpoint;
+                    DisposalRecorder.Order!.Add(MemberName!);
+                    if (DisposalRecorder.FirstRecorded is not null) { DisposalRecorder.FirstRecorded.TrySetResult(true); }
+                    if (DisposalRecorder.FirstGate is not null) { await DisposalRecorder.FirstGate.Task.ConfigureAwait(false); }
+                    if (DisposalRecorder.ThrowMember is not null && DisposalRecorder.ThrowMember == MemberName) { throw new System.InvalidOperationException(""Disposal probe cleanup failed.""); }
+                }
+            }
+        }
+        ";
+
+    /// <summary>
+    /// 在组合源中接入销毁探针：将两个 EffectDispatcher 的构造函数追加对应探针依赖，
+    /// 使探针成为成员实例资源，并在源末追加 <see cref="DisposalProbeSource"/>。
+    /// </summary>
+    /// <param name="source">组合测试源。</param>
+    /// <returns>接入探针后的源。</returns>
+    private static string WithDisposalProbes(string source)
+    {
+        source = source
+            .Replace("public ServerEffectDispatcher(IMviMediator mediator)",
+                "public ServerEffectDispatcher(IMviMediator mediator, DisposalProbe serverProbe)")
+            .Replace("public ClientEffectDispatcher(IMviMediator mediator)",
+                "public ClientEffectDispatcher(IMviMediator mediator, DisposalProbe clientProbe)");
+
+        // 注入成员名赋值：原始字符串去缩进与 CRLF 行尾使固定 \n 锚定失效，故用正则容忍任意空白。
+        source = System.Text.RegularExpressions.Regex.Replace(
+            source,
+            @"DisposalProbe serverProbe\)\s*\{\s*\}",
+            "DisposalProbe serverProbe)\r\n        {\r\n            serverProbe.MemberName = \"Server\";\r\n        }");
+        source = System.Text.RegularExpressions.Regex.Replace(
+            source,
+            @"_mediator = mediator;\s*",
+            "_mediator = mediator;\r\n            clientProbe.MemberName = \"Client\";\r\n");
+
+        return source + DisposalProbeSource;
+    }
+
+    /// <summary>
     /// 验证生成器为 [MviComposition] 声明 emit 组合构建器与组合句柄。
     /// </summary>
     [Test]
@@ -387,6 +458,188 @@ public sealed class MviCompositionBuilderGeneratorTests
         await Assert.That(
             GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
                 failingSource,
+                GeneratorTestHost.FrameworkReferences)).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证组合正常释放时按成员逆序逐个 await，所有成员与组合范围都被释放，
+    /// 且范围关闭后端点发送会抛出 ObjectDisposedException（无需反射私有状态）。
+    /// 以可控 TaskCompletionSource 驱动释放流程，避免依赖计时与并行。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_DisposeMembersInReverseOrderAndCloseScopeAsync()
+    {
+        string source = WithDisposalProbes(CompositionSource) + @"
+            public static class InstanceProbe
+            {
+                public static async System.Threading.Tasks.Task<bool> Run()
+                {
+                    CompositionTest.DisposalRecorder.Reset();
+                    CompositionTest.DisposalRecorder.FirstRecorded = new System.Threading.Tasks.TaskCompletionSource<bool>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+                    CompositionTest.DisposalRecorder.FirstGate = new System.Threading.Tasks.TaskCompletionSource<bool>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+                    MviGeneratorTestAssembly.Composition.GeneratedMviContainer container = new();
+                    CompositionTest.TestComposition composition = await container.CreateTestCompositionAsync();
+                    System.Threading.Tasks.ValueTask disposeTask = composition.DisposeAsync();
+                    await CompositionTest.DisposalRecorder.FirstRecorded.Task.ConfigureAwait(false);
+                    if (CompositionTest.DisposalRecorder.Order!.Contains(""Server""))
+                    {
+                        throw new System.InvalidOperationException(""Server released before Client finished (not reverse awaited)."");
+                    }
+                    CompositionTest.DisposalRecorder.FirstGate.SetResult(true);
+                    await disposeTask.ConfigureAwait(false);
+                    if (CompositionTest.DisposalRecorder.Order.Count != 2 || CompositionTest.DisposalRecorder.Order[0] != ""Client"" || CompositionTest.DisposalRecorder.Order[1] != ""Server"")
+                    {
+                        throw new System.InvalidOperationException(""Release order is not reverse: "" + string.Join("","", CompositionTest.DisposalRecorder.Order));
+                    }
+                    if (CompositionTest.DisposalRecorder.CapturedEndpoint is null)
+                    {
+                        throw new System.InvalidOperationException(""Endpoint not captured."");
+                    }
+                    try
+                    {
+                        await CompositionTest.DisposalRecorder.CapturedEndpoint.SendAsync(new CompositionTest.PingRequest(""x"")).ConfigureAwait(false);
+                        throw new System.InvalidOperationException(""Scope not closed: endpoint still sends."");
+                    }
+                    catch (System.ObjectDisposedException) { }
+                    return true;
+                }
+            }
+            ";
+
+        await Assert.That(
+            GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
+                source,
+                GeneratorTestHost.FrameworkReferences)).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证某个成员清理（Dispose）抛异常时，其余成员与组合范围仍被释放，
+    /// 且 DisposeAsync 抛出聚合异常。覆盖正常释放路径的异常不中断语义。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_ReleaseRemainingMembersAndScopeWhenCleanupFailsAsync()
+    {
+        string source = WithDisposalProbes(CompositionSource) + @"
+            public static class InstanceProbe
+            {
+                public static async System.Threading.Tasks.Task<bool> Run()
+                {
+                    CompositionTest.DisposalRecorder.Reset();
+                    CompositionTest.DisposalRecorder.ThrowMember = ""Client"";
+                    MviGeneratorTestAssembly.Composition.GeneratedMviContainer container = new();
+                    CompositionTest.TestComposition composition = await container.CreateTestCompositionAsync();
+                    System.Exception? observed = null;
+                    try { await composition.DisposeAsync().ConfigureAwait(false); }
+                    catch (System.Exception ex) { observed = ex; }
+                    if (observed is null) { throw new System.InvalidOperationException(""DisposeAsync did not throw cleanup exception.""); }
+                    if (observed is not System.AggregateException) { throw new System.InvalidOperationException(""DisposeAsync threw non-aggregate: "" + observed); }
+                    if (!CompositionTest.DisposalRecorder.Order!.Contains(""Server"")) { throw new System.InvalidOperationException(""Server not released when Client cleanup failed.""); }
+                    if (CompositionTest.DisposalRecorder.CapturedEndpoint is null) { throw new System.InvalidOperationException(""Endpoint not captured.""); }
+                    try
+                    {
+                        await CompositionTest.DisposalRecorder.CapturedEndpoint.SendAsync(new CompositionTest.PingRequest(""x"")).ConfigureAwait(false);
+                        throw new System.InvalidOperationException(""Scope not closed: endpoint still sends."");
+                    }
+                    catch (System.ObjectDisposedException) { }
+                    return true;
+                }
+            }
+            ";
+
+        await Assert.That(
+            GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
+                source,
+                GeneratorTestHost.FrameworkReferences)).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证组合构建中途失败时：已创建成员被回滚释放、范围关闭，
+    /// 且当清理无异常时原构建异常类型被原样保持（非包装为聚合异常）。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_PreserveOriginalExceptionWhenRollbackHasNoCleanupFailureAsync()
+    {
+        string source = WithDisposalProbes(CompositionSource)
+            .Replace("_mediator = mediator;",
+                "_mediator = mediator; throw new System.InvalidOperationException(\"builder failed\");")
+            + @"
+            public static class InstanceProbe
+            {
+                public static async System.Threading.Tasks.Task<bool> Run()
+                {
+                    CompositionTest.DisposalRecorder.Reset();
+                    MviGeneratorTestAssembly.Composition.GeneratedMviContainer container = new();
+                    System.Exception? observed = null;
+                    try { await container.CreateTestCompositionAsync().ConfigureAwait(false); }
+                    catch (System.Exception ex) { observed = ex; }
+                    if (observed is null) { throw new System.InvalidOperationException(""Builder did not throw.""); }
+                    if (observed is System.AggregateException) { throw new System.InvalidOperationException(""Rollback wrapped original into aggregate, type not preserved: "" + observed); }
+                    if (observed is not System.InvalidOperationException) { throw new System.InvalidOperationException(""Rollback did not preserve original type: "" + observed); }
+                    if (!CompositionTest.DisposalRecorder.Order!.Contains(""Server"")) { throw new System.InvalidOperationException(""Rollback did not release created Server.""); }
+                    if (CompositionTest.DisposalRecorder.CapturedEndpoint is null) { throw new System.InvalidOperationException(""Endpoint not captured.""); }
+                    try
+                    {
+                        await CompositionTest.DisposalRecorder.CapturedEndpoint.SendAsync(new CompositionTest.PingRequest(""x"")).ConfigureAwait(false);
+                        throw new System.InvalidOperationException(""Scope not closed: endpoint still sends."");
+                    }
+                    catch (System.ObjectDisposedException) { }
+                    return true;
+                }
+            }
+            ";
+
+        await Assert.That(
+            GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
+                source,
+                GeneratorTestHost.FrameworkReferences)).IsTrue();
+    }
+
+    /// <summary>
+    /// 验证组合构建中途失败且回滚清理也失败时：聚合异常同时保留原始构建异常与清理异常。
+    /// </summary>
+    [Test]
+    public async Task Generator_Should_AggregateOriginalAndCleanupExceptionsWhenRollbackCleanupFailsAsync()
+    {
+        string source = WithDisposalProbes(CompositionSource)
+            .Replace("_mediator = mediator;",
+                "_mediator = mediator; throw new System.InvalidOperationException(\"builder failed\");")
+            + @"
+            public static class InstanceProbe
+            {
+                public static async System.Threading.Tasks.Task<bool> Run()
+                {
+                    CompositionTest.DisposalRecorder.Reset();
+                    CompositionTest.DisposalRecorder.ThrowMember = ""Server"";
+                    MviGeneratorTestAssembly.Composition.GeneratedMviContainer container = new();
+                    System.Exception? observed = null;
+                    try { await container.CreateTestCompositionAsync().ConfigureAwait(false); }
+                    catch (System.Exception ex) { observed = ex; }
+                    if (observed is null) { throw new System.InvalidOperationException(""Builder did not throw.""); }
+                    if (observed is not System.AggregateException agg) { throw new System.InvalidOperationException(""Rollback did not aggregate original and cleanup: "" + observed); }
+                    System.Collections.Generic.IEnumerable<System.Exception> flattened = agg.Flatten().InnerExceptions;
+                    bool hasBuild = false;
+                    bool hasCleanup = false;
+                    foreach (System.Exception e in flattened)
+                    {
+                        if (e is System.InvalidOperationException && e.Message.Contains(""builder failed"")) hasBuild = true;
+                        if (e.Message.Contains(""Disposal probe cleanup failed."")) hasCleanup = true;
+                    }
+                    if (!hasBuild || !hasCleanup) { throw new System.InvalidOperationException(""Aggregate did not preserve both original and cleanup.""); }
+                    if (!CompositionTest.DisposalRecorder.Order!.Contains(""Server"")) { throw new System.InvalidOperationException(""Rollback did not release created Server.""); }
+                    try
+                    {
+                        await CompositionTest.DisposalRecorder.CapturedEndpoint!.SendAsync(new CompositionTest.PingRequest(""x"")).ConfigureAwait(false);
+                        throw new System.InvalidOperationException(""Scope not closed: endpoint still sends."");
+                    }
+                    catch (System.ObjectDisposedException) { }
+                    return true;
+                }
+            }
+            ";
+
+        await Assert.That(
+            GeneratorTestHost.RunGeneratorProbeAsync<MviDiContainerGenerator>(
+                source,
                 GeneratorTestHost.FrameworkReferences)).IsTrue();
     }
 
