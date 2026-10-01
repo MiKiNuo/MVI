@@ -73,5 +73,6 @@ mono_crash.*.json
 !/docs/mvi-next/
 /docs/mvi-next/*
 !/docs/mvi-next/CONTEXT.md
+!/docs/mvi-next/ARCHITECTURE.md
 /TestResults
 /.workbuddy

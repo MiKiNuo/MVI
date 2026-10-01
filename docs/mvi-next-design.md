@@ -1,6 +1,6 @@
 # MVI 下一版本设计讨论
 
-状态：讨论中。更新日期：2026-10-01。
+状态：Q1～Q23 基础决策已接受，完整设计整理中，等待整体确认。更新日期：2026-10-01。
 
 ## 已明确的目标
 
@@ -13,6 +13,11 @@
 - 普通业务默认只编写 State、Feature 与 View，支持同类型 Feature 的多个独立实例及运行时动态组合。
 - 每个 Feature 的业务状态坚持不可变快照；异步操作按实例、按操作配置并发策略，默认拒绝同操作重复启动。
 - 框架自动维护操作的运行、取消与异常状态，业务结果由业务转换表达，View 选择加载与错误的表现。
+- View 挂载与业务实例生命周期独立：视图卸载释放视图订阅，实例由逻辑所有者管理；显式关闭时停止接纳新业务、请求取消并拒绝迟到写回。
+- 输入字段采用一次声明与统一验证入口；操作调用区分执行结果与业务结果，正常返回保证已接纳状态变化已提交。
+- 业务操作默认后台执行，平台绑定按字段关注数据并合并待展示更新；业务输入、通知与一次性行为维持各自处理契约。
+- 组合范围内唯一请求目标可以自动绑定，多候选实例由宿主明确选择；通知保持显式订阅与范围接线。
+- 关闭包含未保存编辑的组合时先确认整个所有权范围，任一拒绝则保持可用，确认条件失效时重新验证。
 - 交互响应、多实例内存与更新成本、派发吞吐与分配、生成器与编译性能都纳入验收，不以改善其中一项代替其余项目。
 - NuGet 采用一个核心包加 Avalonia、Godot 两个平台适配包；单平台用户显式安装一个入口包。
 - 本阶段讨论和记录设计，确认整体共识后再进入实现。
@@ -57,24 +62,31 @@ NuGet 官方说明：[传递依赖解析](https://learn.microsoft.com/en-us/nuge
 
 已接受的默认用户代码是 State + Feature + View。Feature 可包含纯转换方法与异步操作方法；普通业务不要求另写 Intent、Effect、Dispatcher、ViewModel 和生成容器声明。高级场景是否提供显式消息类型扩展点，后续再决定。
 
-以下只展示业务表达语法；Operation、特性及方法名均为候选 API。框架维护操作状态、按操作选择并发策略的方向已接受，完成结果和取消等具体契约继续讨论；此片段不作为完整登录实现。
+以下展示输入声明与业务表达语法；特性、方法及返回类型名称均为候选 API。运行状态、并发与完成结果的方向已接受，具体类型和取消契约继续讨论；此片段不作为完整登录实现。
 
 ```csharp
-public sealed record LoginState(
-    string UserName = "",
-    string Password = "",
-    string? DisplayName = null,
-    string? ErrorMessage = null);
+public sealed record LoginState
+{
+    [Input]
+    public string UserName { get; init; } = "";
+
+    [Input]
+    public string Password { get; init; } = "";
+
+    public string? DisplayName { get; init; }
+
+    public string? ErrorMessage { get; init; }
+}
 
 public sealed partial class LoginFeature(IAuthService authService)
-    : Feature<LoginState>
+    : Feature<LoginState>(new())
 {
-    [Input(nameof(LoginState.UserName))]
+    [OnInput(nameof(LoginState.UserName))]
     private static LoginState ChangeUserName(LoginState state, string value)
         => state with { UserName = value, ErrorMessage = null };
 
-    [Operation]
-    private async ValueTask SubmitAsync(Operation<LoginState> operation)
+    [Operation(Validate = nameof(CanSubmit))]
+    private async ValueTask<AuthResult> SubmitAsync(Operation<LoginState> operation)
     {
         LoginState input = operation.Snapshot;
         AuthResult result = await authService.LoginAsync(
@@ -83,7 +95,12 @@ public sealed partial class LoginFeature(IAuthService authService)
             operation.CancellationToken);
 
         await operation.UpdateAsync(ApplyLoginResult, result);
+        return result;
     }
+
+    private static bool CanSubmit(LoginState state)
+        => !string.IsNullOrWhiteSpace(state.UserName)
+            && !string.IsNullOrWhiteSpace(state.Password);
 
     private static LoginState ApplyLoginResult(LoginState state, AuthResult result)
         => result.IsSuccess && result.DisplayName is not null
@@ -99,6 +116,8 @@ public sealed partial class LoginFeature(IAuthService authService)
 这里的关键语义是：IO 使用操作开始时的输入快照；ApplyLoginResult 接收提交时的当前状态，避免用整个旧快照覆盖其他已完成的编辑。是否仍允许该操作写回，由操作有效性与实例生命周期规则决定，不能仅靠当前状态参数解决迟到结果问题。
 
 异步流程可复用纯转换方法，操作身份与有效性仍由同一内核管理。UpdateAsync 的具体返回值、取消行为及错误契约尚未确定，示例不表示这些接口已经存在。
+
+示例中 Password 的基本回写由输入声明生成；UserName 因需要清理业务错误而提供额外纯转换。Submit 的验证在所有调用入口执行，业务方法返回 AuthResult，框架同时提供执行结果与操作运行状态。
 
 ### 组合按实例组织
 
@@ -122,14 +141,14 @@ Domain、Application、Presentation 可作为核心内部的职责边界，不�
 
 ## 第三轮执行规则
 
-Q10～Q12 已接受，见 [ADR 0013](adr/0013-vnext-state-and-operation-semantics.md)。Q13 仍待确认：
+Q10～Q12 已接受，见 [ADR 0013](adr/0013-vnext-state-and-operation-semantics.md)。Q13 已接受，见 [ADR 0015](adr/0015-vnext-view-and-feature-lifetimes.md)。
 
 | 问题 | 状态 | 规则 | 要检验的场景 |
 | --- | --- | --- | --- |
 | Q10 状态模型 | 已接受 | 每个 Feature 独立持有不可变业务状态快照；纯转换基于当前快照计算新状态 | 高频小状态更新、大列表与多个独立编辑器；不复制整个组合树 |
 | Q11 操作并发 | 已接受 | 按实例、按操作设策略；默认拒绝同操作重复启动，搜索支持 Latest，排队与并行按需声明 | 重复登录点击；旧搜索晚于新搜索完成；不同操作并行期间仍可提交输入 |
 | Q12 操作运行状态 | 已接受 | 框架维护每个操作的运行、取消与异常状态，View 选择加载和错误表现；业务结果仍由业务转换表达 | 少写 IsBusy/try-finally；失败或取消后结束忙碌；后台刷新与提交显示不同加载状态 |
-| Q13 视图与实例生命周期 | 待确认 | 推荐 View 卸载释放视图订阅；业务实例由逻辑所有者管理，显式关闭时停止接纳、请求取消并拒绝迟到写回 | Tab 切换后恢复同实例；关闭子编辑器后从组合移除；父组合关闭所有拥有的子实例 |
+| Q13 视图与实例生命周期 | 已接受 | View 卸载释放视图订阅；业务实例由逻辑所有者管理，显式关闭时停止接纳、请求取消并拒绝迟到写回 | Tab 切换后恢复同实例；关闭子编辑器后从组合移除；父组合关闭所有拥有的子实例 |
 
 不可变快照是状态内容的约束，使用 record 声明本身不能保证其嵌套集合或对象不可变；状态表示与诊断规则需落实这个边界。
 
@@ -137,7 +156,101 @@ Q10～Q12 已接受，见 [ADR 0013](adr/0013-vnext-state-and-operation-semantic
 
 Latest 策略需要在提交状态时核对操作有效性。请求取消并不能保证外部任务立即结束，旧请求即使返回结果也不得覆盖新请求；参数与业务对象变化造成的其他结果冲突，需要明确业务条件。取消、错误、操作完成和结果是否已提交是不同的可观察事实。
 
-上述选择明确后，继续确定输入声明与验证、操作调用者看到的完成结果、状态观察与 UI 更新调度、通信寻址与通知完成含义、关闭确认与在途资源释放、生成器与依赖注入，以及性能预算。
+## 第四轮已接受的规则
+
+Q14～Q18 已接受，记录在 ADR 0016～0019。以下规则定义默认业务体验，特性、方法和返回类型名称仍可调整。
+
+### Q14 输入与业务验证（ADR 0016）
+
+- State 字段默认只读；可编辑字段只标注一次，框架生成属性、回写与通知适配，基本赋值不要求再写修改 Intent 或转换方法。
+- 有额外业务规则时，在 Feature 中声明纯转换或验证方法；业务验证经统一入口执行，覆盖 UI、程序调用和跨 Feature 请求。
+- 编辑阶段允许业务模型可表达的中间值，展示验证反馈；操作启动前检查业务条件，不符合时不执行 IO。
+- CanExecute 提供 UI 反馈，操作启动时仍按当前状态验证；不能仅依赖按钮禁用来阻止无效业务。
+
+### Q15 操作的完成结果（ADR 0017）
+
+- await 操作调用返回时，业务方法已经结束，该操作发出的已接纳状态变化已经提交；等待入队成功与等待完整处理完成分别定义。
+- 调用结果区分 Completed、Rejected、Canceled、Superseded、Faulted 等执行结果；业务方法可返回强类型业务值，正常结束不代替业务成功判断。
+- UI 命令由框架适配这套结果，普通使用者不必为每个按钮重复处理运行状态。
+- UI 绑定通知与绘制独立调度，await 不以实际绘制完成为条件。
+- 已提交的状态和已发生的外部操作不会因后续取消自动回滚，调用者不能把一次异步操作当作跨时间的原子事务。
+
+### Q16 执行调度与 UI 更新（ADR 0018）
+
+- 业务操作默认在后台执行，涉及 UI 的服务通过平台调度入口执行；平台无关业务代码采用同一默认规则。
+- 业务状态提交保持有序，普通业务观察保留其协议要求的变化；平台绑定按字段或选择器关注数据。
+- 默认合并等待中的 UI 更新，使视图展示最新值，避免重复刷新无关字段；提供明确选择中间展示状态的方式。
+- 合并 UI 展示不丢弃业务输入、跨 Feature 通知或一次性 UI 行为；提示、导航等行为不以瞬时 State 布尔开关代替投递契约。
+- 高频 UI 场景按实际平台负载检验调度延迟、通知次数和分配成本。
+
+### Q17 组合通信的默认路由（ADR 0019）
+
+- Feature 依赖请求或通知契约，宿主负责建立范围与接线；不要求子 Feature 依赖父级或兄弟的具体类型。
+- 请求在明确通信范围内有唯一提供方时可自动绑定；出现多个候选实例时由宿主显式选目标，能够静态确定的歧义给编译诊断，动态歧义给明确运行结果。
+- 通知只投递给显式订阅者，不因 View 或 Feature 嵌套而自动传播；跨范围通信由宿主显式接线。
+- 同类型实例通过实例身份或契约端口寻址，业务对象 ID 不自动充当实例地址。
+- 独立宿主可以提供同一契约的实现或替代服务，保持业务功能的独立运行能力。
+
+### Q18 关闭确认与未保存编辑（ADR 0019）
+
+- 请求关闭与正式进入关闭阶段分别定义；关闭确认阶段检查整个所有权范围是否允许关闭。
+- 任一子实例拒绝关闭时，组合保持可用；在最终确认前不提前取消其他子实例的 IO 或释放资源。
+- 确认后停止接纳新业务与迟到写回，再请求取消、解绑并释放资源。
+- 校验期间状态或成员变化使确认条件失效时，必须重新验证；在途操作的资源释放和关闭完成含义需据此继续细化。
+- 普通实例可采用默认允许关闭；需要保护未保存数据时由业务定义确认规则。
+
+## 最后一轮已接受的基础决策
+
+Q19～Q23 已接受，记录在 ADR 0020～0024。
+
+### Q19 依赖注入与生成器职责
+
+- 支持标准 IServiceProvider 和直接构造，不再以框架自制通用 DI 容器作为默认前提。
+- 生成器生成 Feature 工厂、输入与命令适配、强类型分派及契约接线描述，采用属性候选与增量管线。
+- DI 工厂为每个 Feature 实例建立独立服务范围；singleton 服务按应用注册规则共享，外部直接传入的服务由其创建方管理。
+- 构造依赖在创建时解析，状态转换和常规操作热路径不重复执行 DI 查找。
+- DI Scope 不自动形成 Feature 所有权树，父子关系、在途执行和释放由 Feature 生命周期管理。
+- 默认错误诊断聚焦框架误用并定位原始声明；团队命名与文档风格规则分别配置。
+
+依据：[DI 生命周期与释放指南](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines)、[CreateAsyncScope](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.serviceproviderserviceextensions.createasyncscope)、[增量生成源码输出](https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.incrementalgeneratorinitializationcontext.registersourceoutput)。
+
+### Q20 通知发布与处理完成
+
+- 请求等待目标的处理结果；通知发布返回显式订阅者的接纳报告，不把接纳等同于后续业务已完成。
+- 通知采用有界接纳，关闭、队列已满等拒绝原因可见；接纳后的处理失败有独立可观察渠道。
+- 需要保证对方已经处理、状态已提交的协作使用请求响应或明确完成协议，不从通知发布返回推断对方状态。
+
+### Q21 请求等待取消与目标执行
+
+- 调用者在请求接纳前取消时，请求不应启动。
+- 目标已接纳后，停止调用者的等待与终止目标执行分别定义；取消等待不证明目标已结束或外部效果已撤销。
+- 默认目标拥有已接纳请求的执行；允许契约显式选择传播取消，查询等场景可声明协作取消策略。
+- 请求发起方关闭不会自动撤销目标已提交的状态或已执行的副作用。
+- 被取消的等待不是正常完成响应；执行结果与等待结果分开记录，调用者可观察拒绝、等待取消与目标故障。
+
+依据：[协作取消](https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads)、[Task.WaitAsync](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task.waitasync?view=net-10.0)。
+
+### Q22 逻辑关闭与资源释放完成
+
+- 请求关闭先按 Q18 确认；逻辑关闭后拒绝新业务与迟到写回，并移除活动成员与通信绑定。
+- UI 可在逻辑关闭后卸载，导航响应不等待发起者自身的在途操作退出，避免关闭与请求响应互相等待。
+- 资源释放需要等待相关执行真正退出，再释放仍可能被访问的服务范围；提供可单独等待的释放完成信号。
+- 不合作的外部任务可能使释放等待无时间上界；超时只能表示等待结束，不能据此强制释放其仍在使用的对象。
+- 已从活动组合移除但尚未释放的实例，继续由资源管理跟踪到释放完成。
+
+导航检验场景：Login 操作 await Navigate 请求，Shell 接纳导航并逻辑关闭 Login，然后返回响应；Login 操作结束后，其服务范围才释放。若 Shell 等待 Login 操作结束再返回导航响应，会形成等待环。
+
+### Q23 验收与性能基线
+
+- 对同一环境、相同状态表示与等价语义固定三组参照：最小手写实现、归档 v1、v2 实现；创建与 DI 另含标准 DI 对照。
+- 四类性能分别测量，报告中位成本、尾延迟、分配与资源释放，不仅列平均派发时间。
+- 高频纯转换路径以不增加每次消息包装、反射或 DI 查找为目标；业务状态对象本身的分配单独统计。具体优化以测量为依据，不先加入池化等复杂度。
+- UI 用两平台的真实输入、慢 IO、更新风暴与多实例挂载/关闭验证，字段不相关的变化不应制造整页刷新。
+- 稳定可复现的资源泄漏、错误写回、丢失业务事件与取消误判属于验收失败；计时回归在重复测量确认后判断。
+- 编译测量冷构建、增量构建和单 Feature 修改；NuGet 验证独立项目仅引用一个平台包即可生成并运行。
+- 不直接以历史文档中的纳秒数充当当前基线；绝对门槛须由目标环境和负载测量确定。
+
+完整架构与 API 方案、验收场景及实施顺序整理在 [v2 架构设计](mvi-next/ARCHITECTURE.md)，作为整体确认入口。
 
 ## 性能验收维度
 
@@ -172,17 +285,25 @@ Latest 策略需要在提交状态时核对操作有效性。请求取消并不�
 10. Q10：坚持不可变状态快照。
 11. Q11：接受按操作配置并发策略的推荐方案。
 12. Q12：接受框架维护操作运行状态的推荐方案。
+13. Q13：接受 View 与 Feature 实例分别管理生命周期的推荐方案。
 
-当前未回答：Q13 视图与实例生命周期。
+第四轮已经回答：
 
-上述选择明确之后，再讨论：
+14. Q14：采用一次输入声明与统一业务验证入口。
+15. Q15：采用完整处理完成与执行/业务结果分别表达的推荐方案。
+16. Q16：采用后台业务执行与按字段合并 UI 更新的推荐方案。
+17. Q17：采用唯一目标自动绑定、歧义目标显式选择与范围内订阅。
+18. Q18：采用先确认所有子实例、确认后关闭与拒绝后保持可用的推荐方案。
 
-- 业务作者面对的最小概念与代码形态。
-- 输入绑定、异步操作、取消、重复提交及迟到结果的语义。
-- 状态粒度、观察订阅和 UI 更新方式。
-- Feature 创建、组合、通信与生命周期。
-- 源生成器、依赖注入和平台适配的职责。
-- 可执行示例、性能基准及新版本验收条件。
+最后一轮已经回答：
+
+19. Q19：采用标准 DI 与直接构造，生成器专注于 Feature 适配。
+20. Q20：通知发布返回接纳报告，处理完成使用请求或显式完成协议。
+21. Q21：分别定义取消等待与取消目标执行，接纳后默认由目标管理执行。
+22. Q22：分别定义逻辑关闭与资源释放完成。
+23. Q23：采用同环境、等价语义的固定基线与真实负载验收。
+
+基础决策树已收敛，下一步确认整合后的架构与 API 方案。
 
 ## 文档约定
 
