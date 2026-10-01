@@ -25,7 +25,7 @@ public sealed class FeatureGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor AmbiguousRule = new("MVI2005", "输入规则有歧义",
         "输入 '{0}' 只能声明一个 OnInput 规则", "Mvi", DiagnosticSeverity.Error, true);
     private static readonly DiagnosticDescriptor MemberConflict = new("MVI2006", "生成入口与现有成员冲突",
-        "输入入口 '{0}' 与功能中的现有成员冲突", "Mvi", DiagnosticSeverity.Error, true);
+        "生成成员 '{0}' 与功能成员或本地投影保留成员冲突", "Mvi", DiagnosticSeverity.Error, true);
     /// <summary>注册功能声明的增量生成管线。</summary>
     /// <param name="context">当前增量生成器上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -157,6 +157,40 @@ public sealed class FeatureGenerator : IIncrementalGenerator
             }
         }
 
+        Dictionary<string, IPropertySymbol> properties = new(StringComparer.Ordinal);
+        if (state is INamedTypeSymbol projectionState)
+        {
+            for (INamedTypeSymbol? current = projectionState; current is not null; current = current.BaseType)
+            {
+                foreach (IPropertySymbol property in current.GetMembers().OfType<IPropertySymbol>())
+                {
+                    if (!property.IsStatic && !property.IsIndexer && property.DeclaredAccessibility == Accessibility.Public
+                        && property.GetMethod?.DeclaredAccessibility == Accessibility.Public && !properties.ContainsKey(property.Name))
+                    {
+                        properties.Add(property.Name, property);
+                    }
+                }
+            }
+        }
+
+        foreach (string name in new[] { "CreateProjection", "Projection" })
+        {
+            ISymbol? conflict = feature.GetMembers(name).FirstOrDefault();
+            if (conflict is not null || feature.Name == name)
+            {
+                diagnostics.Add(Diagnostic.Create(MemberConflict, conflict?.Locations[0] ?? declaration.Identifier.GetLocation(), name));
+            }
+        }
+
+        foreach (IPropertySymbol property in properties.Values)
+        {
+            if (new[] { "Snapshot", "PropertyChanged", "Dispose", "Projection", "OnSnapshotChanged", "NotifyPropertyChanged",
+                "InitializeProjection", "EnsureActive", "SetProjectionInput", "TakeInputFeedback", "__feature" }.Contains(property.Name, StringComparer.Ordinal))
+            {
+                diagnostics.Add(Diagnostic.Create(MemberConflict, property.Locations[0], property.Name));
+            }
+        }
+
         if (diagnostics.Count != 0)
         {
             return new FeatureModel(hintName, string.Empty, diagnostics.ToImmutable());
@@ -182,7 +216,51 @@ public sealed class FeatureGenerator : IIncrementalGenerator
                 .Append(");\n");
         }
 
-        source.Append("}\n");
+        string stateType = state.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        source.Append("    /// <summary>创建该功能唯一活动 View 的强类型本地投影，释放后可重新连接。</summary>\n")
+            .Append("    /// <param name=\"schedule\">安排到所属 UI 线程的原生调度入口。</param>\n")
+            .Append("    /// <param name=\"mode\">等待展示的合并方式。</param>\n")
+            .Append("    /// <returns>供该 View 原生绑定使用的投影。</returns>\n")
+            .Append("    public Projection CreateProjection(global::System.Action<global::System.Action> schedule, global::MiKiNuo.Mvi.ProjectionMode mode = global::MiKiNuo.Mvi.ProjectionMode.Coalesce) => new(this, schedule, mode);\n")
+            .Append("    /// <summary>生成的强类型本地绑定，不供功能间业务通信使用。</summary>\n")
+            .Append("    public sealed class Projection : global::MiKiNuo.Mvi.FeatureProjection<").Append(stateType).Append(">\n    {\n")
+            .Append("        private readonly @").Append(feature.Name).Append(" __feature;\n")
+            .Append("        internal Projection(@").Append(feature.Name).Append(" feature, global::System.Action<global::System.Action> schedule, global::MiKiNuo.Mvi.ProjectionMode mode) : base(feature, schedule, mode)\n")
+            .Append("        {\n            __feature = feature;\n            InitializeProjection();\n        }\n");
+        foreach (IPropertySymbol property in properties.Values.OrderBy(static property => property.Name, StringComparer.Ordinal))
+        {
+            string valueType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+                SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier));
+            source.Append("        /// <summary>读取已展示快照中的属性").Append(property.Name).Append("。</summary>\n")
+                .Append("        public ").Append(valueType).Append(" @").Append(property.Name).Append("\n        {\n")
+                .Append("            get => Snapshot.State.@").Append(property.Name).Append(";\n");
+            if (inputs.ContainsKey(property.Name))
+            {
+                source.Append("            set => SetProjectionInput(nameof(@").Append(property.Name).Append("), value, __feature, static (feature, input) => feature.Set").Append(property.Name).Append("(input));\n");
+            }
+
+            source.Append("        }\n");
+        }
+
+        source.Append("        /// <summary>按有关字段比较两个已提交状态。</summary>\n")
+            .Append("        /// <param name=\"previous\">上次展示状态。</param>\n        /// <param name=\"current\">当前展示状态。</param>\n")
+            .Append("        protected override void OnSnapshotChanged(").Append(stateType).Append(" previous, ").Append(stateType).Append(" current)\n        {\n");
+        foreach (IPropertySymbol property in properties.Values.OrderBy(static property => property.Name, StringComparer.Ordinal))
+        {
+            string valueType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+                SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier));
+            source.Append("            if (");
+            if (inputs.ContainsKey(property.Name))
+            {
+                source.Append("TakeInputFeedback(nameof(@").Append(property.Name).Append(")) || ");
+            }
+
+            source.Append("!global::System.Collections.Generic.EqualityComparer<").Append(valueType)
+                .Append(">.Default.Equals(previous.@").Append(property.Name).Append(", current.@").Append(property.Name).Append("))\n")
+                .Append("                NotifyPropertyChanged(nameof(@").Append(property.Name).Append("));\n");
+        }
+
+        source.Append("        }\n    }\n}\n");
         return new FeatureModel(hintName, source.ToString(), []);
     }
 

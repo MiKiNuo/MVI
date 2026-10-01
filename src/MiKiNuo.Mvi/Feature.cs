@@ -17,6 +17,10 @@ public abstract class Feature<TState> where TState : notnull
     /// <summary>获取一次一致提交的完整快照。</summary>
     public RuntimeSnapshot<TState> Snapshot => store.Snapshot;
 
+    internal void AttachProjection(FeatureProjection<TState> projection) => store.AttachProjection(projection);
+
+    internal void DetachProjection(FeatureProjection<TState> projection) => store.DetachProjection(projection);
+
     /// <summary>将生成的强类型输入交给实例的状态提交入口。</summary>
     /// <typeparam name="TValue">输入值类型。</typeparam>
     /// <param name="value">本次输入值。</param>
@@ -38,13 +42,40 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private readonly object gate = new();
     private RuntimeSnapshot<TState> snapshot;
     private bool reducing;
+    private FeatureProjection<TState>? projection;
 
     internal FeatureStore(TState state) => snapshot = new RuntimeSnapshot<TState>(state, 0);
 
     internal RuntimeSnapshot<TState> Snapshot => Volatile.Read(ref snapshot);
 
+    internal void AttachProjection(FeatureProjection<TState> connection)
+    {
+        lock (gate)
+        {
+            if (projection is not null)
+            {
+                throw new InvalidOperationException("一个功能实例只能连接一个活动的本地 View 投影；释放旧投影后可重新连接。");
+            }
+
+            connection.SetInitialSnapshot(snapshot);
+            projection = connection;
+        }
+    }
+
+    internal void DetachProjection(FeatureProjection<TState> connection)
+    {
+        lock (gate)
+        {
+            if (ReferenceEquals(projection, connection))
+            {
+                projection = null;
+            }
+        }
+    }
+
     internal void Dispatch<TValue>(InputIntent<TState, TValue> intent)
     {
+        FeatureProjection<TState>? display;
         lock (gate)
         {
             if (reducing)
@@ -57,12 +88,16 @@ internal sealed class FeatureStore<TState> where TState : notnull
             {
                 RuntimeSnapshot<TState> next = Reduce(snapshot, intent);
                 Volatile.Write(ref snapshot, next);
+                display = projection;
+                display?.Enqueue(next);
             }
             finally
             {
                 reducing = false;
             }
         }
+
+        display?.RequestDisplay();
     }
 
     private static RuntimeSnapshot<TState> Reduce<TValue>(RuntimeSnapshot<TState> current, InputIntent<TState, TValue> intent)

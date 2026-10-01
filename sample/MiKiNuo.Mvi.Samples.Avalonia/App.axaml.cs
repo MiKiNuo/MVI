@@ -1,7 +1,8 @@
-using Avalonia.Controls.ApplicationLifetimes;
+﻿using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MiKiNuo.Mvi.Platforms.Avalonia.Threading;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Input;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;
 
@@ -25,8 +26,45 @@ public sealed partial class App : global::Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            SampleCompositionRoot compositionRoot = new(new AvaloniaMviUiDispatcher());
-            desktop.MainWindow = compositionRoot.CreateMainWindow();
+            if (Program.UseV2Input)
+            {
+                InputFormWindow window = new();
+                desktop.MainWindow = window;
+                if (Program.VerifyV2Input)
+                {
+                    window.ShowInTaskbar = false;
+                    window.WindowState = global::Avalonia.Controls.WindowState.Minimized;
+                    window.Opened += async (_, _) =>
+                    {
+                        int exitCode = 0;
+                        string report;
+                        try
+                        {
+                            report = await InputFormVerification.RunAsync(window).WaitAsync(TimeSpan.FromSeconds(20));
+                        }
+                        catch (Exception exception)
+                        {
+                            exitCode = 1;
+                            report = "FAIL v2-input: " + exception;
+                        }
+
+                        try
+                        {
+                            File.WriteAllText(Program.VerificationPath, report);
+                            Console.WriteLine(report);
+                        }
+                        finally
+                        {
+                            desktop.Shutdown(exitCode);
+                        }
+                    };
+                }
+            }
+            else
+            {
+                SampleCompositionRoot compositionRoot = new(new AvaloniaMviUiDispatcher());
+                desktop.MainWindow = compositionRoot.CreateMainWindow();
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

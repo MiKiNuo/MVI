@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;
 
@@ -7,14 +7,26 @@ namespace MiKiNuo.Mvi.Samples.Avalonia;
 /// </summary>
 internal static class Program
 {
+    internal static bool UseV2Input { get; private set; }
+    internal static bool VerifyV2Input { get; private set; }
+    internal static string VerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-input-verification.txt");
     /// <summary>
     /// 启动应用程序。
     /// </summary>
     /// <param name="args">命令行参数。</param>
+    /// <returns>平台宿主或自动验收的退出码。</returns>
     [STAThread]
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        VerifyV2Input = args.Contains("--verify-v2-input", StringComparer.Ordinal);
+        UseV2Input = VerifyV2Input || args.Contains("--v2-input", StringComparer.Ordinal);
+        string? result = args.FirstOrDefault(static argument => argument.StartsWith("--v2-input-result=", StringComparison.Ordinal));
+        if (result is not null)
+        {
+            VerificationPath = Path.GetFullPath(result["--v2-input-result=".Length..]);
+        }
+
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
     /// <summary>

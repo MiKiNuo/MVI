@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src\MiKiNuo.Mvi\MiKiNuo.Mvi.csproj" />
     <Project Path="src\MiKiNuo.Mvi.Generators\MiKiNuo.Mvi.Generators.csproj" />
+    <Project Path="src\MiKiNuo.Mvi.Avalonia\MiKiNuo.Mvi.Avalonia.csproj" />
     <Project Path="src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" Type="C#" />
     <Project Path="src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
     <Project Path="src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" Type="C#" />
