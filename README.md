@@ -1,5 +1,9 @@
 # MiKiNuo.Mvi
 
+> **版本方向：本分支用于 MVI v2 的设计与开发。** 当前源码仍是 v1 基线，新架构的已接受决策见 [设计讨论](docs/mvi-next-design.md) 与 [v2 词汇表](docs/mvi-next/CONTEXT.md)。
+>
+> v1 保留在 `main`，归档标签为 `archive/v1-2026-10-01`，固定提交为 [`ed77eb3`](https://github.com/MiKiNuo/MVI/tree/ed77eb38ecba77a62fac2c0cbbbb35321a540d03)。v2 开发与默认分支采用 `codex/mvi-v2`；以下现有框架说明对应 v1 基线。
+
 > 面向复杂业务 UI 的 **响应式组合式 MVI 框架**。  
 > 基于 **.NET 10 + R3 + Source Generator + Clean Architecture + Analyzer + 编译期 DI**，用于构建可追踪、可测试、可复用、可扩展的 Avalonia / WinForms / Godot / Unity 等多平台 UI 架构。
 

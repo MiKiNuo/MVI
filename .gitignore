@@ -64,6 +64,14 @@ mono_crash.*.json
 /AGENTS.md
 /.gsd
 /CONTEXT.md
-/docs
+# Track architecture decisions and v2 design; retain local benchmark reports.
+/docs/*
+!/docs/adr/
+/docs/adr/*
+!/docs/adr/*.md
+!/docs/mvi-next-design.md
+!/docs/mvi-next/
+/docs/mvi-next/*
+!/docs/mvi-next/CONTEXT.md
 /TestResults
 /.workbuddy

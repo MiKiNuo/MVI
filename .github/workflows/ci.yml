@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - develop
+      - codex/mvi-v2
       - "feature/**"
       - "fix/**"
   pull_request:
     branches:
       - main
       - develop
+      - codex/mvi-v2
   workflow_dispatch:
 
 permissions:
