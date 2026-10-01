@@ -1,0 +1,3 @@
+# Preserve the verified diagram bytes across Windows and Unix checkouts.
+/docs/mvi-next/diagrams/*.json text eol=lf
+/docs/mvi-next/diagrams/mvi-closed-loop.html text eol=lf -whitespace

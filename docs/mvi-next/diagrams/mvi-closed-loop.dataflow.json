@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "MVI 单向数据流与异步回流",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "docs/mvi-next/diagrams/mvi-closed-loop.html",
+    "viewBox": [1080, 520],
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "emphasis": { "label": "状态转换" },
+        "dashed": { "label": "异步反馈" },
+        "database": { "label": "统一快照" },
+        "default": { "label": "副作用执行" }
+      }
+    },
+    "views": [
+      { "id": "state-path", "label": "状态链路", "focus": ["view-input", "intent-entry", "pure-reducer", "state-commit", "view-render"] },
+      { "id": "effect-loop", "label": "副作用回流", "focus": ["pure-reducer", "effect-plan", "effect-executor", "external-io", "feedback-intent", "intent-entry"] }
+    ]
+  },
+  "stages": [
+    { "label": "交互来源" },
+    { "label": "Intent 入口" },
+    { "label": "Model 的纯转换" },
+    { "label": "提交与执行" },
+    { "label": "展示与外部世界" }
+  ],
+  "nodes": [
+    { "id": "view-input", "type": "frontend", "label": "View 交互", "sublabel": "输入、点击、系统消息", "stage": 0, "row": 0 },
+    { "id": "intent-entry", "type": "backend", "label": "Intent 入口", "sublabel": "验证、准入与串行转换", "stage": 1, "row": 0 },
+    { "id": "pure-reducer", "type": "backend", "label": "纯 Reducer", "sublabel": "当前 State + Intent", "stage": 2, "row": 0 },
+    { "id": "state-commit", "type": "database", "label": "新 State 提交", "sublabel": "不可变快照与单调版本", "stage": 3, "row": 0 },
+    { "id": "view-render", "type": "frontend", "label": "View = f(State)", "sublabel": "所属视图的平台本地绑定", "stage": 4, "row": 0 },
+    { "id": "effect-plan", "type": "backend", "label": "Effect 描述", "sublabel": "声明外部操作与输入快照", "stage": 2, "row": 1 },
+    { "id": "effect-executor", "type": "backend", "label": "Effect 执行", "sublabel": "提交门外的业务操作", "stage": 3, "row": 1 },
+    { "id": "external-io", "type": "external", "label": "外部服务", "sublabel": "外部 IO / 导航", "stage": 4, "row": 1 },
+    { "id": "feedback-intent", "type": "backend", "label": "结果 Intent", "sublabel": "成功、失败、取消、进度", "stage": 1, "row": 2 }
+  ],
+  "flows": [
+    { "id": "input-intent", "from": "view-input", "to": "intent-entry", "label": "表达意图", "variant": "emphasis" },
+    { "id": "intent-reduce", "from": "intent-entry", "to": "pure-reducer", "label": "统一派发", "variant": "emphasis" },
+    { "id": "reduce-state", "from": "pure-reducer", "to": "state-commit", "label": "产出新状态", "variant": "emphasis" },
+    { "id": "state-render", "from": "state-commit", "to": "view-render", "label": "按状态展示", "variant": "emphasis" },
+    { "id": "reduce-effect", "from": "pure-reducer", "to": "effect-plan", "label": "声明副作用", "variant": "default", "labelDy": 24 },
+    { "id": "plan-run", "from": "effect-plan", "to": "effect-executor", "label": "提交后执行", "variant": "default" },
+    { "id": "run-io", "from": "effect-executor", "to": "external-io", "label": "调用与等待", "variant": "default" },
+    { "id": "io-feedback", "from": "external-io", "to": "feedback-intent", "label": "结果回流", "variant": "dashed", "route": "bottom-channel" },
+    { "id": "feedback-dispatch", "from": "feedback-intent", "to": "intent-entry", "label": "重新进入入口", "variant": "dashed" }
+  ]
+}

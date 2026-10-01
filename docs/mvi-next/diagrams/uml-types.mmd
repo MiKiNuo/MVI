@@ -1,0 +1,71 @@
+classDiagram
+    direction TB
+
+    class FeatureDefinition~TState~ {
+        <<业务声明>>
+        +TState InitialState
+        +ApplyInput(state, value)
+        +RunOperationAsync(operation)
+    }
+    class FeatureRuntime~TState~ {
+        <<实例内核>>
+        -Snapshot
+        -CommitGate
+        -InFlightOperations
+        +DispatchAsync(intent)
+    }
+    class RuntimeSnapshot~TState~ {
+        <<统一快照>>
+        +TState BusinessState
+        +OperationStates
+        +long Version
+    }
+    class GeneratedReducer~TState~ {
+        <<纯 Model>>
+        +Reduce(snapshot, intent)
+    }
+    class EffectRunner~TState~ {
+        <<锁外执行>>
+        +RunAsync(effect)
+    }
+    class GeneratedIntent {
+        <<输入与反馈>>
+        +Kind
+        +Operation
+        +long Generation
+    }
+    class GeneratedEffect {
+        <<执行描述>>
+        +Operation
+        +long Generation
+        +StartSnapshot
+    }
+    class ReductionResult~TState~ {
+        <<纯计算结果>>
+        +NextSnapshot
+        +Effects
+        +Decision
+    }
+    class ViewAdapter {
+        <<平台展示>>
+        +ApplyProjection(snapshot)
+        +DispatchInputAsync(value)
+    }
+    class Mediator {
+        <<定向路由>>
+        +SendAsync(target, message)
+        +Post(target, message)
+    }
+
+    FeatureRuntime~TState~ "1" *-- "1" RuntimeSnapshot~TState~ : 当前快照
+    FeatureRuntime~TState~ ..> EffectRunner~TState~ : 提交后启动
+    FeatureRuntime~TState~ ..> GeneratedReducer~TState~ : 门内 Reduce
+    GeneratedReducer~TState~ ..> FeatureDefinition~TState~ : 调用纯转换
+    EffectRunner~TState~ ..> FeatureDefinition~TState~ : 调用异步操作
+    GeneratedReducer~TState~ ..> ReductionResult~TState~ : 返回
+    ReductionResult~TState~ "1" o-- "0..*" GeneratedEffect : Effects
+    EffectRunner~TState~ ..> GeneratedIntent : 内部反馈
+    GeneratedIntent ..> FeatureRuntime~TState~ : 统一入口
+    ViewAdapter ..> FeatureRuntime~TState~ : 输入入口
+    ViewAdapter ..> RuntimeSnapshot~TState~ : View = f(State)
+    Mediator ..> FeatureRuntime~TState~ : 目标入口

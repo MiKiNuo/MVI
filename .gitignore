@@ -74,5 +74,17 @@ mono_crash.*.json
 /docs/mvi-next/*
 !/docs/mvi-next/CONTEXT.md
 !/docs/mvi-next/ARCHITECTURE.md
+!/docs/mvi-next/diagrams/
+/docs/mvi-next/diagrams/*
+!/docs/mvi-next/diagrams/*.mmd
+!/docs/mvi-next/diagrams/*.svg
+!/docs/mvi-next/diagrams/*.png
+!/docs/mvi-next/diagrams/mvi-closed-loop.dataflow.json
+!/docs/mvi-next/diagrams/mvi-closed-loop.html
+!/docs/mvi-next/diagrams/render.config.json
+!/docs/mvi-next/diagrams/README.md
+!/docs/mvi-next/diagrams/mvi-closed-loop.delivery.json
+!/docs/mvi-next/diagrams/mvi-closed-loop.finalize-summary.json
+/docs/mvi-next/diagrams/*.visual-check.*
 /TestResults
 /.workbuddy

@@ -1,0 +1,57 @@
+sequenceDiagram
+    participant View as SearchView
+    participant Runtime as Search FeatureRuntime
+    participant Reducer as GeneratedReducer
+    participant RunnerA as EffectRunner 操作 A
+    participant RunnerB as EffectRunner 操作 B
+    participant Service as SearchService
+
+    View->>Runtime: StartSearch(queryA)
+    critical CommitGate
+        Runtime->>Reducer: Reduce(snapshot, StartOperation A)
+        Reducer-->>Runtime: Reduction(nextSnapshot gen 1, [EffectA], Accepted)
+        Runtime->>Runtime: 原子接纳 generation 1 与统一 Snapshot
+    end
+    Runtime->>RunnerA: 执行 EffectA(generation 1, inputA)
+    RunnerA->>Service: SearchAsync(queryA)
+
+    View->>Runtime: StartSearch(queryB)
+    critical CommitGate
+        Runtime->>Reducer: Reduce(snapshot, StartOperation B)
+        Reducer-->>Runtime: Reduction(nextSnapshot gen 2, [EffectB], Accepted)
+        Runtime->>Runtime: 原子接纳 generation 2 与统一 Snapshot
+    end
+    Runtime-->>RunnerA: 请求取消 generation 1
+    Runtime->>RunnerB: 执行 EffectB(generation 2, inputB)
+    RunnerB->>Service: SearchAsync(queryB)
+    Note over Runtime,Service: IO 不持 CommitGate；请求取消不保证外部任务立即结束
+
+    Service-->>RunnerB: resultB
+    RunnerB->>Runtime: UpdateAsync → 内部 Intent(generation 2, resultB)
+    critical CommitGate
+        Runtime->>Reducer: Reduce(currentSnapshot, resultIntent)
+        Reducer->>Reducer: 核对 generation 2 仍有效
+        Reducer-->>Runtime: Reduction(nextSnapshot, [], Accepted)
+        Runtime->>Runtime: 原子提交结果 B 与 Version
+    end
+    Runtime-->>RunnerB: UpdateAsync 提交完成
+    RunnerB->>Runtime: OperationCompleted Intent(generation 2)
+    critical CommitGate
+        Runtime->>Reducer: Reduce(currentSnapshot, completionIntent)
+        Reducer-->>Runtime: Reduction(CompletedSnapshot, [], Accepted)
+        Runtime->>Runtime: 原子提交 OperationStates 与 Version
+    end
+    Runtime-->>View: 直接调度最新结果 B 的展示投影
+
+    Service-->>RunnerA: 迟到 resultA
+    loop A 的结果、进度或完成反馈
+        RunnerA->>Runtime: 内部 Intent(generation 1)
+        critical CommitGate
+            Runtime->>Reducer: Reduce(currentSnapshot, oldFeedback)
+            Reducer->>Reducer: generation 1 已被 generation 2 取代
+            Reducer-->>Runtime: Reduction(currentSnapshot, [], Superseded)
+            Runtime->>Runtime: 拒绝提交；保留当前 State、OperationStates 与 Version
+        end
+        Runtime-->>RunnerA: Superseded
+    end
+    Note over Runtime,Reducer: 有效性在 Reduce 提交处判断；旧完成不能清除新操作状态

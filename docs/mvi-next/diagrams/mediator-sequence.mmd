@@ -1,0 +1,47 @@
+sequenceDiagram
+    participant View as EditorA View
+    participant Source as EditorA Runtime
+    participant SourceRunner as EditorA EffectRunner
+    participant Mediator as Mediator
+    participant Target as EditorB Runtime
+    participant Reducer as EditorB GeneratedReducer
+    participant TargetRunner as EditorB EffectRunner
+
+    View->>Source: 生成业务 Intent
+    Source->>Source: 纯 Reduce 与本实例状态提交
+    Source->>SourceRunner: 执行已接纳 GeneratedEffect
+    SourceRunner->>Mediator: SendAsync(editorB, SaveRequest)
+    Mediator->>Target: 定向交付 SaveRequest
+    Target->>Target: 契约入口映射 GeneratedIntent.Save
+    Note over Mediator,Target: 关闭或收件箱已满可返回拒绝结果
+    critical EditorB CommitGate
+        Target->>Reducer: Reduce(currentSnapshot, saveIntent)
+        Reducer-->>Target: Reduction(RunningSnapshot, [SaveEffect], Accepted)
+        Target->>Target: 原子提交 Running 与 Version
+    end
+    Target->>TargetRunner: 锁外执行 SaveEffect
+    TargetRunner->>TargetRunner: await 目标业务 IO
+    loop 结果与操作完成分别反馈
+        TargetRunner->>Target: 内部 Intent
+        critical EditorB CommitGate
+            Target->>Reducer: Reduce(currentSnapshot, feedbackIntent)
+            Reducer-->>Target: Reduction(nextSnapshot, [], Accepted)
+            Target->>Target: 原子提交统一快照与 Version
+        end
+        Target-->>TargetRunner: 反馈处理完成
+    end
+    Target-->>Mediator: Completed 与 SaveResult
+    Mediator-->>SourceRunner: SendAsync 的目标处理完成
+    SourceRunner->>Source: 请求结果转换为源实例内部 Intent
+    Source->>Source: 纯 Reduce 与本实例状态提交
+    Note over Source,Target: 各实例独立 State / Operation / Gate；无跨实例原子提交
+    Note over SourceRunner,Target: 接纳后取消源等待，不证明目标执行停止
+
+    opt 只需要收件箱接纳结果
+        SourceRunner->>Mediator: Post(editorB, 明确契约消息)
+        Mediator->>Target: 定向交付消息
+        Target->>Target: 映射 Intent 并进入本实例收件箱
+        Target-->>Mediator: Accepted
+        Mediator-->>SourceRunner: 接纳结果
+        Note over Target,Reducer: 后续按当前状态验证与处理；接纳不代表业务完成
+    end

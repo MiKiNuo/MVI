@@ -1,0 +1,31 @@
+flowchart TB
+    subgraph App["应用作者"]
+        Feature["«component» State + Feature<br/>纯规则与异步 Operation 声明"]
+        View["«component» View<br/>界面与绑定声明"]
+    end
+
+    subgraph Compile["核心包内的 analyzer 资产 · 仅编译期"]
+        Generator["«component» Source Generator<br/>强类型输入、转换与执行适配"]
+    end
+
+    subgraph Platform["选择 Avalonia 或 Godot 平台包"]
+        Adapter["«component» ViewAdapter<br/>输入回写、快照投影、UI 调度"]
+    end
+
+    subgraph Core["MiKiNuo.Mvi 核心运行时"]
+        Runtime["«component» FeatureRuntime · 每实例独立<br/>Store / Reducer / Snapshot / EffectRunner"]
+        Mediator["«component» Mediator<br/>实例地址、契约与定向投递"]
+    end
+
+    Other["«component» 其他独立 Feature"]
+    Services["«component» 应用外部服务<br/>HTTP、文件、平台 UI 服务"]
+
+    Generator -.->|读取业务声明| Feature
+    Generator -.->|生成运行适配| Runtime
+    Generator -.->|生成绑定适配| Adapter
+    View -->|输入与平台绑定| Adapter
+    Adapter -->|Intent 入口| Runtime
+    Runtime -->|调用纯规则与 Operation| Feature
+    Feature -->|异步业务使用| Services
+    Runtime <-->|发送契约消息 / 接收目标 Intent| Mediator
+    Other <-->|指定目标的契约投递| Mediator

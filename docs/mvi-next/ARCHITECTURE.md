@@ -4,6 +4,58 @@
 
 本文定义行为与职责，API 名称作为当前设计名称。示例中的 v2 类型尚未实现，当前分支源码仍是 v1 基线。领域术语见 [CONTEXT.md](CONTEXT.md)，讨论与逐轮决定见 [设计记录](../mvi-next-design.md)。
 
+## 0. MVI 原理与本方案的角色映射
+
+MVI 的核心是单向依赖闭环：Intent 将交互解释成意图，Model 根据意图演进状态，View 根据状态生成界面。原始定义使用流表达这三个过程；本框架采用 Store、纯 Reducer 和显式 Effect 描述实现同一职责边界。它们是具体实现选择，不要求业务作者逐一手写同名类。
+
+核心关系：`View = f(Snapshot)`；`Reduce(Snapshot, Intent) -> (NextSnapshot, Effects, Decision)`；`Execute(Effect) -> FeedbackIntent`。快照包含业务 State、操作运行状态和版本，由同一提交协议维护。网络结果、进度、失败与操作结束也必须成为输入，不能在异步回调中绕过 Model 任意修改状态。
+
+原稿主要列举生命周期与调用规则，没有清楚显示这些逻辑角色，也没有说明 Operation.UpdateAsync 对应哪条 MVI 路径。本版把它明确为内部强类型状态转换 Intent。异步 Operation 是副作用执行方法，纯转换仍在 Reducer 适配中运行。
+
+依据：[André Staltz 的单向 UI 架构原文](https://staltz.com/unidirectional-user-interface-architectures.html)、[Cycle.js 官方 Model-View-Intent](https://cycle.js.org/model-view-intent.html)。本方案不采用 Cycle.js 的流订阅实现组合通信，而采用用户要求的中介者定向消息。
+
+### 0.1 完整数据流
+
+![MVI 单向数据流及 Effect 回流](diagrams/mvi-dataflow.png)
+
+图中只有 Store/Model 的提交路径能够改变快照。EffectRunner 执行外部操作后产生新的 Intent，回到同一入口。Mediator 位于跨实例边界，目标消息仍进入接收方 Intent 入口。
+
+[查看可缩放和追踪的数据流图](diagrams/mvi-closed-loop.html) · [编辑图源](diagrams/mvi-dataflow.mmd)
+
+### 0.2 类型结构（UML 类图）
+
+![MVI 核心类型 UML 类图](diagrams/uml-types.png)
+
+实心菱形表达拥有关系，虚线箭头表达使用依赖。FeatureRuntime 是单实例 Store/协调器；GeneratedReducer 使用业务声明中的纯方法；EffectRunner 使用异步 Operation 方法。RuntimeSnapshot<TState> 是渲染依据，ReductionResult 明确区分下一快照和待执行 Effect。
+
+[UML 图源](diagrams/uml-types.mmd)
+
+### 0.3 业务作者与内部角色
+
+| MVI 角色 | 业务作者表达 | 运行时/生成器职责 |
+| --- | --- | --- |
+| Intent | Input 标记、调用 Operation、目标消息、IO 返回值 | 生成强类型输入/反馈描述，进入统一入口 |
+| Model / Reducer | Feature 内纯转换、验证方法 | 将当前快照与 Intent 计算为 ReductionResult |
+| State | State 类型与字段 | RuntimeSnapshot 包含业务 State、OperationStates、Version |
+| Store | 普通作者无需独立声明 | FeatureRuntime 独占快照与短提交门 |
+| Effect | Feature 内异步 Operation 方法 | Reduce 声明执行描述，提交后由 EffectRunner 运行 |
+| View | 平台 View 与绑定 | 对所属快照投影、发出输入；不直接修改存储 |
+| Mediator | 业务契约与宿主目标接线 | 定向消息映射目标 Intent，不承担业务转换 |
+
+这套映射保持此前 State + Feature + View 的默认写法，同时让 Intent、Reduce、Effect 和 Render 的执行职责可辨认。事件溯源、持久化每个 Intent 或串行等待整个 IO 不属于本方案强制条件。
+
+### 0.4 设计图索引
+
+| 图 | 回答的问题 |
+| --- | --- |
+| [数据流图](diagrams/mvi-dataflow.svg) | 状态由谁改变，副作用结果怎样回流 |
+| [UML 类图](diagrams/uml-types.svg) | 核心类型如何拥有和依赖彼此 |
+| [组件图](diagrams/uml-components.svg) | 用户代码、生成器、运行时和平台包的边界 |
+| [登录时序图](diagrams/login-sequence.svg) | 从输入到 HTTP 结果再到 View 的顺序 |
+| [中介者时序图](diagrams/mediator-sequence.svg) | 不同子 View 怎样进入目标 MVI，而不订阅彼此 |
+| [组合实例图](diagrams/composition-instances.svg) | 同类型子功能多开时哪些对象独立，谁管理关闭 |
+| [Latest 时序图](diagrams/latest-sequence.svg) | 旧 IO 忽略取消时在哪个位置拒绝其结果 |
+
 ## 1. 目标与版本边界
 
 - 同时覆盖复杂业务 UI 和游戏/实时交互 UI，以 Avalonia 与 Godot 验收。
@@ -16,34 +68,13 @@
 
 ## 2. 架构结构
 
-```mermaid
-flowchart TB
-    View[View：平台展示与输入]
-    Bind[绑定适配：字段投影、命令、UI 调度]
-    subgraph FeatureInstance[一个独立 Feature 实例]
-        Entry[强类型入口与验证]
-        Kernel[实例内核：准入、提交、操作管理]
-        State[不可变业务 State]
-        Status[操作运行状态]
-        Rules[纯转换规则]
-        Ops[异步业务操作]
-    end
-    View --> Bind
-    Bind --> Entry
-    Entry --> Kernel
-    Kernel --> Rules
-    Rules --> State
-    Kernel --> Ops
-    Ops -->|受控提交| Kernel
-    Kernel --> Status
-    State --> Bind
-    Status --> Bind
-    Ops --> Services[业务服务与外部 IO]
-    Ops --> Mediator[范围内 Mediator]
-    Mediator --> Other[其他独立 Feature 实例]
-```
+![MVI v2 组件与生成依赖图](diagrams/uml-components.png)
 
-内核实现复用，但每个实例拥有独立 State、操作身份、准入状态、通信端点和生命周期。状态提交与发布协议按实例有序，不采用全局 Store 或全局业务队列。
+编译期虚线表示声明到生成资产的关系；运行时实线表示组件之间的调用或投递依赖。组件图只表达模块边界，完整的输入、状态提交和反馈路径见第 0.1 节数据流图。业务方法与生成适配构成 Model，FeatureRuntime 负责提交和协调，EffectRunner 不在提交门内等待 IO。
+
+内核实现复用，但每个实例拥有独立 State、操作身份、准入状态、通信端点和生命周期。状态提交与投影调度按实例有序，不采用全局 Store 或全局业务队列。
+
+对 View 可见的 Snapshot 是同一原子提交结果，包含业务 State、OperationStates 和 Version。IsRunning 等运行状态也通过内部 Intent/Reduce 演进，不能作为绕过提交协议的第二个可变状态源。
 
 生成器产生强类型调用与适配。业务决定位于 Feature 的纯规则和业务操作中，平台代码负责展示、输入与 UI 调度，Mediator 负责路由和投递。
 
@@ -140,13 +171,18 @@ View 绑定由平台适配创建独立投影和连接。每个 View 的连接在
 
 ## 5. State 提交与验证协议
 
-1. 准入时检查实例生命周期、队列容量或并发策略及业务条件。
-2. 在短同步提交区间内，以当前状态运行纯规则；规则故障时保留原状态。
-3. 提交新状态并记录单调版本；业务操作在开始时获得一致输入快照。
-4. 按提交顺序向本实例的平台展示适配传递变化，执行诊断记录；平台回调与 UI 工作不在状态提交门内执行。
-5. IO 在提交门外运行；其状态更新重新进入相同入口，并在提交点核对操作有效性。
+1. UI 输入、Operation 调用、Mediator 消息或 IO 反馈映射为 Intent，进入单实例 Store 入口。
+2. 在短原子区间内检查生命周期、接纳边界、业务条件及并发策略，并取得一致快照。
+3. GeneratedReducer 调用纯规则，返回下一 RuntimeSnapshot、Effect 描述与决定；规则故障保留原快照。
+4. Store 提交下一快照与单调版本，再在门外直接调度所属平台展示。
+5. EffectRunner 只执行提交后声明的 Effect；IO 不持提交门。
+6. 执行结果、进度、业务状态转换和完成信息转换为反馈 Intent，重新执行步骤 1～4。
 
 启动验证、并发准入和输入 Snapshot 采样必须在同一个短原子区间内完成。不能先验证一份状态，再把并发编辑后的另一份状态作为已验证输入交给 IO。
+
+启动 Intent 与反馈 Intent 使用不同的规则。启动时验证当前业务条件，拒绝则不产生执行 Effect、不调用外部服务。反馈时核对实例生命周期、操作身份、generation 及结果应用规则；用户在 IO 期间继续编辑，不会使框架重新套用启动条件而错误丢弃合法完成。旧操作或关闭实例的反馈只能拒绝写回，不能撤销已经发生的 IO。
+
+需要显示的验证反馈由 Reduce 写入 RuntimeSnapshot，再由 View 投影；不能仅根据 Rejected 返回值直接修改界面。拒绝尝试的反馈与当前有效执行的运行状态分别表达，重复点击被拒绝不能清除正在运行操作的 Busy。没有可见状态变化的拒绝可以保留原快照。
 
 展示调度在提交门外仍须遵守版本单调性，不能因两个生产者并发而用旧版本覆盖新版本。业务定向消息使用有界接纳与背压，不静默丢弃；本地 UI 投影可按约定合并展示。框架不维护业务状态观察者列表或跨实例订阅图。
 
@@ -156,11 +192,15 @@ Snapshot 是 IO 输入；UpdateAsync 的转换参数是提交时的当前 State�
 
 不可变约束覆盖可观察内容。record 或只读集合接口不自动证明嵌套对象不可变，状态表示、诊断与测试共同落实约束。子实例句柄与资源归属由组合运行时管理，不拼成共享可变业务 State。
 
+![登录 MVI 时序图](diagrams/login-sequence.png)
+
+SubmitRequested 的 Reduce 更新操作运行状态并声明 RunSubmit Effect，EffectRunner 调用服务。UpdateAsync 生成内部 ApplyTransition Intent，OperationCompleted 也以 Intent 回流。调用返回保证有关状态提交，不等待 UI 绘制。
+
 ## 6. Operation 协议
 
 ### 6.1 上下文与提交
 
-Operation<TState> 提供开始时的 Snapshot、CancellationToken，以及受控状态提交和中介者定向消息入口。UpdateAsync 成功返回表示转换已在当前状态上提交或形成有效的无变化结果。
+Operation<TState> 是 Effect 执行上下文，提供开始时的 Snapshot、CancellationToken，以及反馈 Intent 派发和中介者定向消息入口。UpdateAsync 将纯转换标识与不可变载荷组成内部 Intent；成功返回表示该 Intent 已经 Reduce 并提交，或形成有效的无变化结果。它没有直接写 Store 的能力。
 
 上下文失效时，更新不能正常成功返回后任由业务继续执行；应终止当前操作并映射为取消、被取代或实例已关闭等结果。通过框架发出的后续定向消息也在接纳点检查有效性。外部服务已经接纳的 IO 不自动撤销。
 
@@ -174,6 +214,10 @@ Operation<TState> 提供开始时的 Snapshot、CancellationToken，以及受控
 | Parallel | 显式允许并行并设置接纳边界，状态提交仍有序 |
 
 不同操作可以并行等待 IO。操作有效性不代替业务冲突判断：不同操作更新同一业务对象时，纯规则或业务服务仍须表达其一致性条件。
+
+![Latest 与迟到结果时序图](diagrams/latest-sequence.png)
+
+同操作新 generation 的接纳与输入快照采样原子完成。所有旧结果、进度和完成 Intent 都在目标 Reduce/提交点核验 generation，不能让旧操作把新操作的 Busy 状态清除。
 
 ### 6.3 结果
 
@@ -206,17 +250,23 @@ Loading 默认绑定指定操作运行状态，由 View 决定覆盖层或局部
 
 ## 9. 动态组合与 Mediator
 
+![组合 Feature 实例 UML 对象关系图](diagrams/composition-instances.png)
+
 组合由独立实例形成，实例身份不同于业务对象 ID。同一数据可在两个独立编辑器实例中打开。宿主持有实例句柄用于挂载与生命周期，业务交互通过契约进行。
 
 范围内请求有唯一提供方时自动绑定，多提供方明确选择实例或契约端口。可静态确定的歧义给编译诊断；动态缺少目标、歧义或目标关闭给明确运行结果，不能选择第一个候选。
 
 所有业务消息定向投递；框架不按通知类型寻找订阅者，也不维护 Publish/Subscribe API。跨范围由宿主接线，独立宿主可提供同一契约的实现，子 Feature 不依赖父级或兄弟类型。
 
+Mediator 只完成目标确定与交付，消息由目标契约适配映射 Intent。它不能直接调用接收方私有业务方法或直接写入接收方 State。
+
 药品查询子 View 的选择交互进入其 Feature，通过 Mediator 将 ShowDrug 消息送给明确的详情 Feature；详情实例执行规则、更新自己的 State，其 View 由本地绑定展示。查询子 View 不观察详情状态，详情子 View 不订阅查询状态。
 
 需要更新多个子功能时，组合协调者根据业务流程向明确目标逐个或并行发送。此处接线表示消息地址，不表示建立消息主题或观察者关系。
 
 ## 10. 定向消息、处理完成与取消
+
+![Mediator 定向消息进入目标 Intent 的时序](diagrams/mediator-sequence.png)
 
 | 场景 | 返回含义 |
 | --- | --- |
@@ -293,7 +343,11 @@ sequenceDiagram
 | 场景 | 可判定结果 |
 | --- | --- |
 | 基本字段与附加转换 | 字段声明一次；基本回写有效；额外规则仅在有关字段运行 |
-| 所有入口验证 | UI、编程与请求同样拒绝无效业务，拒绝时服务未调用 |
+| 所有启动入口验证 | UI、编程与 Mediator 的启动 Intent 都走同一验证，拒绝时不产生执行 Effect、服务未调用 |
+| 反馈有效性验证 | IO 结果、进度与完成 Intent 核对操作身份和生命周期；拒绝不写状态，不宣称撤销已经发生的 IO |
+| 验证反馈展示 | 可见拒绝原因来自已提交 Snapshot；被拒绝的新尝试不覆盖当前有效操作的运行状态 |
+| 副作用回流 | UpdateAsync、结果、进度与完成不能直接改 Store，全部映射反馈 Intent |
+| 快照单一权威 | 业务状态与操作状态在同一 RuntimeSnapshot 提交，不呈现不同版本组合 |
 | 验证期间并发输入 | 启动条件与实际输入 Snapshot 一致，不能以旧验证启动新输入 |
 | 慢登录与其他输入 | IO 等待不阻塞其他合法输入，Loading 正确开始和结束 |
 | 连续搜索 A/B | A 晚到或忽略取消也不能覆盖 B，不覆盖其运行状态 |
@@ -335,7 +389,7 @@ sequenceDiagram
 
 ## 16. 依据与确认
 
-架构决定见 [ADR 0009～0025](../adr/)，组合通信以 [ADR 0025](../adr/0025-vnext-mediator-without-observer-subscriptions.md) 的用户最新修订为准。标准库边界参考 [DI 释放指南](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines)、[协作取消](https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads)、[Task.WaitAsync](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task.waitasync?view=net-10.0)。
+架构决定见 [ADR 0009～0026](../adr/)，组合通信以 [ADR 0025](../adr/0025-vnext-mediator-without-observer-subscriptions.md) 为准，MVI 角色与闭环映射见 [ADR 0026](../adr/0026-vnext-explicit-mvi-role-mapping.md)。标准库边界参考 [DI 释放指南](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines)、[协作取消](https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads)、[Task.WaitAsync](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task.waitasync?view=net-10.0)。
 
 Q1～Q23 已接受。本文把决定整合为可实施的协议与验收基线；整体确认后进入实现，具体代码名字或优化细节在保持协议的前提下按证据调整。
 

@@ -1,0 +1,15 @@
+flowchart TB
+    UI["View 交互 / 系统输入"] --> I["Intent：要做什么"]
+    subgraph M["Model：单实例状态逻辑"]
+        E["Store 统一入口<br/>验证 / 准入"] --> R["纯 Reducer<br/>(当前 Snapshot, Intent)"]
+        R --> N["Reduction<br/>新 Snapshot + Effects"]
+        N --> C["原子提交<br/>State / Operations / Version"]
+    end
+    I --> E
+    C --> V["View = f(Snapshot)<br/>所属 View 的平台绑定"]
+    N -->|"提交后"| X["EffectRunner<br/>锁外执行 IO"]
+    X --> S["网络 / 文件 / UI 服务 / Mediator"]
+    S --> F["结果 / 进度 / 完成 Intent"]
+    F --> E
+    O["Operation.UpdateAsync<br/>纯转换方法 + 不可变载荷"] -->|"生成内部 Intent"| E
+    T["Mediator 定向消息"] -->|"目标消息转 Intent"| E

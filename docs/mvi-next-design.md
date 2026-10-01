@@ -2,6 +2,8 @@
 
 状态：Q1～Q23 基础决策已接受，组合通信以用户最新修订 ADR 0025 为准，完整设计等待整体确认。更新日期：2026-10-01。
 
+2026-10-01 补充：原稿未充分展示 MVI 角色与结构图，完整方案现已补充 UML 类图、组件图、数据流图及登录/中介者/Latest 时序图。State + Feature + View 是业务代码布局；Intent、Reducer、Effect 和统一 RuntimeSnapshot 的运行职责明确保留，见 [ADR 0026](adr/0026-vnext-explicit-mvi-role-mapping.md)。
+
 ## 已明确的目标
 
 - 按全新版本重新讨论架构，不以保留当前 API 或类型划分为设计前提。
