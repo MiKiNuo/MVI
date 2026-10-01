@@ -1,0 +1,220 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
+
+namespace MiKiNuo.Mvi.Generators;
+
+/// <summary>为功能声明生成强类型状态输入入口。</summary>
+[Generator]
+public sealed class FeatureGenerator : IIncrementalGenerator
+{
+    private static readonly DiagnosticDescriptor ImmutableState = new("MVI2002", "状态必须深层不可变",
+        "状态成员 '{0}' 必须深层不可变：仅支持不可变标量、源码声明的密封记录与只读记录结构及已支持的不可变集合", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidFeature = new("MVI2001", "功能声明无效",
+        "功能 '{0}' 必须是顶层、非泛型的 partial 类，并直接继承 Feature<TState>", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidInput = new("MVI2003", "输入声明无效",
+        "输入 '{0}' 必须是 State 的 public 实例属性，具有 public get 与 public init", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidRule = new("MVI2004", "输入规则签名无效",
+        "规则 '{0}' 必须引用一个 Input 属性，并声明为 private static State(State, 属性类型)，参数不能按引用传递、可选或为 params", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor AmbiguousRule = new("MVI2005", "输入规则有歧义",
+        "输入 '{0}' 只能声明一个 OnInput 规则", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor MemberConflict = new("MVI2006", "生成入口与现有成员冲突",
+        "输入入口 '{0}' 与功能中的现有成员冲突", "Mvi", DiagnosticSeverity.Error, true);
+    /// <summary>注册功能声明的增量生成管线。</summary>
+    /// <param name="context">当前增量生成器上下文。</param>
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        IncrementalValuesProvider<FeatureModel?> models = context.SyntaxProvider.CreateSyntaxProvider(
+            static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
+            static (syntax, _) => CreateModel(syntax)).WithTrackingName("FeatureModels");
+
+        context.RegisterSourceOutput(models, static (production, model) =>
+        {
+            if (model is not null)
+            {
+                foreach (Diagnostic diagnostic in model.Diagnostics)
+                {
+                    production.ReportDiagnostic(diagnostic);
+                }
+            }
+        });
+
+        context.RegisterSourceOutput(models.WithComparer(FeatureModelComparer.Instance).WithTrackingName("FeatureEmission"),
+            static (production, model) =>
+            {
+                if (model is not null && model.Diagnostics.IsEmpty)
+                {
+                    production.AddSource(model.HintName, SourceText.From(model.Source, Encoding.UTF8));
+                }
+            });
+    }
+
+    private static FeatureModel? CreateModel(GeneratorSyntaxContext context)
+    {
+        ClassDeclarationSyntax declaration = (ClassDeclarationSyntax)context.Node;
+        INamedTypeSymbol? feature = context.SemanticModel.GetDeclaredSymbol(declaration);
+        INamedTypeSymbol? featureBase = context.SemanticModel.Compilation.GetTypeByMetadataName("MiKiNuo.Mvi.Feature`1");
+        if (feature is null || feature.BaseType is null || featureBase is null
+            || !SymbolEqualityComparer.Default.Equals(feature.BaseType.OriginalDefinition, featureBase))
+        {
+            return null;
+        }
+
+        SyntaxReference canonical = feature.DeclaringSyntaxReferences.First(static reference =>
+            reference.GetSyntax() is ClassDeclarationSyntax { BaseList: not null });
+        if (canonical.SyntaxTree != declaration.SyntaxTree || canonical.Span != declaration.Span)
+        {
+            return null;
+        }
+
+        string hintName = feature.ToDisplayString() + ".Inputs.g.cs";
+        ImmutableArray<Diagnostic>.Builder diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
+        if (feature.ContainingType is not null || feature.Arity != 0
+            || feature.DeclaringSyntaxReferences.Any(static reference => reference.GetSyntax() is not ClassDeclarationSyntax syntax
+                || !syntax.Modifiers.Any(SyntaxKind.PartialKeyword)))
+        {
+            diagnostics.Add(Diagnostic.Create(InvalidFeature, declaration.Identifier.GetLocation(), feature.Name));
+            return new FeatureModel(hintName, string.Empty, diagnostics.ToImmutable());
+        }
+
+        ITypeSymbol state = feature.BaseType.TypeArguments[0];
+        Compilation compilation = context.SemanticModel.Compilation;
+        INamedTypeSymbol? inputAttribute = compilation.GetTypeByMetadataName("MiKiNuo.Mvi.InputAttribute");
+        INamedTypeSymbol? ruleAttribute = compilation.GetTypeByMetadataName("MiKiNuo.Mvi.OnInputAttribute");
+        Dictionary<string, IPropertySymbol> inputs = new(StringComparer.Ordinal);
+        if (state is INamedTypeSymbol namedState)
+        {
+            HashSet<string> names = new(StringComparer.Ordinal);
+            for (INamedTypeSymbol? current = namedState; current is not null; current = current.BaseType)
+            {
+                foreach (ISymbol member in current.GetMembers())
+                {
+                    AttributeData? attribute = FindAttribute(member, inputAttribute);
+                    if (!names.Add(member.Name) || attribute is null)
+                    {
+                        continue;
+                    }
+
+                    if (member is not IPropertySymbol property || property.IsStatic || property.IsIndexer
+                        || property.DeclaredAccessibility != Accessibility.Public
+                        || property.GetMethod?.DeclaredAccessibility != Accessibility.Public
+                        || property.SetMethod?.DeclaredAccessibility != Accessibility.Public || !property.SetMethod.IsInitOnly)
+                    {
+                        diagnostics.Add(Diagnostic.Create(InvalidInput, AttributeLocation(attribute, member), member.Name));
+                        continue;
+                    }
+
+                    inputs.Add(property.Name, property);
+                }
+            }
+        }
+
+        if (!StateShapeValidation.IsImmutable(state, compilation,
+            new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default), out ISymbol invalid))
+        {
+            diagnostics.Add(Diagnostic.Create(ImmutableState, invalid.Locations.FirstOrDefault(static location => location.IsInSource)
+                ?? declaration.Identifier.GetLocation(), invalid.Name));
+        }
+
+        Dictionary<string, IMethodSymbol> rules = new(StringComparer.Ordinal);
+        foreach (IMethodSymbol method in feature.GetMembers().OfType<IMethodSymbol>())
+        {
+            foreach (AttributeData attribute in method.GetAttributes().Where(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, ruleAttribute)))
+            {
+                string? propertyName = attribute.ConstructorArguments.Length == 1 ? attribute.ConstructorArguments[0].Value as string : null;
+                if (propertyName is null || !inputs.TryGetValue(propertyName, out IPropertySymbol? property)
+                    || !IsValidRule(method, state, property.Type))
+                {
+                    diagnostics.Add(Diagnostic.Create(InvalidRule, AttributeLocation(attribute, method), method.Name));
+                }
+                else if (rules.ContainsKey(propertyName))
+                {
+                    diagnostics.Add(Diagnostic.Create(AmbiguousRule, AttributeLocation(attribute, method), propertyName));
+                }
+                else
+                {
+                    rules.Add(propertyName, method);
+                }
+            }
+        }
+
+        foreach (IPropertySymbol property in inputs.Values)
+        {
+            string entryName = "Set" + property.Name;
+            if (feature.Name == entryName)
+            {
+                diagnostics.Add(Diagnostic.Create(MemberConflict, declaration.Identifier.GetLocation(), entryName));
+            }
+            else if (feature.GetMembers(entryName).Length != 0)
+            {
+                diagnostics.Add(Diagnostic.Create(MemberConflict, feature.GetMembers(entryName)[0].Locations[0], entryName));
+            }
+        }
+
+        if (diagnostics.Count != 0)
+        {
+            return new FeatureModel(hintName, string.Empty, diagnostics.ToImmutable());
+        }
+
+        StringBuilder source = new("// <auto-generated/>\n#nullable enable\n");
+        if (!feature.ContainingNamespace.IsGlobalNamespace)
+        {
+            source.Append("namespace ").Append(feature.ContainingNamespace.ToDisplayString()).Append(";\n");
+        }
+
+        source.Append(feature.DeclaredAccessibility == Accessibility.Public ? "public" : "internal")
+            .Append(" partial class @").Append(feature.Name).Append("\n{\n");
+        foreach (IPropertySymbol property in inputs.Values.OrderBy(static property => property.Name, StringComparer.Ordinal))
+        {
+            rules.TryGetValue(property.Name, out IMethodSymbol? rule);
+            string valueType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+                SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier));
+            source.Append("    /// <summary>将输入提交到实例状态。</summary>\n    /// <param name=\"value\">输入值。</param>\n")
+                .Append("    public void Set").Append(property.Name).Append('(').Append(valueType).Append(" value)\n")
+                .Append("        => base.DispatchInput(value, static (state, input) => ");
+            source.Append(rule is null ? "state with { @" + property.Name + " = input }" : "@" + rule.Name + "(state, input)")
+                .Append(");\n");
+        }
+
+        source.Append("}\n");
+        return new FeatureModel(hintName, source.ToString(), []);
+    }
+
+    private static AttributeData? FindAttribute(ISymbol symbol, INamedTypeSymbol? attributeType)
+        => symbol.GetAttributes().FirstOrDefault(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeType));
+
+    private static Location AttributeLocation(AttributeData attribute, ISymbol symbol)
+        => attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? symbol.Locations[0];
+
+    private static bool IsValidRule(IMethodSymbol method, ITypeSymbol state, ITypeSymbol value)
+        => method.IsStatic && method.DeclaredAccessibility == Accessibility.Private && method.Arity == 0
+            && !method.ReturnsByRef && !method.ReturnsByRefReadonly
+            && SymbolEqualityComparer.IncludeNullability.Equals(method.ReturnType, state)
+            && method.Parameters.Length == 2
+            && method.Parameters.All(static parameter => parameter.RefKind == RefKind.None && !parameter.IsOptional && !parameter.IsParams)
+            && SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[0].Type, state)
+            && SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[1].Type, value);
+
+    private sealed class FeatureModel(string hintName, string source, ImmutableArray<Diagnostic> diagnostics)
+    {
+        internal string HintName { get; } = hintName;
+        internal string Source { get; } = source;
+        internal ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
+    }
+
+    private sealed class FeatureModelComparer : IEqualityComparer<FeatureModel?>
+    {
+        internal static readonly FeatureModelComparer Instance = new();
+
+        public bool Equals(FeatureModel? x, FeatureModel? y)
+            => x?.HintName == y?.HintName && x?.Source == y?.Source;
+
+        public int GetHashCode(FeatureModel? obj) => obj?.Source.GetHashCode() ?? 0;
+    }
+}
