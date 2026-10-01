@@ -26,6 +26,12 @@ public sealed class FeatureGenerator : IIncrementalGenerator
         "输入 '{0}' 只能声明一个 OnInput 规则", "Mvi", DiagnosticSeverity.Error, true);
     private static readonly DiagnosticDescriptor MemberConflict = new("MVI2006", "生成入口与现有成员冲突",
         "生成成员 '{0}' 与功能成员或本地投影保留成员冲突", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidOperation = new("MVI2007", "操作声明无效",
+        "操作 '{0}' 必须是 private 实例方法，接受唯一的 Operation<State> 参数并返回 Task<TResult> 或 ValueTask<TResult>，不能为泛型、按引用、可选或 params 声明", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidValidation = new("MVI2008", "启动验证签名无效",
+        "操作 '{0}' 的 Validate 必须引用唯一的 private static bool(State) 纯方法，参数不能按引用、可选或为 params", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor OperationConflict = new("MVI2009", "操作生成入口冲突",
+        "操作入口 '{0}' 与功能现有成员或生成输入入口冲突", "Mvi", DiagnosticSeverity.Error, true);
     /// <summary>注册功能声明的增量生成管线。</summary>
     /// <param name="context">当前增量生成器上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -123,6 +129,43 @@ public sealed class FeatureGenerator : IIncrementalGenerator
         }
 
         Dictionary<string, IMethodSymbol> rules = new(StringComparer.Ordinal);
+        INamedTypeSymbol? operationAttribute = compilation.GetTypeByMetadataName("MiKiNuo.Mvi.OperationAttribute");
+        IMethodSymbol[] operations = feature.GetMembers().OfType<IMethodSymbol>()
+            .Where(method => FindAttribute(method, operationAttribute) is not null).ToArray();
+        INamedTypeSymbol? operationType = compilation.GetTypeByMetadataName("MiKiNuo.Mvi.Operation`1");
+        INamedTypeSymbol? taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+        INamedTypeSymbol? valueTaskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1");
+        foreach (IMethodSymbol operation in operations)
+        {
+            AttributeData attribute = FindAttribute(operation, operationAttribute)!;
+            if (!HasOrdinarySignature(operation) || operation.IsStatic || operation.IsAbstract || operation.IsExtern
+                || operation.Parameters.Length != 1 || operation.Parameters[0].Type is not INamedTypeSymbol parameter
+                || !SymbolEqualityComparer.Default.Equals(parameter.OriginalDefinition, operationType)
+                || !SymbolEqualityComparer.IncludeNullability.Equals(parameter.TypeArguments[0], state)
+                || parameter.NullableAnnotation == NullableAnnotation.Annotated
+                || operation.ReturnType is not INamedTypeSymbol result
+                || !(SymbolEqualityComparer.Default.Equals(result.OriginalDefinition, taskType)
+                    || SymbolEqualityComparer.Default.Equals(result.OriginalDefinition, valueTaskType)))
+            {
+                diagnostics.Add(Diagnostic.Create(InvalidOperation, AttributeLocation(attribute, operation), operation.Name));
+                continue;
+            }
+
+            string? validationName = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Validate").Value.Value as string;
+            if (validationName is not null && feature.GetMembers(validationName).OfType<IMethodSymbol>().Count(method =>
+                HasOrdinarySignature(method) && method.IsStatic && method.ReturnType.SpecialType == SpecialType.System_Boolean
+                && method.Parameters.Length == 1 && SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[0].Type, state)) != 1)
+            {
+                diagnostics.Add(Diagnostic.Create(InvalidValidation, AttributeLocation(attribute, operation), operation.Name));
+            }
+
+            if (feature.Name == operation.Name || feature.BaseType.GetMembers(operation.Name).Length != 0
+                || inputs.Values.Any(property => "Set" + property.Name == operation.Name)
+                || feature.GetMembers(operation.Name).Any(member => !SymbolEqualityComparer.Default.Equals(member, operation)))
+            {
+                diagnostics.Add(Diagnostic.Create(OperationConflict, AttributeLocation(attribute, operation), operation.Name));
+            }
+        }
         foreach (IMethodSymbol method in feature.GetMembers().OfType<IMethodSymbol>())
         {
             foreach (AttributeData attribute in method.GetAttributes().Where(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, ruleAttribute)))
@@ -260,7 +303,35 @@ public sealed class FeatureGenerator : IIncrementalGenerator
                 .Append("                NotifyPropertyChanged(nameof(@").Append(property.Name).Append("));\n");
         }
 
-        source.Append("        }\n    }\n}\n");
+        source.Append("        }\n    }\n");
+
+        foreach (IMethodSymbol operation in operations.OrderBy(static method => method.Name, StringComparer.Ordinal))
+        {
+            AttributeData attribute = FindAttribute(operation, operationAttribute)!;
+            string? validate = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Validate").Value.Value as string;
+            string resultType = ((INamedTypeSymbol)operation.ReturnType).TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+                SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier));
+            source.Append("    /// <summary>启动业务操作并等待有关状态提交。</summary>\n")
+                .Append("    /// <param name=\"cancellationToken\">执行的协作取消令牌。</param>\n")
+                .Append("    /// <returns>操作执行结果与强类型业务返回值。</returns>\n")
+                .Append("    public global::System.Threading.Tasks.Task<global::MiKiNuo.Mvi.OperationResult<").Append(resultType)
+                .Append(">> @").Append(operation.Name).Append("(global::System.Threading.CancellationToken cancellationToken = default)\n")
+                .Append("        => base.DispatchOperation<").Append(resultType).Append(">(\"").Append(operation.Name).Append("\", ")
+                .Append(validate is null ? "null" : "@" + validate).Append(", ");
+            if (SymbolEqualityComparer.Default.Equals(((INamedTypeSymbol)operation.ReturnType).OriginalDefinition, taskType))
+            {
+                source.Append("operation => new global::System.Threading.Tasks.ValueTask<").Append(resultType)
+                    .Append(">(@").Append(operation.Name).Append("(operation))");
+            }
+            else
+            {
+                source.Append('@').Append(operation.Name);
+            }
+
+            source.Append(", cancellationToken);\n");
+        }
+
+        source.Append("}\n");
         return new FeatureModel(hintName, source.ToString(), []);
     }
 
@@ -285,6 +356,11 @@ public sealed class FeatureGenerator : IIncrementalGenerator
         internal string Source { get; } = source;
         internal ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
     }
+
+    private static bool HasOrdinarySignature(IMethodSymbol method)
+        => method.MethodKind == MethodKind.Ordinary && method.DeclaredAccessibility == Accessibility.Private && method.Arity == 0
+            && !method.ReturnsByRef && !method.ReturnsByRefReadonly
+            && method.Parameters.All(static parameter => parameter.RefKind == RefKind.None && !parameter.IsOptional && !parameter.IsParams);
 
     private sealed class FeatureModelComparer : IEqualityComparer<FeatureModel?>
     {
