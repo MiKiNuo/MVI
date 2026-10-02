@@ -3,6 +3,7 @@ using Avalonia.Markup.Xaml;
 using MiKiNuo.Mvi.Platforms.Avalonia.Threading;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Input;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Search;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;
 
@@ -26,38 +27,25 @@ public sealed partial class App : global::Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (Program.UseV2Input)
+            if (Program.UseV2Search)
+            {
+                ControlledSearchService? service = Program.VerifyV2Search ? new ControlledSearchService() : null;
+                SearchWindow window = service is null ? new SearchWindow() : new SearchWindow(service.SearchAsync);
+                desktop.MainWindow = window;
+                if (service is not null)
+                {
+                    ConfigureVerification(desktop, window, () => SearchVerification.RunAsync(window, service),
+                        Program.SearchVerificationPath, "v2-search");
+                }
+            }
+            else if (Program.UseV2Input)
             {
                 InputFormWindow window = new();
                 desktop.MainWindow = window;
                 if (Program.VerifyV2Input)
                 {
-                    window.ShowInTaskbar = false;
-                    window.WindowState = global::Avalonia.Controls.WindowState.Minimized;
-                    window.Opened += async (_, _) =>
-                    {
-                        int exitCode = 0;
-                        string report;
-                        try
-                        {
-                            report = await InputFormVerification.RunAsync(window).WaitAsync(TimeSpan.FromSeconds(20));
-                        }
-                        catch (Exception exception)
-                        {
-                            exitCode = 1;
-                            report = "FAIL v2-input: " + exception;
-                        }
-
-                        try
-                        {
-                            File.WriteAllText(Program.VerificationPath, report);
-                            Console.WriteLine(report);
-                        }
-                        finally
-                        {
-                            desktop.Shutdown(exitCode);
-                        }
-                    };
+                    ConfigureVerification(desktop, window, () => InputFormVerification.RunAsync(window),
+                        Program.VerificationPath, "v2-input");
                 }
             }
             else
@@ -68,5 +56,36 @@ public sealed partial class App : global::Avalonia.Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void ConfigureVerification(IClassicDesktopStyleApplicationLifetime desktop, global::Avalonia.Controls.Window window,
+        Func<Task<string>> verify, string path, string name)
+    {
+        window.ShowInTaskbar = false;
+        window.WindowState = global::Avalonia.Controls.WindowState.Minimized;
+        window.Opened += async (_, _) =>
+        {
+            int exitCode = 0;
+            string report;
+            try
+            {
+                report = await verify().WaitAsync(TimeSpan.FromSeconds(20));
+            }
+            catch (Exception exception)
+            {
+                exitCode = 1;
+                report = "FAIL " + name + ": " + exception;
+            }
+
+            try
+            {
+                File.WriteAllText(path, report);
+                Console.WriteLine(report);
+            }
+            finally
+            {
+                desktop.Shutdown(exitCode);
+            }
+        };
     }
 }

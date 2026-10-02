@@ -9,6 +9,9 @@ internal static class Program
 {
     internal static bool UseV2Input { get; private set; }
     internal static bool VerifyV2Input { get; private set; }
+    internal static bool UseV2Search { get; private set; }
+    internal static bool VerifyV2Search { get; private set; }
+    internal static string SearchVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-search-verification.txt");
     internal static string VerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-input-verification.txt");
     /// <summary>
     /// 启动应用程序。
@@ -20,6 +23,14 @@ internal static class Program
     {
         VerifyV2Input = args.Contains("--verify-v2-input", StringComparer.Ordinal);
         UseV2Input = VerifyV2Input || args.Contains("--v2-input", StringComparer.Ordinal);
+        VerifyV2Search = args.Contains("--verify-v2-search", StringComparer.Ordinal);
+        UseV2Search = VerifyV2Search || args.Contains("--v2-search", StringComparer.Ordinal);
+        string? searchResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-search-result=", StringComparison.Ordinal));
+        if (searchResult is not null)
+        {
+            SearchVerificationPath = Path.GetFullPath(searchResult["--v2-search-result=".Length..]);
+        }
+
         string? result = args.FirstOrDefault(static argument => argument.StartsWith("--v2-input-result=", StringComparison.Ordinal));
         if (result is not null)
         {

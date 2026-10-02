@@ -1,5 +1,14 @@
 ﻿namespace MiKiNuo.Mvi;
 
+/// <summary>表示该执行已被后续同名操作取代，不能继续提交状态反馈。</summary>
+public sealed class OperationSupersededException : InvalidOperationException
+{
+    /// <summary>创建反馈身份被取代的异常。</summary>
+    public OperationSupersededException() : base("操作已被后续执行取代，不能继续提交反馈。")
+    {
+    }
+}
+
 /// <summary>表示操作执行的结束种类，与业务返回值分别表达。</summary>
 public enum OperationResultKind
 {
@@ -65,10 +74,10 @@ public sealed class OperationState
         Exception = exception;
     }
 
-    /// <summary>获取当前执行的身份，空值表示没有运行中的操作。</summary>
+    /// <summary>获取当前有效执行的身份，空值表示没有有效运行中的操作。</summary>
     public Guid? RunningId { get; }
 
-    /// <summary>获取操作是否仍在执行或等待所属工作退出。</summary>
+    /// <summary>获取当前有效执行是否仍在运行或等待所属工作退出，被取代工作单独保留退出归属。</summary>
     public bool IsRunning => RunningId.HasValue;
 
     /// <summary>获取最近发布反馈所关联的调用身份。</summary>

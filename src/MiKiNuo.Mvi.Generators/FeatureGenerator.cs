@@ -32,6 +32,8 @@ public sealed class FeatureGenerator : IIncrementalGenerator
         "操作 '{0}' 的 Validate 必须引用唯一的 private static bool(State) 纯方法，参数不能按引用、可选或为 params", "Mvi", DiagnosticSeverity.Error, true);
     private static readonly DiagnosticDescriptor OperationConflict = new("MVI2009", "操作生成入口冲突",
         "操作入口 '{0}' 与功能现有成员或生成输入入口冲突", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidConcurrency = new("MVI2010", "操作并发规则无效",
+        "操作 '{0}' 的 Concurrency 必须为 Reject 或 Latest", "Mvi", DiagnosticSeverity.Error, true);
     /// <summary>注册功能声明的增量生成管线。</summary>
     /// <param name="context">当前增量生成器上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -152,6 +154,12 @@ public sealed class FeatureGenerator : IIncrementalGenerator
             }
 
             string? validationName = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Validate").Value.Value as string;
+            int concurrency = (int?)attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Concurrency").Value.Value ?? 0;
+            if (concurrency is not 0 and not 1)
+            {
+                diagnostics.Add(Diagnostic.Create(InvalidConcurrency, AttributeLocation(attribute, operation), operation.Name));
+            }
+
             if (validationName is not null && feature.GetMembers(validationName).OfType<IMethodSymbol>().Count(method =>
                 HasOrdinarySignature(method) && method.IsStatic && method.ReturnType.SpecialType == SpecialType.System_Boolean
                 && method.Parameters.Length == 1 && SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[0].Type, state)) != 1)
@@ -328,7 +336,8 @@ public sealed class FeatureGenerator : IIncrementalGenerator
                 source.Append('@').Append(operation.Name);
             }
 
-            source.Append(", cancellationToken);\n");
+            int concurrency = (int?)attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Concurrency").Value.Value ?? 0;
+            source.Append(", cancellationToken, (global::MiKiNuo.Mvi.OperationConcurrency)").Append(concurrency).Append(");\n");
         }
 
         source.Append("}\n");
