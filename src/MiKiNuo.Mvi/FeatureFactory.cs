@@ -17,8 +17,9 @@ public static class FeatureFactory
     {
         ArgumentNullException.ThrowIfNull(services);
         AsyncServiceScope scope = services.CreateAsyncScope();
-        Creation creation = new();
+        Creation creation = new(scope);
         Creation? previous = Current.Value;
+        creation.Previous = previous;
         Current.Value = creation;
         try
         {
@@ -27,8 +28,16 @@ public static class FeatureFactory
             TFeature feature = (TFeature)RuntimeHelpers.GetUninitializedObject(typeof(TFeature));
             creation.Target = feature;
             object?[] arguments = constructor.GetParameters().Select(parameter => ResolveParameter(parameter, scope.ServiceProvider)).ToArray();
-            constructor.Invoke(feature, BindingFlags.DoNotWrapExceptions, binder: null, arguments, culture: null);
-            feature.OwnScope(scope);
+            try
+            {
+                constructor.Invoke(feature, BindingFlags.DoNotWrapExceptions, binder: null, arguments, culture: null);
+            }
+            finally
+            {
+                creation.ConstructionExited.TrySetResult();
+            }
+
+            if (feature.IsClosed) throw new InvalidOperationException("功能在构造完成前已关闭，不能返回可用实例。");
             return feature;
         }
         catch (Exception failure)
@@ -38,24 +47,15 @@ public static class FeatureFactory
             List<Exception> failures = [failure];
             if (creation.Instance is Feature created)
             {
-                try
-                {
-                    ReleaseResult released = await created.Close().Ticket.Released.ConfigureAwait(false);
-                    if (released.Exception is not null) failures.Add(released.Exception);
-                }
-                catch (Exception cleanupFailure)
-                {
-                    failures.Add(cleanupFailure);
-                }
+                CloseTicket cleanup = created.Close().Ticket;
+                if (cleanup.DependsOnCurrentExecution) throw new FeatureCreationException(failure, cleanup);
+                ReleaseResult released = await cleanup.Completion.ConfigureAwait(false);
+                if (released.Exception is not null) failures.Add(released.Exception);
             }
-
-            try
+            else
             {
-                await scope.DisposeAsync().ConfigureAwait(false);
-            }
-            catch (Exception releaseFailure)
-            {
-                failures.Add(releaseFailure);
+                try { await scope.DisposeAsync().ConfigureAwait(false); }
+                catch (Exception releaseFailure) { failures.Add(releaseFailure); }
             }
 
             if (failures.Count > 1) throw new AggregateException(failures);
@@ -63,6 +63,7 @@ public static class FeatureFactory
         }
         finally
         {
+            creation.ConstructionExited.TrySetResult();
             Current.Value = previous;
         }
     }
@@ -72,8 +73,20 @@ public static class FeatureFactory
         Creation? creation = Current.Value;
         if (creation is not null && ReferenceEquals(creation.Target, feature))
         {
+            feature.OwnConstructionScope(creation.Scope, creation.ConstructionExited.Task);
             creation.Instance = feature;
         }
+    }
+
+    internal static bool DependsOnConstruction(object owner)
+    {
+        for (Creation? creation = Current.Value; creation is not null; creation = creation.Previous)
+        {
+            if (creation.ThreadId == Environment.CurrentManagedThreadId && !creation.ConstructionExited.Task.IsCompleted
+                && creation.Instance is Feature feature && FeatureOwnership.DependsOnExecution(owner, feature.ExecutionOwner)) return true;
+        }
+
+        return false;
     }
 
     private static ConstructorInfo SelectConstructor(Type type, IServiceProvider services)
@@ -133,8 +146,12 @@ public static class FeatureFactory
         throw new InvalidOperationException($"无法为功能 {parameter.Member.DeclaringType} 解析构造依赖 {parameter.ParameterType}。");
     }
 
-    private sealed class Creation
+    private sealed class Creation(IAsyncDisposable scope)
     {
+        internal int ThreadId { get; } = Environment.CurrentManagedThreadId;
+        internal Creation? Previous { get; set; }
+        internal IAsyncDisposable Scope { get; } = scope;
+        internal TaskCompletionSource ConstructionExited { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal Feature? Target { get; set; }
         internal Feature? Instance { get; set; }
     }

@@ -46,6 +46,7 @@ public sealed class RequestResult<TResult>
 /// <typeparam name="TResult">业务契约的返回值类型。</typeparam>
 public sealed class RequestPort<TRequest, TResult> where TRequest : notnull
 {
+    internal Feature? Owner { get; set; }
     private readonly object gate = new();
     private readonly Func<TRequest, CancellationToken, Task<OperationResult<TResult>>> start;
     private readonly Func<TRequest, Guid, (PostReceipt<TResult> Receipt, Action? Schedule)> post;

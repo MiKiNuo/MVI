@@ -16,6 +16,7 @@ public abstract class Feature<TState> : Feature where TState : notnull
         ArgumentNullException.ThrowIfNull(initialState);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(postCapacity);
         store = new FeatureStore<TState>(initialState, postCapacity);
+        ExecutionFeatures.Add(store, this);
         FeatureFactory.Capture(this);
     }
 
@@ -25,11 +26,12 @@ public abstract class Feature<TState> : Feature where TState : notnull
     /// <summary>获取实例是否已逻辑关闭。</summary>
     public override bool IsClosed => store.IsClosed;
 
-    /// <summary>停止新业务及反馈，异步等待全部所属执行退出后释放拥有的服务范围。</summary>
-    /// <returns>本实例唯一的逻辑关闭结果与独立释放票据。</returns>
-    public override CloseResult Close() => store.Close();
-
     internal override void OwnScope(IAsyncDisposable scope) => store.OwnScope(scope);
+    internal override void OwnConstructionScope(IAsyncDisposable scope, Task constructionExited)
+        => store.OwnScope(scope, constructionExited);
+    internal override object ExecutionOwner => store;
+    internal override (CloseResult Result, Action Finish) CommitClose(Task<Exception?> childrenReleased)
+        => store.CommitClose(childrenReleased);
 
     internal void AttachProjection(FeatureProjection<TState> projection) => store.AttachProjection(projection);
 
@@ -104,6 +106,7 @@ public abstract class Feature<TState> : Feature where TState : notnull
             concurrency, capacity, maxConcurrency),
             (request, id) => store.Post(name, id, state => validate?.Invoke(state, request) ?? true,
                 operation => execute(operation, request), concurrency, capacity, maxConcurrency));
+        port.Owner = this;
         store.RegisterPort(port.Deactivate);
         return port;
     }
@@ -192,6 +195,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private CloseResult? closeResult;
     private TaskCompletionSource? drained;
     private IAsyncDisposable? ownedScope;
+    private Task constructionExited = Task.CompletedTask;
     private readonly Dictionary<string, OperationQueue> queues = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (OperationConcurrency Concurrency, int Capacity, int MaxConcurrency)> configurations = new(StringComparer.Ordinal);
 
@@ -296,7 +300,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     internal bool IsClosed => Volatile.Read(ref closeResult) is not null;
 
-    internal void OwnScope(IAsyncDisposable scope)
+    internal void OwnScope(IAsyncDisposable scope, Task? constructing = null)
     {
         lock (gate)
         {
@@ -306,6 +310,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             }
 
             ownedScope = scope;
+            constructionExited = constructing ?? Task.CompletedTask;
         }
     }
 
@@ -321,7 +326,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         if (closed) deactivate();
     }
 
-    internal CloseResult Close()
+    internal (CloseResult Result, Action Finish) CommitClose(Task<Exception?> childrenReleased)
     {
         CloseResult result;
         Action[] deactivate;
@@ -334,7 +339,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         lock (gate)
         {
             if (reducing) throw new InvalidOperationException("纯状态转换不能关闭所属功能实例。");
-            if (closeResult is not null) return closeResult;
+            if (closeResult is not null) return (closeResult, static () => { });
             result = new CloseResult(new CloseTicket(this));
             closeResult = result;
             drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -367,37 +372,40 @@ internal sealed class FeatureStore<TState> where TState : notnull
             }
         }
 
-        foreach (Action action in deactivate)
+        return (result, Finish);
+
+        void Finish()
         {
+            foreach (Action action in deactivate)
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception failure)
+                {
+                    failures.Add(failure);
+                }
+            }
+
             try
             {
-                action();
+                view?.Dispose();
             }
             catch (Exception failure)
             {
                 failures.Add(failure);
             }
-        }
 
-        try
-        {
-            view?.Dispose();
-        }
-        catch (Exception failure)
-        {
-            failures.Add(failure);
-        }
+            foreach (QueuedOperation pending in waiting)
+            {
+                pending.Registration.Unregister();
+                pending.Canceled();
+            }
 
-        foreach (QueuedOperation pending in waiting)
-        {
-            pending.Registration.Unregister();
-            pending.Canceled();
+            foreach (PostEnvelope envelope in posted) envelope.Cancel();
+            _ = Task.Run(ReleaseAsync);
         }
-
-        foreach (PostEnvelope envelope in posted) envelope.Cancel();
-
-        _ = Task.Run(ReleaseAsync);
-        return result;
 
         async Task ReleaseAsync()
         {
@@ -409,6 +417,9 @@ internal sealed class FeatureStore<TState> where TState : notnull
             }
 
             await exit.ConfigureAwait(false);
+            await constructionExited.ConfigureAwait(false);
+            Exception? childFailure = await childrenReleased.ConfigureAwait(false);
+            if (childFailure is not null) failures.Add(childFailure);
             try
             {
                 if (ownedScope is not null) await ownedScope.DisposeAsync().ConfigureAwait(false);
@@ -469,6 +480,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             }
 
             reducing = true;
+            FeatureOwnership.EnterReduction();
             try
             {
                 RuntimeSnapshot<TState> next = Reduce(snapshot, intent);
@@ -477,6 +489,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             finally
             {
                 reducing = false;
+                FeatureOwnership.ExitReduction();
             }
         }
 
@@ -518,6 +531,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             }
 
             reducing = true;
+            FeatureOwnership.EnterReduction();
             try
             {
                 if (concurrency == OperationConcurrency.Queue && !queues.TryGetValue(name, out queue))
@@ -568,6 +582,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             finally
             {
                 reducing = false;
+                FeatureOwnership.ExitReduction();
             }
         }
 
@@ -708,6 +723,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             queue.Waiting.RemoveFirst();
             registration = next.Value.Registration;
             reducing = true;
+            FeatureOwnership.EnterReduction();
             try
             {
                 start = next.Value.Start();
@@ -715,6 +731,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             finally
             {
                 reducing = false;
+                FeatureOwnership.ExitReduction();
             }
         }
 
@@ -842,6 +859,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
             EnsureActive(intent.Operation);
             reducing = true;
+            FeatureOwnership.EnterReduction();
             try
             {
                 RuntimeSnapshot<TState> next = Reduce(snapshot, intent);
@@ -851,6 +869,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             finally
             {
                 reducing = false;
+                FeatureOwnership.ExitReduction();
             }
         }
 

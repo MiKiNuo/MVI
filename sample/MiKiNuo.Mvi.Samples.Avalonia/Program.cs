@@ -19,6 +19,9 @@ internal static class Program
     internal static bool UseV2Remount { get; private set; }
     internal static bool VerifyV2Remount { get; private set; }
     internal static string RemountVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-remount-verification.txt");
+    internal static bool UseV2Workspace { get; private set; }
+    internal static bool VerifyV2Workspace { get; private set; }
+    internal static string WorkspaceVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-workspace-verification.txt");
     /// <summary>
     /// 启动应用程序。
     /// </summary>
@@ -27,6 +30,10 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        VerifyV2Workspace = args.Contains("--verify-v2-workspace", StringComparer.Ordinal);
+        UseV2Workspace = VerifyV2Workspace || args.Contains("--v2-workspace", StringComparer.Ordinal);
+        string? workspaceResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-workspace-result=", StringComparison.Ordinal));
+        if (workspaceResult is not null) WorkspaceVerificationPath = Path.GetFullPath(workspaceResult["--v2-workspace-result=".Length..]);
         VerifyV2Remount = args.Contains("--verify-v2-remount", StringComparer.Ordinal);
         UseV2Remount = VerifyV2Remount || args.Contains("--v2-remount", StringComparer.Ordinal);
         string? remountResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-remount-result=", StringComparison.Ordinal));

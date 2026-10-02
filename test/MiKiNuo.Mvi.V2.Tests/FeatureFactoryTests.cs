@@ -10,6 +10,101 @@ public sealed class FeatureFactoryTests
 {
     private static readonly TimeSpan Watchdog = TimeSpan.FromSeconds(15);
 
+    /// <summary>失败嵌套构造接管尚未退出的外层构造时，清理不能同步等待或提前释放。</summary>
+    /// <returns>嵌套所有权构造依赖回收验证任务。</returns>
+    [Test]
+    public async Task NestedFailedConstructionOwningOuterConstructionDefersCleanupUntilOuterExit()
+    {
+        NestedOwningOptions options = new();
+        ServiceCollection services = new();
+        services.AddSingleton(options);
+        services.AddScoped(_ =>
+        {
+            LifetimeResource resource = new();
+            options.Resources.Add(resource);
+            return resource;
+        });
+        await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await Assert.That(async () => await FeatureFactory.CreateAsync<NestedOwnedOuter>(provider)).Throws<InvalidOperationException>();
+        await Assert.That(options.Failure).IsNotNull();
+        await Assert.That(options.ResourcesWereAlive).IsTrue();
+        ReleaseResult released = await options.Failure!.Cleanup.Released.WaitAsync(Watchdog);
+        await Assert.That(released.Succeeded).IsTrue();
+        await Assert.That(options.Resources.Count).IsEqualTo(2);
+        await Assert.That(options.Resources.All(resource => resource.DisposeCount == 1)).IsTrue();
+    }
+
+    /// <summary>同步构造不能等待自身或尚在构造的祖先释放，后台继承上下文不误判为构造线程。</summary>
+    /// <param name="nested">是否从嵌套构造访问祖先票据。</param>
+    /// <returns>准确构造自等待保护验证任务。</returns>
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ConstructorReleaseSelfWaitIsRejectedWithoutMisclassifyingBackgroundWork(bool nested)
+    {
+        ConstructorWaitOptions options = new(nested);
+        LifetimeResource? resource = null;
+        ServiceCollection services = new();
+        services.AddSingleton(options);
+        services.AddScoped(_ => resource = new LifetimeResource());
+        await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await Assert.That(async () => await FeatureFactory.CreateAsync<ConstructorWaitFeature>(provider)).Throws<InvalidOperationException>();
+        await Assert.That(options.Rejected).IsTrue();
+        await Assert.That(options.ScopeWasAlive).IsTrue();
+        await Assert.That(options.BackgroundWasAllowed).IsTrue();
+        await Assert.That(resource!.DisposeCount).IsEqualTo(1);
+    }
+
+    /// <summary>构造失败目标接管正在等待工厂的调用者时，不得提前释放仍被目标 IO 使用的范围。</summary>
+    /// <param name="releaseFault">延后的真实范围释放是否发生异常。</param>
+    /// <returns>构造失败所有权等待依赖验证任务。</returns>
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task FailedCreationThatOwnsItsCallerKeepsScopeUntilAllRealUsersExit(bool releaseFault)
+    {
+        OwningFactoryOptions options = new();
+        LifetimeResource? resource = null;
+        ServiceCollection services = new();
+        services.AddSingleton(options);
+        InvalidOperationException releaseFailure = new("dependent cleanup disposal failure");
+        services.AddScoped(_ => resource = new LifetimeResource(releaseFault ? () => ValueTask.FromException(releaseFailure) : null));
+        await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        RequestDetailsFeature caller = new(async (_, _) =>
+        {
+            try { await FeatureFactory.CreateAsync<OwningFactoryFeature>(provider); }
+            catch (Exception failure) { options.Observed = failure; }
+            options.Failed.SetResult();
+            return "caller exited";
+        });
+        options.Caller = caller;
+        Task<OperationResult<string>> callerExecution = caller.LoadAsync(new(1));
+        try
+        {
+            await options.Failed.Task.WaitAsync(Watchdog);
+            await Assert.That(resource!.DisposeCount).IsEqualTo(0);
+            await Assert.That(options.Target!.IsClosed && caller.IsClosed).IsTrue();
+            await Assert.That(options.Target.Close().Ticket.Released.IsCompleted).IsFalse();
+            await Assert.That(options.Observed).IsTypeOf<FeatureCreationException>();
+            FeatureCreationException creationFailure = (FeatureCreationException)options.Observed!;
+            await Assert.That(creationFailure.InnerException!.Message).IsEqualTo("owned caller construction failure");
+            await Assert.That(ReferenceEquals(creationFailure.Cleanup, options.Target.Close().Ticket)).IsTrue();
+            options.Release.SetResult();
+            await callerExecution.WaitAsync(Watchdog);
+            ReleaseResult cleanup = await creationFailure.Cleanup.Released.WaitAsync(Watchdog);
+            await Assert.That(cleanup.Succeeded).IsEqualTo(!releaseFault);
+            if (releaseFault) await Assert.That(cleanup.Exception).IsEqualTo(releaseFailure);
+            await Assert.That(resource.DisposeCount).IsEqualTo(1);
+            await Assert.That(options.Observed).IsNotNull();
+        }
+        finally
+        {
+            options.Release.TrySetResult();
+            await callerExecution.WaitAsync(Watchdog);
+            if (options.Target is not null) await options.Target.Close().Ticket.Released.WaitAsync(Watchdog);
+        }
+    }
+
     /// <summary>构造选择、可选值与 keyed 服务保持标准 ActivatorUtilities 的合法调用行为。</summary>
     /// <param name="keyed">是否提供 keyed 依赖以选择较长构造函数。</param>
     /// <returns>表示公开构造规则兼容验证完成的任务。</returns>
@@ -492,5 +587,103 @@ internal sealed partial class BeforeBaseFailureFeature : Feature<LifetimeState>
     {
         resource.Use();
         throw new InvalidOperationException("failure before store initialization");
+    }
+}
+
+internal sealed class OwningFactoryOptions
+{
+    internal RequestDetailsFeature? Caller { get; set; }
+    internal OwningFactoryFeature? Target { get; set; }
+    internal Exception? Observed { get; set; }
+    internal TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal TaskCompletionSource Failed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+}
+
+internal sealed partial class OwningFactoryFeature : Feature<LifetimeState>
+{
+    public OwningFactoryFeature(LifetimeResource resource, OwningFactoryOptions options) : base(new())
+    {
+        options.Target = this;
+        Children.Add(options.Caller!);
+        _ = DispatchOperation("ConstructIO", null, async _ =>
+        {
+            options.Entered.SetResult();
+            await options.Release.Task;
+            resource.Use();
+            return 1;
+        }, CancellationToken.None);
+        options.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15)).GetAwaiter().GetResult();
+        throw new InvalidOperationException("owned caller construction failure");
+    }
+}
+
+internal sealed class ConstructorWaitOptions(bool nested)
+{
+    internal bool Nested { get; } = nested;
+    internal bool Rejected { get; set; }
+    internal bool ScopeWasAlive { get; set; }
+    internal bool BackgroundWasAllowed { get; set; }
+    internal CloseTicket? Ticket { get; set; }
+}
+
+internal sealed partial class ConstructorWaitFeature : Feature<LifetimeState>
+{
+    public ConstructorWaitFeature(LifetimeResource resource, IServiceProvider services, ConstructorWaitOptions options) : base(new())
+    {
+        options.Ticket = Close().Ticket;
+        Task.Factory.StartNew(() => { _ = options.Ticket.Released; options.BackgroundWasAllowed = true; },
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).GetAwaiter().GetResult();
+        try
+        {
+        if (options.Nested) FeatureFactory.CreateAsync<NestedConstructorWaitFeature>(services).AsTask().GetAwaiter().GetResult();
+            else options.Ticket.Released.GetAwaiter().GetResult();
+        }
+        catch (FeatureCreationException failure) when (failure.InnerException is InvalidOperationException)
+        {
+            options.Rejected = true;
+        }
+        catch (InvalidOperationException)
+        {
+            options.Rejected = true;
+        }
+
+        options.ScopeWasAlive = resource.DisposeCount == 0;
+    }
+}
+
+internal sealed partial class NestedConstructorWaitFeature : Feature<LifetimeState>
+{
+    public NestedConstructorWaitFeature(ConstructorWaitOptions options) : base(new())
+        => options.Ticket!.Released.GetAwaiter().GetResult();
+}
+
+internal sealed class NestedOwningOptions
+{
+    internal NestedOwnedOuter? Outer { get; set; }
+    internal FeatureCreationException? Failure { get; set; }
+    internal List<LifetimeResource> Resources { get; } = [];
+    internal bool ResourcesWereAlive { get; set; }
+}
+
+internal sealed partial class NestedOwnedOuter : Feature<LifetimeState>
+{
+    public NestedOwnedOuter(LifetimeResource resource, IServiceProvider services, NestedOwningOptions options) : base(new())
+    {
+        options.Outer = this;
+        try { FeatureFactory.CreateAsync<NestedOwningInner>(services).AsTask().GetAwaiter().GetResult(); }
+        catch (FeatureCreationException failure) { options.Failure = failure; }
+        options.ResourcesWereAlive = options.Resources.All(dependency => dependency.DisposeCount == 0);
+        resource.Use();
+    }
+}
+
+internal sealed partial class NestedOwningInner : Feature<LifetimeState>
+{
+    public NestedOwningInner(LifetimeResource resource, NestedOwningOptions options) : base(new())
+    {
+        Children.Add(options.Outer!);
+        resource.Use();
+        throw new InvalidOperationException("nested constructor owns outer failure");
     }
 }

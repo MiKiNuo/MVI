@@ -5,6 +5,7 @@ using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Input;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Search;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Auth;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Workspace;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;
 
@@ -28,7 +29,17 @@ public sealed partial class App : global::Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (Program.UseV2Remount)
+            if (Program.UseV2Workspace)
+            {
+                WorkspaceWindow window = new();
+                desktop.MainWindow = window;
+                if (Program.VerifyV2Workspace)
+                {
+                    ConfigureVerification(desktop, window, () => WorkspaceVerification.RunAsync(window),
+                        Program.WorkspaceVerificationPath, "v2-workspace");
+                }
+            }
+            else if (Program.UseV2Remount)
             {
                 RemountWindow window = new();
                 desktop.MainWindow = window;
