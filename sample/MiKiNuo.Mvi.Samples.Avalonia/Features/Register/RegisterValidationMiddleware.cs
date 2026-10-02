@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
 using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
 
@@ -15,10 +15,6 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Register;
 public sealed class RegisterValidationMiddleware
     : IMviMiddleware<RegisterState, RegisterIntent, RegisterEffect>
 {
-    private static readonly Regex EmailPattern = new(
-        @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     /// <summary>
     /// 校验 Submit 意图，失败时阻断并写回错误消息。
     /// </summary>
@@ -50,27 +46,5 @@ public sealed class RegisterValidationMiddleware
     }
 
     private static string? Validate(RegisterState state)
-    {
-        if (state.UserName.Trim().Length < 3)
-        {
-            return "用户名至少需要 3 个字符。";
-        }
-
-        if (!EmailPattern.IsMatch(state.Email))
-        {
-            return "邮箱格式不正确。";
-        }
-
-        if (state.Password.Length < 6)
-        {
-            return "密码长度至少为 6 位。";
-        }
-
-        if (state.Password != state.ConfirmPassword)
-        {
-            return "两次输入的密码不一致。";
-        }
-
-        return null;
-    }
+        => AuthValidation.Register(state.UserName, state.Email, state.Password, state.ConfirmPassword);
 }

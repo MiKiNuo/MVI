@@ -1,5 +1,6 @@
-using MiKiNuo.Mvi.Application.MVI.Middleware;
+﻿using MiKiNuo.Mvi.Application.MVI.Middleware;
 using MiKiNuo.Mvi.Domain.MVI.Reducer;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.ResetPassword;
 
@@ -41,22 +42,5 @@ public sealed class ResetPasswordValidationMiddleware
     }
 
     private static string? Validate(ResetPasswordState state)
-    {
-        if (state.UserName.Trim().Length < 3)
-        {
-            return "用户名至少需要 3 个字符。";
-        }
-
-        if (state.NewPassword.Length < 6)
-        {
-            return "新密码长度至少为 6 位。";
-        }
-
-        if (state.NewPassword != state.ConfirmPassword)
-        {
-            return "两次输入的密码不一致。";
-        }
-
-        return null;
-    }
+        => AuthValidation.ResetPassword(state.UserName, state.NewPassword, state.ConfirmPassword);
 }

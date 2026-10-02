@@ -3,6 +3,7 @@ using Avalonia.Markup.Xaml;
 using MiKiNuo.Mvi.Platforms.Avalonia.Threading;
 using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Input;
+using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Auth;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia;
 
@@ -26,7 +27,41 @@ public sealed partial class App : global::Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (Program.UseV2Input)
+            if (Program.UseV2Auth)
+            {
+                VerificationAuthService? service = Program.VerifyV2Auth ? new() : null;
+                AuthFormsWindow window = new(service);
+                desktop.MainWindow = window;
+                if (service is not null)
+                {
+                    window.ShowInTaskbar = false;
+                    window.Opened += async (_, _) =>
+                    {
+                        int exitCode = 0;
+                        string report;
+                        try
+                        {
+                            report = await AuthFormsVerification.RunAsync(window, service, Program.AuthVerificationPath + ".png").WaitAsync(TimeSpan.FromSeconds(40));
+                        }
+                        catch (Exception exception)
+                        {
+                            exitCode = 1;
+                            report = "FAIL v2-auth: " + exception;
+                        }
+
+                        try
+                        {
+                            File.WriteAllText(Program.AuthVerificationPath, report);
+                            Console.WriteLine(report);
+                        }
+                        finally
+                        {
+                            desktop.Shutdown(exitCode);
+                        }
+                    };
+                }
+            }
+            else if (Program.UseV2Input)
             {
                 InputFormWindow window = new();
                 desktop.MainWindow = window;
