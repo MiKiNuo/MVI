@@ -426,10 +426,10 @@ public sealed class MediatorRequestTests
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<OperationState> finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
         InvalidOperationException failure = new("late target failure");
-        bool targetTokenCanCancel = true;
+        CancellationToken targetToken = default;
         RequestDetailsFeature details = new(async (operation, _) =>
         {
-            targetTokenCanCancel = operation.CancellationToken.CanBeCanceled;
+            targetToken = operation.CancellationToken;
             await operation.UpdateAsync(static (state, value) => state with { Text = value }, "already committed");
             entered.SetResult();
             await release.Task;
@@ -458,7 +458,7 @@ public sealed class MediatorRequestTests
             RequestResult<string> canceled = await waiting.WaitAsync(Watchdog);
             await Assert.That(canceled.Kind).IsEqualTo(RequestResultKind.WaitCanceled);
             await Assert.That(canceled.OperationResult).IsNull();
-            await Assert.That(targetTokenCanCancel).IsFalse();
+            await Assert.That(targetToken.IsCancellationRequested).IsFalse();
             await Assert.That(details.Snapshot.OperationStates["Load"].IsRunning).IsTrue();
             await Assert.That(details.Snapshot.State.Text).IsEqualTo("already committed");
             release.SetResult();

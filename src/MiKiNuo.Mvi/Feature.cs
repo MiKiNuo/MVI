@@ -4,7 +4,7 @@ namespace MiKiNuo.Mvi;
 
 /// <summary>为一个独立功能实例提供统一状态输入入口。</summary>
 /// <typeparam name="TState">由生成器验证的不可变业务状态类型。</typeparam>
-public abstract class Feature<TState> where TState : notnull
+public abstract class Feature<TState> : Feature where TState : notnull
 {
     private readonly FeatureStore<TState> store;
 
@@ -14,10 +14,20 @@ public abstract class Feature<TState> where TState : notnull
     {
         ArgumentNullException.ThrowIfNull(initialState);
         store = new FeatureStore<TState>(initialState);
+        FeatureFactory.Capture(this);
     }
 
     /// <summary>获取一次一致提交的完整快照。</summary>
     public RuntimeSnapshot<TState> Snapshot => store.Snapshot;
+
+    /// <summary>获取实例是否已逻辑关闭。</summary>
+    public override bool IsClosed => store.IsClosed;
+
+    /// <summary>停止新业务及反馈，异步等待全部所属执行退出后释放拥有的服务范围。</summary>
+    /// <returns>本实例唯一的逻辑关闭结果与独立释放票据。</returns>
+    public override CloseResult Close() => store.Close();
+
+    internal override void OwnScope(IAsyncDisposable scope) => store.OwnScope(scope);
 
     internal void AttachProjection(FeatureProjection<TState> projection) => store.AttachProjection(projection);
 
@@ -86,10 +96,12 @@ public abstract class Feature<TState> where TState : notnull
             throw new ArgumentOutOfRangeException(nameof(cancellationPolicy));
         }
 
-        return new RequestPort<TRequest, TResult>((request, executionCancellationToken) => DispatchOperation(name,
+        RequestPort<TRequest, TResult> port = new((request, executionCancellationToken) => DispatchOperation(name,
             state => validate?.Invoke(state, request) ?? true, operation => execute(operation, request),
             cancellationPolicy == RequestCancellationPolicy.Propagate ? executionCancellationToken : CancellationToken.None,
             concurrency, capacity, maxConcurrency));
+        store.RegisterPort(port.Deactivate);
+        return port;
     }
 }
 
@@ -167,6 +179,11 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private bool reducing;
     private FeatureProjection<TState>? projection;
     private readonly Dictionary<string, Operation<TState>> executions = new(StringComparer.Ordinal);
+    private readonly HashSet<Operation<TState>> activeExecutions = [];
+    private readonly List<Action> ports = [];
+    private CloseResult? closeResult;
+    private TaskCompletionSource? drained;
+    private IAsyncDisposable? ownedScope;
     private readonly Dictionary<string, OperationQueue> queues = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (OperationConcurrency Concurrency, int Capacity, int MaxConcurrency)> configurations = new(StringComparer.Ordinal);
 
@@ -190,10 +207,142 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     internal RuntimeSnapshot<TState> Snapshot => Volatile.Read(ref snapshot);
 
+    internal bool IsClosed => Volatile.Read(ref closeResult) is not null;
+
+    internal void OwnScope(IAsyncDisposable scope)
+    {
+        lock (gate)
+        {
+            if (closeResult is not null || ownedScope is not null)
+            {
+                throw new InvalidOperationException("实例已经关闭或已拥有服务范围，不能重新绑定范围。");
+            }
+
+            ownedScope = scope;
+        }
+    }
+
+    internal void RegisterPort(Action deactivate)
+    {
+        bool closed;
+        lock (gate)
+        {
+            closed = closeResult is not null;
+            if (!closed) ports.Add(deactivate);
+        }
+
+        if (closed) deactivate();
+    }
+
+    internal CloseResult Close()
+    {
+        CloseResult result;
+        Action[] deactivate;
+        FeatureProjection<TState>? view;
+        List<QueuedOperation> waiting = [];
+        List<(Operation<TState> Operation, TaskCompletionSource Completed)> cancellation = [];
+        List<Exception> failures = [];
+        Task exit;
+        lock (gate)
+        {
+            if (reducing) throw new InvalidOperationException("纯状态转换不能关闭所属功能实例。");
+            if (closeResult is not null) return closeResult;
+            result = new CloseResult(new CloseTicket(this));
+            closeResult = result;
+            drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (activeExecutions.Count == 0) drained.SetResult();
+            exit = drained.Task;
+            deactivate = ports.ToArray();
+            ports.Clear();
+            view = projection;
+            projection = null;
+            foreach (OperationQueue queue in queues.Values)
+            {
+                foreach (QueuedOperation pending in queue.Waiting)
+                {
+                    waiting.Add(pending);
+                    Commit(Reduce(snapshot, new QueuedOperationCanceledIntent(pending.Name, pending.Id)));
+                }
+
+                queue.Waiting.Clear();
+            }
+
+            foreach (Operation<TState> operation in activeExecutions)
+            {
+                if (!operation.Accepting || operation.CancellationFinished) continue;
+                TaskCompletionSource completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                operation.Work.Add(completed.Task);
+                cancellation.Add((operation, completed));
+            }
+        }
+
+        foreach (Action action in deactivate)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception failure)
+            {
+                failures.Add(failure);
+            }
+        }
+
+        try
+        {
+            view?.Dispose();
+        }
+        catch (Exception failure)
+        {
+            failures.Add(failure);
+        }
+
+        foreach (QueuedOperation pending in waiting)
+        {
+            pending.Registration.Unregister();
+            pending.Canceled();
+        }
+
+        _ = Task.Run(ReleaseAsync);
+        return result;
+
+        async Task ReleaseAsync()
+        {
+            OperationExecutionContext.Current.Value = null;
+
+            foreach ((Operation<TState> operation, TaskCompletionSource completed) in cancellation)
+            {
+                _ = CancelSupersededAsync(operation, completed);
+            }
+
+            await exit.ConfigureAwait(false);
+            try
+            {
+                if (ownedScope is not null) await ownedScope.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception failure)
+            {
+                failures.Add(failure);
+            }
+
+            result.Ticket.Complete(failures.Count == 0 ? null : failures.Count == 1 ? failures[0] : new AggregateException(failures));
+        }
+    }
+
+    private void CompleteExecution(Operation<TState> operation)
+    {
+        lock (gate)
+        {
+            activeExecutions.Remove(operation);
+            if (closeResult is not null && activeExecutions.Count == 0) drained!.TrySetResult();
+        }
+    }
+
     internal void AttachProjection(FeatureProjection<TState> connection)
     {
         lock (gate)
         {
+            if (closeResult is not null) throw new FeatureClosedException();
             if (projection is not null)
             {
                 throw new InvalidOperationException("一个功能实例只能连接一个活动的本地 View 投影；释放旧投影后可重新连接。");
@@ -220,6 +369,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         FeatureProjection<TState>? display;
         lock (gate)
         {
+            if (closeResult is not null) throw new FeatureClosedException();
             if (reducing)
             {
                 throw new InvalidOperationException("纯状态转换不能重入同一功能实例。");
@@ -264,6 +414,11 @@ internal sealed class FeatureStore<TState> where TState : notnull
         (OperationConcurrency Concurrency, int Capacity, int MaxConcurrency) configuration = (concurrency, capacity, maxConcurrency);
         lock (gate)
         {
+            if (closeResult is not null)
+            {
+                return Task.FromResult(new OperationResult<TResult>(name, id, OperationResultKind.Rejected, reason: "Closed"));
+            }
+
             if (reducing)
             {
                 throw new InvalidOperationException("纯状态转换不能重入同一功能实例。");
@@ -287,11 +442,11 @@ internal sealed class FeatureStore<TState> where TState : notnull
                 {
                     // 已接纳的同名入口固定策略与界限，避免等待项缺少推进归属。
                     configurations.TryAdd(name, configuration);
-                    CancellationTokenSource? source = concurrency == OperationConcurrency.Latest
-                        ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
+                    CancellationTokenSource source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     operation = new Operation<TState>(this, name, intent.Id, reduction.Effect!.Value.Input,
                         source?.Token ?? cancellationToken, source);
-                    if (concurrency == OperationConcurrency.Latest && executions.TryGetValue(name, out previous))
+                    if (concurrency == OperationConcurrency.Latest && executions.TryGetValue(name, out previous)
+                        && !previous.CancellationFinished)
                     {
                         // 在门内登记屏障，防止旧执行先退出并释放门外取消请求仍需使用的资源。
                         cancellationCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -299,6 +454,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
                     }
 
                     executions[name] = operation;
+                    activeExecutions.Add(operation);
                 }
 
                 display = Commit(reduction.Snapshot);
@@ -322,7 +478,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             }
         }
 
-        if (previous is not null)
+        if (previous is not null && cancellationCompleted is not null)
         {
             _ = CancelSupersededAsync(previous, cancellationCompleted!);
         }
@@ -394,6 +550,12 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private Action ActivateQueued<TResult>(OperationStartIntent<TState, TResult> request, OperationQueue queue,
         TaskCompletionSource<OperationResult<TResult>> completion)
     {
+        if (closeResult is not null)
+        {
+            return () => completion.SetResult(new OperationResult<TResult>(request.Name, request.Id, OperationResultKind.Canceled,
+                reason: "Closed"));
+        }
+
         // 只在实际启动时重新采样取消、校验与业务输入；调用者持有提交门。
         OperationStartIntent<TState, TResult> intent = new(request.Name, request.Id, request.Validate, request.Execute,
             request.CancellationToken, request.Concurrency, request.Capacity, request.MaxConcurrency, fromQueue: true);
@@ -401,9 +563,10 @@ internal sealed class FeatureStore<TState> where TState : notnull
         Operation<TState>? operation = null;
         if (reduction.Decision == OperationDecision.ExecuteEffect)
         {
-            operation = new Operation<TState>(this, request.Name, request.Id, reduction.Effect!.Value.Input,
-                request.CancellationToken, null);
+            CancellationTokenSource source = CancellationTokenSource.CreateLinkedTokenSource(request.CancellationToken);
+            operation = new Operation<TState>(this, request.Name, request.Id, reduction.Effect!.Value.Input, source.Token, source);
             executions[request.Name] = operation;
+            activeExecutions.Add(operation);
         }
 
         FeatureProjection<TState>? display = Commit(reduction.Snapshot);
@@ -443,7 +606,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         CancellationTokenRegistration registration;
         lock (gate)
         {
-            if (queue.Waiting.First is not LinkedListNode<QueuedOperation> next)
+            if (closeResult is not null || queue.Waiting.First is not LinkedListNode<QueuedOperation> next)
             {
                 queue.Active = false;
                 return;
@@ -570,16 +733,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         catch (Exception exception)
         {
             RecordFailure(operation, exception);
-            OperationResult<TResult> result;
-            FeatureProjection<TState>? display;
-            lock (gate)
-            {
-                result = Finish<TResult>(operation, default, out display);
-            }
-
-            operation.CancellationSource?.Dispose();
-            RequestOperationDisplay(display, result.OperationId);
-            return Task.FromResult(result);
+            return ExecuteAsync(operation, _ => ValueTask.FromException<TResult>(exception));
         }
     }
 
@@ -620,6 +774,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private void EnsureActive(Operation<TState> operation)
     {
         EnsureOwned(operation);
+        if (closeResult is not null) throw new FeatureClosedException();
         if (snapshot.OperationStates.GetValueOrDefault(operation.Name)?.RunningIds.Contains(operation.Id) != true)
         {
             throw new OperationSupersededException();
@@ -659,7 +814,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         lock (gate)
         {
             // 令牌关联关系不可查询；执行已取消时，关联令牌产生的取消异常也属于协作取消。
-            if (exception is not OperationSupersededException
+            if (exception is not OperationSupersededException && exception is not FeatureClosedException
                 && (exception is not OperationCanceledException || !operation.CancellationToken.IsCancellationRequested))
             {
                 operation.Failure ??= exception;
@@ -706,6 +861,22 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private async Task<OperationResult<TResult>> ExecuteAsync<TResult>(Operation<TState> operation,
         Func<Operation<TState>, ValueTask<TResult>> execute)
     {
+        object? previous = OperationExecutionContext.Current.Value;
+        OperationExecutionContext.Current.Value = this;
+        try
+        {
+            return await ExecuteCoreAsync(operation, execute).ConfigureAwait(false);
+        }
+        finally
+        {
+            OperationExecutionContext.Current.Value = previous;
+            CompleteExecution(operation);
+        }
+    }
+
+    private async Task<OperationResult<TResult>> ExecuteCoreAsync<TResult>(Operation<TState> operation,
+        Func<Operation<TState>, ValueTask<TResult>> execute)
+    {
         TResult? value = default;
         try
         {
@@ -723,11 +894,22 @@ internal sealed class FeatureStore<TState> where TState : notnull
             Task[] work;
             OperationResult<TResult>? completed = null;
             FeatureProjection<TState>? display = null;
+            bool finishCancellation = false;
             lock (gate)
             {
                 if (observed == operation.Work.Count)
                 {
-                    completed = Finish(operation, value, out display);
+                    if (!operation.CancellationFinished)
+                    {
+                        // 先断开并等待已进入的取消回调；它们仍可登记子工作，下一轮重新排空。
+                        operation.CancellationFinished = true;
+                        finishCancellation = true;
+                    }
+                    else
+                    {
+                        completed = Finish(operation, value, out display);
+                    }
+
                     work = [];
                 }
                 else
@@ -737,9 +919,20 @@ internal sealed class FeatureStore<TState> where TState : notnull
                 }
             }
 
+            if (finishCancellation)
+            {
+                if (operation.CancellationToken.IsCancellationRequested)
+                {
+                    // 取消续体可能内联在回调线程；切换后注销才能真实等回调尾部退出。
+                    await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
+                }
+
+                operation.CancellationSource!.Dispose();
+                continue;
+            }
+
             if (completed is not null)
             {
-                operation.CancellationSource?.Dispose();
                 RequestOperationDisplay(display, completed.OperationId);
                 return completed;
             }

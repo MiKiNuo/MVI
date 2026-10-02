@@ -25,6 +25,8 @@ public sealed class Operation<TState> where TState : notnull
 
     internal bool Accepting { get; set; } = true;
 
+    internal bool CancellationFinished { get; set; }
+
     internal List<Task> Work { get; } = [];
 
     internal CancellationTokenSource? CancellationSource { get; }

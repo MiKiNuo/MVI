@@ -103,6 +103,7 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            if (feature.IsClosed) throw new FeatureClosedException();
         }
     }
 
@@ -232,7 +233,7 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
                 RuntimeSnapshot<TState> next;
                 lock (gate)
                 {
-                    if (disposed || pending.Count == 0 || scheduleId != id)
+                    if (disposed || feature.IsClosed || pending.Count == 0 || scheduleId != id)
                     {
                         return;
                     }
