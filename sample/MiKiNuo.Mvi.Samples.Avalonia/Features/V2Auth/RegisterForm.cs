@@ -12,10 +12,16 @@ public sealed class RegisterForm : UserControl, IDisposable
 
     /// <summary>创建独立完整 Feature 的本地表单 View。</summary>
     /// <param name="service">由宿主持有的认证服务。</param>
-    public RegisterForm(IAuthService service)
+    public RegisterForm(IAuthService service) : this(new RegisterFeature(service ?? throw new ArgumentNullException(nameof(service))))
     {
-        ArgumentNullException.ThrowIfNull(service);
-        Feature = new RegisterFeature(service);
+    }
+
+    /// <summary>为已由宿主持有的注册实例创建本次本地 View。</summary>
+    /// <param name="feature">保留业务状态与执行的现有实例。</param>
+    public RegisterForm(RegisterFeature feature)
+    {
+        ArgumentNullException.ThrowIfNull(feature);
+        Feature = feature;
         Projection = AvaloniaProjection.Create<RegisterFeature.Projection>(Feature.CreateProjection);
         DataContext = Projection;
         Feedback = new(Projection.SubmitAsyncCommand, static state => state.ValidationError, static state => state.Result);

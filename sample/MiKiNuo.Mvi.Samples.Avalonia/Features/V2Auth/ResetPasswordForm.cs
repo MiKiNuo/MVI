@@ -12,10 +12,16 @@ public sealed class ResetPasswordForm : UserControl, IDisposable
 
     /// <summary>创建独立完整 Feature 的本地表单 View。</summary>
     /// <param name="service">由宿主持有的认证服务。</param>
-    public ResetPasswordForm(IAuthService service)
+    public ResetPasswordForm(IAuthService service) : this(new ResetPasswordFeature(service ?? throw new ArgumentNullException(nameof(service))))
     {
-        ArgumentNullException.ThrowIfNull(service);
-        Feature = new ResetPasswordFeature(service);
+    }
+
+    /// <summary>为已由宿主持有的重置密码实例创建本次本地 View。</summary>
+    /// <param name="feature">保留业务状态与执行的现有实例。</param>
+    public ResetPasswordForm(ResetPasswordFeature feature)
+    {
+        ArgumentNullException.ThrowIfNull(feature);
+        Feature = feature;
         Projection = AvaloniaProjection.Create<ResetPasswordFeature.Projection>(Feature.CreateProjection);
         DataContext = Projection;
         Feedback = new(Projection.SubmitAsyncCommand, static state => state.ValidationError, static state => state.Result);

@@ -16,6 +16,9 @@ internal static class Program
     internal static bool VerifyV2Auth { get; private set; }
     internal static string AuthVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-auth-verification.txt");
     internal static string VerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-input-verification.txt");
+    internal static bool UseV2Remount { get; private set; }
+    internal static bool VerifyV2Remount { get; private set; }
+    internal static string RemountVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-remount-verification.txt");
     /// <summary>
     /// 启动应用程序。
     /// </summary>
@@ -24,6 +27,10 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        VerifyV2Remount = args.Contains("--verify-v2-remount", StringComparer.Ordinal);
+        UseV2Remount = VerifyV2Remount || args.Contains("--v2-remount", StringComparer.Ordinal);
+        string? remountResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-remount-result=", StringComparison.Ordinal));
+        if (remountResult is not null) RemountVerificationPath = Path.GetFullPath(remountResult["--v2-remount-result=".Length..]);
         VerifyV2Input = args.Contains("--verify-v2-input", StringComparer.Ordinal);
         UseV2Input = VerifyV2Input || args.Contains("--v2-input", StringComparer.Ordinal);
         VerifyV2Search = args.Contains("--verify-v2-search", StringComparer.Ordinal);

@@ -28,7 +28,17 @@ public sealed partial class App : global::Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (Program.UseV2Search)
+            if (Program.UseV2Remount)
+            {
+                RemountWindow window = new();
+                desktop.MainWindow = window;
+                if (Program.VerifyV2Remount)
+                {
+                    ConfigureVerification(desktop, window, () => RemountVerification.RunAsync(window),
+                        Program.RemountVerificationPath, "v2-remount");
+                }
+            }
+            else if (Program.UseV2Search)
             {
                 ControlledSearchService? service = Program.VerifyV2Search ? new ControlledSearchService() : null;
                 SearchWindow window = service is null ? new SearchWindow() : new SearchWindow(service.SearchAsync);

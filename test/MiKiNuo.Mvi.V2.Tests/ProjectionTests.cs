@@ -7,6 +7,34 @@ namespace MiKiNuo.Mvi.V2.Tests;
 /// <summary>通过公开生成投影验证提交、字段通知和调度行为。</summary>
 public sealed class ProjectionTests
 {
+    /// <summary>旧 View 已排队展示在卸载后失效，重挂载从当前状态开始，替换实例保持隔离。</summary>
+    /// <returns>表示卸载重挂载与旧回调隔离验证完成的任务。</returns>
+    [Test]
+    public async Task RemountStartsAtLatestStateAndDiscardedCallbacksCannotAffectReplacement()
+    {
+        ProjectionEditor first = new();
+        ProjectionEditor second = new();
+        Queue<Action> oldQueue = new();
+        Queue<Action> currentQueue = new();
+        ProjectionEditor.Projection old = first.CreateProjection(oldQueue.Enqueue);
+        first.SetText("queued old");
+        old.Dispose();
+        first.SetText("while unmounted");
+        using ProjectionEditor.Projection remounted = first.CreateProjection(currentQueue.Enqueue);
+        await Assert.That(remounted.Text).IsEqualTo("while unmounted");
+        while (oldQueue.TryDequeue(out Action? callback)) callback();
+        await Assert.That(remounted.Text).IsEqualTo("while unmounted");
+        await Assert.That(() => old.Text = "old input").Throws<ObjectDisposedException>();
+        second.SetText("independent");
+        using ProjectionEditor.Projection replacement = second.CreateProjection(currentQueue.Enqueue);
+        first.SetText("first still owned");
+        while (currentQueue.TryDequeue(out Action? callback)) callback();
+        await Assert.That(replacement.Text).IsEqualTo("independent");
+        await Assert.That(remounted.Text).IsEqualTo("first still owned");
+        await Assert.That(first.IsClosed).IsFalse();
+        await Assert.That(second.IsClosed).IsFalse();
+    }
+
     /// <summary>验证 View 输入规范化为旧显示值时反馈输入字段，后台同值及派生字段仍不重复通知。</summary>
     /// <returns>表示输入反馈验证完成的任务。</returns>
     [Test]
