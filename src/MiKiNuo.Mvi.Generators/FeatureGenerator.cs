@@ -34,6 +34,18 @@ public sealed class FeatureGenerator : IIncrementalGenerator
         "操作入口 '{0}' 与功能现有成员或生成输入入口冲突", "Mvi", DiagnosticSeverity.Error, true);
     private static readonly DiagnosticDescriptor InvalidConcurrency = new("MVI2010", "操作并发配置无效",
         "操作 '{0}' 的并发策略必须是 Reject、Latest、Queue 或 Parallel；Queue 必须声明正数 Capacity，Parallel 必须声明正数 MaxConcurrency，其他策略对应配置必须为零", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidHandler = new("MVI2011", "请求处理声明无效",
+        "请求处理 '{0}' 必须是 private 实例异步方法，接受 Operation<State> 和非空消息参数，不支持泛型、按引用、可选、params 或 ref struct 消息；消息和结果类型必须能在生成入口暴露", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidHandlerValidation = new("MVI2012", "请求验证无效",
+        "请求处理 '{0}' 的 Validate 必须引用唯一的 private static bool(State, Message) 纯方法", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor DuplicateHandler = new("MVI2013", "请求契约重复",
+        "请求处理 '{0}' 与本功能的其他处理方法重复提供同一请求与结果契约", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor HandlerConflict = new("MVI2014", "请求端口生成入口冲突",
+        "请求端口入口 '{0}' 与已有或其他生成成员冲突", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidHandlerPolicy = new("MVI2015", "请求端口策略无效",
+        "请求处理 '{0}' 的并发界限或取消策略无效", "Mvi", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor FactoryConflict = new("MVI2016", "生成工厂声明冲突",
+        "功能 '{0}' 的 CreateAsync 入口冲突或存在多个标记的公开构造函数", "Mvi", DiagnosticSeverity.Error, true);
     /// <summary>注册功能声明的增量生成管线。</summary>
     /// <param name="context">当前增量生成器上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -137,6 +149,84 @@ public sealed class FeatureGenerator : IIncrementalGenerator
         INamedTypeSymbol? operationType = compilation.GetTypeByMetadataName("MiKiNuo.Mvi.Operation`1");
         INamedTypeSymbol? taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
         INamedTypeSymbol? valueTaskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1");
+        INamedTypeSymbol? handlerAttribute = compilation.GetTypeByMetadataName("MiKiNuo.Mvi.RequestHandlerAttribute");
+        IMethodSymbol[] handlers = feature.GetMembers().OfType<IMethodSymbol>()
+            .Where(method => FindAttribute(method, handlerAttribute) is not null).ToArray();
+        List<(ITypeSymbol Message, ITypeSymbol Result)> contracts = [];
+        foreach (IMethodSymbol handler in handlers)
+        {
+            AttributeData attribute = FindAttribute(handler, handlerAttribute)!;
+            int concurrency = NamedInt(attribute, "Concurrency");
+            int capacity = NamedInt(attribute, "Capacity");
+            int maxConcurrency = NamedInt(attribute, "MaxConcurrency");
+            if (concurrency is < 0 or > 3 || (concurrency == 2 ? capacity <= 0 : capacity != 0)
+                || (concurrency == 3 ? maxConcurrency <= 0 : maxConcurrency != 0)
+                || NamedInt(attribute, "CancellationPolicy") is < 0 or > 1)
+            {
+                diagnostics.Add(Diagnostic.Create(InvalidHandlerPolicy, AttributeLocation(attribute, handler), handler.Name));
+            }
+
+            if (!HasOrdinarySignature(handler) || handler.IsStatic || handler.IsAbstract || handler.IsExtern
+                || handler.Parameters.Length != 2 || handler.Parameters[0].Type is not INamedTypeSymbol parameter
+                || !SymbolEqualityComparer.Default.Equals(parameter.OriginalDefinition, operationType)
+                || !SymbolEqualityComparer.IncludeNullability.Equals(parameter.TypeArguments[0], state)
+                || parameter.NullableAnnotation == NullableAnnotation.Annotated
+                || handler.Parameters[1].Type.NullableAnnotation == NullableAnnotation.Annotated
+                || handler.Parameters[1].Type.TypeKind is TypeKind.Pointer or TypeKind.FunctionPointer
+                || handler.Parameters[1].Type is INamedTypeSymbol { IsRefLikeType: true }
+                || handler.ReturnType is not INamedTypeSymbol result
+                || !(SymbolEqualityComparer.Default.Equals(result.OriginalDefinition, taskType)
+                    || SymbolEqualityComparer.Default.Equals(result.OriginalDefinition, valueTaskType))
+                || !IsAccessibleContract(handler.Parameters[1].Type, feature.DeclaredAccessibility == Accessibility.Public)
+                || !IsAccessibleContract(result.TypeArguments[0], feature.DeclaredAccessibility == Accessibility.Public))
+            {
+                diagnostics.Add(Diagnostic.Create(InvalidHandler, AttributeLocation(attribute, handler), handler.Name));
+                continue;
+            }
+
+            ITypeSymbol message = handler.Parameters[1].Type;
+            ITypeSymbol response = result.TypeArguments[0];
+            if (contracts.Any(contract => SymbolEqualityComparer.Default.Equals(contract.Message, message)
+                && SymbolEqualityComparer.Default.Equals(contract.Result, response)))
+            {
+                diagnostics.Add(Diagnostic.Create(DuplicateHandler, AttributeLocation(attribute, handler), handler.Name));
+            }
+            contracts.Add((message, response));
+            string? validate = NamedString(attribute, "Validate");
+            if (validate is not null && feature.GetMembers(validate).OfType<IMethodSymbol>().Count(method =>
+                HasOrdinarySignature(method) && method.IsStatic && method.ReturnType.SpecialType == SpecialType.System_Boolean
+                && method.Parameters.Length == 2 && SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[0].Type, state)
+                && SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[1].Type, message)) != 1)
+            {
+                diagnostics.Add(Diagnostic.Create(InvalidHandlerValidation, AttributeLocation(attribute, handler), handler.Name));
+            }
+
+            string name = "Create" + handler.Name + "Port";
+            if (feature.Name == name || feature.GetMembers(name).Length != 0
+                || inputs.Values.Any(property => "Set" + property.Name == name)
+                || operations.Any(operation => operation.Name == name)
+                || handlers.Count(other => other.Name == handler.Name) > 1)
+            {
+                diagnostics.Add(Diagnostic.Create(HandlerConflict, AttributeLocation(attribute, handler), name));
+            }
+        }
+
+        if (!feature.IsAbstract)
+        {
+            ISymbol? conflict = feature.GetMembers("CreateAsync").FirstOrDefault();
+            if (conflict is not null || feature.Name == "CreateAsync" || operations.Any(operation => operation.Name == "CreateAsync"))
+            {
+                diagnostics.Add(Diagnostic.Create(FactoryConflict, conflict?.Locations.FirstOrDefault() ?? declaration.Identifier.GetLocation(), feature.Name));
+            }
+            INamedTypeSymbol? preferred = compilation.GetTypeByMetadataName("Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructorAttribute");
+            IMethodSymbol[] marked = feature.InstanceConstructors.Where(constructor => constructor.DeclaredAccessibility == Accessibility.Public
+                && FindAttribute(constructor, preferred) is not null).ToArray();
+            if (marked.Length > 1)
+            {
+                foreach (IMethodSymbol constructor in marked)
+                    diagnostics.Add(Diagnostic.Create(FactoryConflict, AttributeLocation(FindAttribute(constructor, preferred)!, constructor), feature.Name));
+            }
+        }
         foreach (IMethodSymbol operation in operations)
         {
             AttributeData attribute = FindAttribute(operation, operationAttribute)!;
@@ -267,6 +357,35 @@ public sealed class FeatureGenerator : IIncrementalGenerator
 
         source.Append(feature.DeclaredAccessibility == Accessibility.Public ? "public" : "internal")
             .Append(" partial class @").Append(feature.Name).Append("\n{\n");
+        if (!feature.IsAbstract)
+        {
+            string concrete = feature.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            source.Append("    /// <summary>使用标准 DI 为本功能创建独立实例与服务范围。</summary>\n")
+                .Append("    /// <param name=\"services\">宿主拥有的根服务提供方。</param>\n")
+                .Append("    /// <returns>拥有独立范围的功能实例，失败清理复用框架工厂。</returns>\n")
+                .Append("    public static global::System.Threading.Tasks.ValueTask<").Append(concrete)
+                .Append("> CreateAsync(global::System.IServiceProvider services) => global::MiKiNuo.Mvi.FeatureFactory.CreateAsync<")
+                .Append(concrete).Append(">(services);\n");
+        }
+        foreach (IMethodSymbol handler in handlers.OrderBy(static method => method.Name, StringComparer.Ordinal))
+        {
+            AttributeData attribute = FindAttribute(handler, handlerAttribute)!;
+            string message = TypeName(handler.Parameters[1].Type);
+            string response = TypeName(((INamedTypeSymbol)handler.ReturnType).TypeArguments[0]);
+            string? validate = NamedString(attribute, "Validate");
+            source.Append("    /// <summary>创建复用统一操作入口的强类型请求端口。</summary>\n")
+                .Append("    /// <returns>由宿主明确接线的独立实例端口。</returns>\n")
+                .Append("    public global::MiKiNuo.Mvi.RequestPort<").Append(message).Append(", ").Append(response)
+                .Append("> Create").Append(handler.Name).Append("Port() => base.CreateRequestPort<")
+                .Append(message).Append(", ").Append(response).Append(">(\"").Append(handler.Name).Append("\", ")
+                .Append(validate is null ? "null" : "@" + validate).Append(", ");
+            if (SymbolEqualityComparer.Default.Equals(((INamedTypeSymbol)handler.ReturnType).OriginalDefinition, taskType))
+                source.Append("(operation, message) => new global::System.Threading.Tasks.ValueTask<").Append(response).Append(">(this.@").Append(handler.Name).Append("(operation, message))");
+            else source.Append('@').Append(handler.Name);
+            source.Append(", (global::MiKiNuo.Mvi.OperationConcurrency)").Append(NamedInt(attribute, "Concurrency"))
+                .Append(", capacity: ").Append(NamedInt(attribute, "Capacity")).Append(", maxConcurrency: ").Append(NamedInt(attribute, "MaxConcurrency"))
+                .Append(", cancellationPolicy: (global::MiKiNuo.Mvi.RequestCancellationPolicy)").Append(NamedInt(attribute, "CancellationPolicy")).Append(");\n");
+        }
         foreach (IPropertySymbol property in inputs.Values.OrderBy(static property => property.Name, StringComparer.Ordinal))
         {
             rules.TryGetValue(property.Name, out IMethodSymbol? rule);
@@ -384,6 +503,27 @@ public sealed class FeatureGenerator : IIncrementalGenerator
 
     private static AttributeData? FindAttribute(ISymbol symbol, INamedTypeSymbol? attributeType)
         => symbol.GetAttributes().FirstOrDefault(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeType));
+
+    private static int NamedInt(AttributeData attribute, string name)
+        => (int?)attribute.NamedArguments.FirstOrDefault(pair => pair.Key == name).Value.Value ?? 0;
+    private static string? NamedString(AttributeData attribute, string name)
+        => attribute.NamedArguments.FirstOrDefault(pair => pair.Key == name).Value.Value as string;
+    private static string TypeName(ITypeSymbol type) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+        SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier));
+
+    private static bool IsAccessibleContract(ITypeSymbol type, bool requirePublic)
+    {
+        if (type is IArrayTypeSymbol array) return IsAccessibleContract(array.ElementType, requirePublic);
+        if (type is not INamedTypeSymbol named) return true;
+        if (named.DeclaredAccessibility != Accessibility.Public
+            && (requirePublic || named.DeclaredAccessibility is not (Accessibility.Internal or Accessibility.ProtectedOrInternal)))
+        {
+            return false;
+        }
+
+        return (named.ContainingType is null || IsAccessibleContract(named.ContainingType, requirePublic))
+            && named.TypeArguments.All(argument => IsAccessibleContract(argument, requirePublic));
+    }
 
     private static Location AttributeLocation(AttributeData attribute, ISymbol symbol)
         => attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? symbol.Locations[0];

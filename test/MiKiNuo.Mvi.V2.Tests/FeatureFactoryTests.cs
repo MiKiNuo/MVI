@@ -194,11 +194,11 @@ public sealed class FeatureFactoryTests
             resources.Enqueue(resource);
             return resource;
         });
-        await Assert.That(async () => await FeatureFactory.CreateAsync<AmbiguousConstructorFeature>(provider)).Throws<InvalidOperationException>();
-        await Assert.That(async () => await FeatureFactory.CreateAsync<MissingConstructorFeature>(provider)).Throws<InvalidOperationException>();
+        await Assert.That(async () => await AmbiguousConstructorFeature.CreateAsync(provider)).Throws<InvalidOperationException>();
+        await Assert.That(async () => await MissingConstructorFeature.CreateAsync(provider)).Throws<InvalidOperationException>();
         await Assert.That(async () => await FeatureFactory.CreateAsync<MultiplePreferredFeature>(provider)).Throws<InvalidOperationException>();
         await Assert.That(resources.Count).IsEqualTo(0);
-        await Assert.That(async () => await FeatureFactory.CreateAsync<BeforeBaseFailureFeature>(provider)).Throws<InvalidOperationException>();
+        await Assert.That(async () => await BeforeBaseFailureFeature.CreateAsync(provider)).Throws<InvalidOperationException>();
         await Assert.That(resources.Count).IsEqualTo(1);
         await Assert.That(resources.Single().DisposeCount).IsEqualTo(1);
     }
@@ -276,7 +276,7 @@ public sealed class FeatureFactoryTests
             return value;
         }));
         await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
-        Task<FactoryProbeFeature> creation = FeatureFactory.CreateAsync<FactoryProbeFeature>(provider).AsTask();
+        Task<FactoryProbeFeature> creation = FactoryProbeFeature.CreateAsync(provider).AsTask();
         try
         {
             if (start)
@@ -566,6 +566,7 @@ internal sealed partial class MissingConstructorFeature : Feature<LifetimeState>
     public MissingConstructorFeature(MissingDependency dependency) : base(new()) => _ = dependency;
 }
 
+#pragma warning disable MVI2016 // 运行时工厂拒绝路径的既有负例；生成声明诊断另由编译消费者验证。
 internal sealed partial class MultiplePreferredFeature : Feature<LifetimeState>
 {
     [ActivatorUtilitiesConstructor]
@@ -576,6 +577,7 @@ internal sealed partial class MultiplePreferredFeature : Feature<LifetimeState>
     [ActivatorUtilitiesConstructor]
     public MultiplePreferredFeature(LifetimeResource resource) : base(new()) => resource.Use();
 }
+#pragma warning restore MVI2016
 
 internal sealed partial class BeforeBaseFailureFeature : Feature<LifetimeState>
 {

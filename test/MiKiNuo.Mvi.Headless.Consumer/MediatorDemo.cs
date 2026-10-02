@@ -105,7 +105,7 @@ public sealed partial class DetailsFeature : Feature<DetailsState>
     public DetailsFeature(string displayName) : base(new())
     {
         this.displayName = displayName;
-        Load = CreateRequestPort<LoadDetailsRequest, DetailsReply>("LoadDetails", CanLoad, LoadAsync);
+        Load = CreateLoadAsyncPort();
     }
 
     /// <summary>获取供宿主接线的强类型详情请求端口。</summary>
@@ -113,6 +113,7 @@ public sealed partial class DetailsFeature : Feature<DetailsState>
 
     private static bool CanLoad(DetailsState state, LoadDetailsRequest request) => state.Enabled && request.ObjectId > 0;
 
+    [RequestHandler(Validate = nameof(CanLoad))]
     private async ValueTask<DetailsReply> LoadAsync(Operation<DetailsState> operation, LoadDetailsRequest request)
     {
         DetailsReply reply = request.ObjectId == 404 ? new(false, "not found") : new(true, $"{displayName}: object {request.ObjectId}");

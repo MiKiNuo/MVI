@@ -14,3 +14,9 @@ MVI2007 | Mvi | Error | Operation must have an exact instance asynchronous signa
 MVI2008 | Mvi | Error | Operation validation must have an exact pure predicate signature
 MVI2009 | Mvi | Error | Generated operation entry must not conflict with other members
 MVI2010 | Mvi | Error | Operation concurrency must be valid with positive Queue capacity or Parallel concurrency bound
+MVI2011 | Mvi | Error | Request handler must have exact instance asynchronous operation and message signature
+MVI2012 | Mvi | Error | Request validation must be a unique pure State and Message predicate
+MVI2013 | Mvi | Error | Duplicate request and result contract within one Feature
+MVI2014 | Mvi | Error | Generated request port entry conflicts with existing or generated members
+MVI2015 | Mvi | Error | Request port concurrency bounds and cancellation policy must be valid
+MVI2016 | Mvi | Error | Generated factory entry conflicts or preferred constructors are ambiguous
