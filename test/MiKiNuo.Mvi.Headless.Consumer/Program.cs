@@ -41,6 +41,47 @@ internal static class Program
         Require(submitting.Snapshot.State.Total == 11 && submitting.Snapshot.State.Name == "edited during IO"
             && !submitting.Snapshot.OperationStates["SubmitAsync"].IsRunning, "完成必须已提交反馈、保留并发编辑并结束运行状态。");
         Console.WriteLine("Headless operation loop PASS: validation, starting input, concurrent editing, typed feedback and completion.");
+
+        TaskCompletionSource firstSaveEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<string> secondSaveEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<int> releaseFirstSave = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<int> releaseSecondSave = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int saves = 0;
+        EditorFeature queued = new(async (input, cancellationToken) =>
+        {
+            if (Interlocked.Increment(ref saves) == 1)
+            {
+                firstSaveEntered.SetResult();
+                return await releaseFirstSave.Task.WaitAsync(cancellationToken);
+            }
+
+            secondSaveEntered.SetResult(input.Name);
+            return await releaseSecondSave.Task.WaitAsync(cancellationToken);
+        });
+        queued.SetName("first save");
+        Task<OperationResult<int>> firstSave = queued.SaveAsync();
+        await firstSaveEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Task<OperationResult<int>> secondSave = queued.SaveAsync();
+        OperationResult<int> queueFull = await queued.SaveAsync();
+        Require(queueFull.Kind == OperationResultKind.Rejected && queueFull.Reason == "QueueFull"
+            && queued.Snapshot.OperationStates["SaveAsync"].QueuedCount == 1 && saves == 1,
+            "运行项不占等待容量，满载必须明确拒绝且不执行服务。");
+        Require(!secondSave.IsCompleted, "接纳与排队不能伪装为业务完成。");
+        queued.SetName("validated at second start");
+        releaseFirstSave.SetResult(7);
+        Require(await secondSaveEntered.Task.WaitAsync(TimeSpan.FromSeconds(15)) == "validated at second start",
+            "排队项必须使用真正启动时通过验证的输入。");
+        queued.SetName("edited during second save");
+        releaseSecondSave.SetResult(13);
+        OperationResult<int> firstSaved = await firstSave.WaitAsync(TimeSpan.FromSeconds(15));
+        OperationResult<int> secondSaved = await secondSave.WaitAsync(TimeSpan.FromSeconds(15));
+        Require(firstSaved.Kind == OperationResultKind.Completed && firstSaved.Value == 7
+            && secondSaved.Kind == OperationResultKind.Completed && secondSaved.Value == 13,
+            "每个已接纳作业都必须具有顺序执行的真实业务结果。");
+        Require(queued.Snapshot.State.Total == 13 && queued.Snapshot.State.Name == "edited during second save"
+            && !queued.Snapshot.OperationStates["SaveAsync"].IsRunning && queued.Snapshot.OperationStates["SaveAsync"].QueuedCount == 0,
+            "队列完成必须保留并发编辑且运行与排队状态一致。");
+        Console.WriteLine("Headless queue loop PASS: bounded waiting capacity, FIFO starts, current validated input, individual results and coherent completion.");
     }
 
     private static void Require(bool condition, string message)
@@ -87,6 +128,9 @@ public sealed partial class EditorFeature(Func<EditorState, CancellationToken, V
     }
 
     private static bool CanSubmit(EditorState state) => !string.IsNullOrWhiteSpace(state.Name);
+
+    [Operation(Concurrency = OperationConcurrency.Queue, Capacity = 1, Validate = nameof(CanSubmit))]
+    private ValueTask<int> SaveAsync(Operation<EditorState> operation) => SubmitAsync(operation);
 
     private static EditorState ApplyTotal(EditorState state, int total) => state with { Total = total };
 }

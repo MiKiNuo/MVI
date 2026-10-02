@@ -56,9 +56,10 @@ public sealed class OperationResult<TResult>
 public sealed class OperationState
 {
     internal OperationState(Guid? runningId, Guid lastAttemptId, OperationResultKind? lastResult,
-        string? reason = null, Exception? exception = null)
+        string? reason = null, Exception? exception = null, int queuedCount = 0)
     {
         RunningId = runningId;
+        QueuedCount = queuedCount;
         LastAttemptId = lastAttemptId;
         LastResult = lastResult;
         Reason = reason;
@@ -71,10 +72,13 @@ public sealed class OperationState
     /// <summary>获取操作是否仍在执行或等待所属工作退出。</summary>
     public bool IsRunning => RunningId.HasValue;
 
+    /// <summary>获取已接纳但尚未实际启动的调用数量，不包含运行项。</summary>
+    public int QueuedCount { get; }
+
     /// <summary>获取最近发布反馈所关联的调用身份。</summary>
     public Guid LastAttemptId { get; }
 
-    /// <summary>获取最近发布的执行反馈，空值表示刚刚获准启动。</summary>
+    /// <summary>获取最近发布的执行反馈，空值表示刚刚接纳或启动，排队数量单独表达。</summary>
     public OperationResultKind? LastResult { get; }
 
     /// <summary>获取最近发布反馈的可见拒绝或故障原因。</summary>

@@ -21,7 +21,7 @@ public sealed class OperationDeclarationTests
             public sealed partial class Editor() : Feature<State>(new()) {
                 [Operation(Validate = nameof(CanSubmit))]
                 private ValueTask<int> SubmitAsync(Operation<State> operation) => ValueTask.FromResult(7);
-                [Operation]
+                [Operation(Concurrency = OperationConcurrency.Queue, Capacity = 3)]
                 private Task<string?> RefreshAsync(Operation<State> operation) => Task.FromResult<string?>(null);
                 private static bool CanSubmit(State state) => state.Name.Length != 0;
             }
@@ -62,6 +62,11 @@ public sealed class OperationDeclarationTests
     [Arguments("[Operation] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "public Task<int> SubmitAsync(System.Threading.CancellationToken token) => Task.FromResult(1);", "MVI2009")]
     [Arguments("[Operation] private ValueTask<int> SetName(Operation<State> operation) => default;", "", "MVI2009")]
     [Arguments("[Operation] private ValueTask<int> Snapshot(Operation<State> operation) => default;", "", "MVI2009")]
+    [Arguments("[Operation(Concurrency = OperationConcurrency.Queue)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = OperationConcurrency.Queue, Capacity = 0)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = OperationConcurrency.Queue, Capacity = -1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Capacity = 1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = (OperationConcurrency)99, Capacity = 1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
     public async Task InvalidDeclarationsReceiveLocatedDiagnostics(string operation, string members, string id)
     {
         (Compilation _, GeneratorDriverRunResult result) = GeneratorTestHost.Run("using System.Threading.Tasks; using MiKiNuo.Mvi; "

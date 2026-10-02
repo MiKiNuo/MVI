@@ -13,3 +13,4 @@ MVI2006 | Mvi | Error | Generated input entry must not conflict with declared me
 MVI2007 | Mvi | Error | Operation must have an exact instance asynchronous signature
 MVI2008 | Mvi | Error | Operation validation must have an exact pure predicate signature
 MVI2009 | Mvi | Error | Generated operation entry must not conflict with other members
+MVI2010 | Mvi | Error | Operation concurrency must be valid and Queue must have a positive waiting capacity
