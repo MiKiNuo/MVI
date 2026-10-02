@@ -66,6 +66,54 @@ public sealed class OperationCommandTests
         feature.SetName("after-dispose");
         await Assert.That(changed).IsEqualTo(1);
     }
+    /// <summary>按钮反馈遵循声明的替代、等待和并行名额，执行仍进入统一操作入口。</summary>
+    /// <param name="concurrency">显式选择的操作策略。</param>
+    /// <returns>命令并发策略验证任务。</returns>
+    [Test]
+    [Arguments(OperationConcurrency.Latest)]
+    [Arguments(OperationConcurrency.Queue)]
+    [Arguments(OperationConcurrency.Parallel)]
+    public async Task CommandFeedbackAllowsDeclaredConcurrency(OperationConcurrency concurrency)
+    {
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<int> response = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        PolicyCommandFeature feature = new(async operation =>
+        {
+            entered.TrySetResult();
+            return await response.Task.WaitAsync(operation.CancellationToken);
+        });
+        using PolicyCommandFeature.Projection projection = feature.CreateProjection(static callback => callback());
+        OperationCommand<int> command = concurrency switch
+        {
+            OperationConcurrency.Latest => projection.LatestAsyncCommand,
+            OperationConcurrency.Queue => projection.QueueAsyncCommand,
+            _ => projection.ParallelAsyncCommand,
+        };
+        command.Execute(null);
+        Task<OperationResult<int>> first = command.Execution!;
+        Task<OperationResult<int>>? second = null;
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assert.That(command.CanExecute(null)).IsTrue();
+            command.Execute(null);
+            second = command.Execution!;
+            await Assert.That(command.CanExecute(null)).IsEqualTo(concurrency == OperationConcurrency.Latest);
+            response.SetResult(7);
+            OperationResult<int> firstResult = await first.WaitAsync(TimeSpan.FromSeconds(10));
+            OperationResult<int> secondResult = await second.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assert.That(firstResult.Kind).IsEqualTo(concurrency == OperationConcurrency.Latest
+                ? OperationResultKind.Superseded : OperationResultKind.Completed);
+            await Assert.That(secondResult.Kind).IsEqualTo(OperationResultKind.Completed);
+            await Assert.That(command.CanExecute(null)).IsTrue();
+        }
+        finally
+        {
+            response.TrySetResult(7);
+            await first.WaitAsync(TimeSpan.FromSeconds(10));
+            if (second is not null) await second.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+    }
 }
 
 internal sealed record CommandRuleState
@@ -81,4 +129,17 @@ internal sealed partial class CommandRuleFeature() : Feature<CommandRuleState>(n
 
     private static bool CanSubmit(CommandRuleState state) => state.Name == "fault"
         ? throw new InvalidOperationException("PRIVATE_INPUT") : state.Name.Length != 0;
+}
+
+internal sealed partial class PolicyCommandFeature(Func<Operation<CommandRuleState>, ValueTask<int>> service)
+    : Feature<CommandRuleState>(new())
+{
+    [Operation(Concurrency = OperationConcurrency.Latest)]
+    private ValueTask<int> LatestAsync(Operation<CommandRuleState> operation) => service(operation);
+
+    [Operation(Concurrency = OperationConcurrency.Queue, Capacity = 1)]
+    private ValueTask<int> QueueAsync(Operation<CommandRuleState> operation) => service(operation);
+
+    [Operation(Concurrency = OperationConcurrency.Parallel, MaxConcurrency = 2)]
+    private ValueTask<int> ParallelAsync(Operation<CommandRuleState> operation) => service(operation);
 }

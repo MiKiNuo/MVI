@@ -294,9 +294,14 @@ public sealed class FeatureGenerator : IIncrementalGenerator
         {
             AttributeData attribute = FindAttribute(operation, operationAttribute)!;
             string? validate = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Validate").Value.Value as string;
+            int concurrency = (int?)attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Concurrency").Value.Value ?? 0;
+            int capacity = (int?)attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Capacity").Value.Value ?? 0;
+            int maxConcurrency = (int?)attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "MaxConcurrency").Value.Value ?? 0;
             source.Append("            @").Append(operation.Name).Append("Command = CreateOperationCommand(\"")
                 .Append(operation.Name).Append("\", ").Append(validate is null ? "null" : "@" + validate)
-                .Append(", () => __feature.@").Append(operation.Name).Append("());\n");
+                .Append(", () => __feature.@").Append(operation.Name)
+                .Append("(), (global::MiKiNuo.Mvi.OperationConcurrency)").Append(concurrency)
+                .Append(", capacity: ").Append(capacity).Append(", maxConcurrency: ").Append(maxConcurrency).Append(");\n");
         }
 
         source.Append("            InitializeProjection();\n        }\n");

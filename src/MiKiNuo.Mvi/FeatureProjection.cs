@@ -62,9 +62,13 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
     /// <param name="name">操作名称。</param>
     /// <param name="validate">已展示状态的纯验证反馈。</param>
     /// <param name="execute">生成的统一操作入口。</param>
+    /// <param name="concurrency">该操作声明的同名接纳策略。</param>
+    /// <param name="capacity">Queue 的正数等待容量。</param>
+    /// <param name="maxConcurrency">Parallel 的正数并行上限。</param>
     /// <returns>在该投影生命周期内活动的原生命令。</returns>
     protected OperationCommand<TResult> CreateOperationCommand<TResult>(string name, Func<TState, bool>? validate,
-        Func<Task<OperationResult<TResult>>> execute)
+        Func<Task<OperationResult<TResult>>> execute, OperationConcurrency concurrency = OperationConcurrency.Reject,
+        int capacity = 0, int maxConcurrency = 0)
     {
         EnsureActive();
         OperationCommand<TResult> command = new(() =>
@@ -72,8 +76,16 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
             RuntimeSnapshot<TState> current = Snapshot;
             try
             {
-                return !(current.OperationStates.TryGetValue(name, out OperationState? operation) && operation.IsRunning)
-                    && (validate?.Invoke(current.State) ?? true);
+                current.OperationStates.TryGetValue(name, out OperationState? operation);
+                bool available = concurrency switch
+                {
+                    OperationConcurrency.Reject => operation?.IsRunning != true,
+                    OperationConcurrency.Latest => true,
+                    OperationConcurrency.Queue => capacity > 0 && (operation?.QueuedCount ?? 0) < capacity,
+                    OperationConcurrency.Parallel => maxConcurrency > 0 && (operation?.RunningCount ?? 0) < maxConcurrency,
+                    _ => false,
+                };
+                return available && (validate?.Invoke(current.State) ?? true);
             }
             catch
             {
