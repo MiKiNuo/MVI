@@ -33,7 +33,7 @@ public sealed class FeatureGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor OperationConflict = new("MVI2009", "操作生成入口冲突",
         "操作入口 '{0}' 与功能现有成员或生成输入入口冲突", "Mvi", DiagnosticSeverity.Error, true);
     private static readonly DiagnosticDescriptor InvalidConcurrency = new("MVI2010", "操作并发配置无效",
-        "操作 '{0}' 的并发策略必须是 Reject、Latest 或 Queue；Queue 必须显式声明正数 Capacity，Reject 和 Latest 不接受非零容量", "Mvi", DiagnosticSeverity.Error, true);
+        "操作 '{0}' 的并发策略必须是 Reject、Latest、Queue 或 Parallel；Queue 必须声明正数 Capacity，Parallel 必须声明正数 MaxConcurrency，其他策略对应配置必须为零", "Mvi", DiagnosticSeverity.Error, true);
     /// <summary>注册功能声明的增量生成管线。</summary>
     /// <param name="context">当前增量生成器上下文。</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -142,7 +142,10 @@ public sealed class FeatureGenerator : IIncrementalGenerator
             AttributeData attribute = FindAttribute(operation, operationAttribute)!;
             int concurrency = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Concurrency").Value.Value is int strategy ? strategy : 0;
             int capacity = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Capacity").Value.Value is int limit ? limit : 0;
-            if (concurrency is < 0 or > 2 || concurrency == 2 && capacity <= 0 || concurrency != 2 && capacity != 0)
+            int maxConcurrency = (int?)attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "MaxConcurrency").Value.Value ?? 0;
+            if (concurrency is < 0 or > 3
+                || (concurrency == 2 ? capacity <= 0 : capacity != 0)
+                || (concurrency == 3 ? maxConcurrency <= 0 : maxConcurrency != 0))
             {
                 diagnostics.Add(Diagnostic.Create(InvalidConcurrency, AttributeLocation(attribute, operation), operation.Name));
             }
@@ -339,8 +342,9 @@ public sealed class FeatureGenerator : IIncrementalGenerator
 
             int concurrency = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Concurrency").Value.Value is int strategy ? strategy : 0;
             int capacity = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Capacity").Value.Value is int limit ? limit : 0;
+            int maxConcurrency = (int?)attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "MaxConcurrency").Value.Value ?? 0;
             source.Append(", cancellationToken, (global::MiKiNuo.Mvi.OperationConcurrency)").Append(concurrency)
-                .Append(", ").Append(capacity).Append(");\n");
+                .Append(", capacity: ").Append(capacity).Append(", maxConcurrency: ").Append(maxConcurrency).Append(");\n");
         }
 
         source.Append("}\n");

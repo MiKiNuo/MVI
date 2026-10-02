@@ -1,4 +1,6 @@
-﻿namespace MiKiNuo.Mvi;
+﻿using System.Collections.Immutable;
+
+namespace MiKiNuo.Mvi;
 
 /// <summary>表示该执行已被后续同名操作取代，不能继续提交状态反馈。</summary>
 public sealed class OperationSupersededException : InvalidOperationException
@@ -64,10 +66,10 @@ public sealed class OperationResult<TResult>
 /// <summary>保存同一快照中的操作运行身份与最近一次调用反馈。</summary>
 public sealed class OperationState
 {
-    internal OperationState(Guid? runningId, Guid lastAttemptId, OperationResultKind? lastResult,
+    internal OperationState(ImmutableList<Guid> runningIds, Guid lastAttemptId, OperationResultKind? lastResult,
         string? reason = null, Exception? exception = null, int queuedCount = 0)
     {
-        RunningId = runningId;
+        RunningIds = runningIds;
         QueuedCount = queuedCount;
         LastAttemptId = lastAttemptId;
         LastResult = lastResult;
@@ -75,11 +77,17 @@ public sealed class OperationState
         Exception = exception;
     }
 
-    /// <summary>获取当前有效执行的身份，空值表示没有有效运行中的操作。</summary>
-    public Guid? RunningId { get; }
+    /// <summary>获取最早接纳且尚未退出的执行身份，空值表示没有运行中的操作。</summary>
+    public Guid? RunningId => RunningIds.IsEmpty ? null : RunningIds[0];
 
-    /// <summary>获取当前有效执行是否仍在运行或等待所属工作退出，被取代工作单独保留退出归属。</summary>
-    public bool IsRunning => RunningId.HasValue;
+    /// <summary>获取有效执行或等待所属工作退出的身份，按接纳顺序排列；被取代工作单独保留退出归属。</summary>
+    public ImmutableList<Guid> RunningIds { get; }
+
+    /// <summary>获取仍在执行或等待所属工作退出的数量。</summary>
+    public int RunningCount => RunningIds.Count;
+
+    /// <summary>获取操作是否仍在执行或等待所属工作退出。</summary>
+    public bool IsRunning => !RunningIds.IsEmpty;
 
     /// <summary>获取已接纳但尚未实际启动的调用数量，不包含运行项。</summary>
     public int QueuedCount { get; }

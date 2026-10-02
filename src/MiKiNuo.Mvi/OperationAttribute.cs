@@ -9,6 +9,8 @@ public enum OperationConcurrency
     Latest,
     /// <summary>将调用放入容量有限的顺序等待队列。</summary>
     Queue,
+    /// <summary>按明确声明的有限上限接纳独立执行。</summary>
+    Parallel,
 }
 
 /// <summary>声明由统一入口接纳并在后台执行的业务操作。</summary>
@@ -23,4 +25,7 @@ public sealed class OperationAttribute : Attribute
 
     /// <summary>获取或设置 Queue 的等待名额，选择 Queue 时必须为正数，运行项不占此容量。</summary>
     public int Capacity { get; set; }
+
+    /// <summary>获取或设置并行操作的正数上限；零表示未声明并行上限。</summary>
+    public int MaxConcurrency { get; set; }
 }

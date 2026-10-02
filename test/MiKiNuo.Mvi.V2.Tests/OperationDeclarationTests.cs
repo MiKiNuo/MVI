@@ -68,6 +68,12 @@ public sealed class OperationDeclarationTests
     [Arguments("[Operation(Capacity = 1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
     [Arguments("[Operation(Concurrency = (OperationConcurrency)99, Capacity = 1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
     [Arguments("[Operation(Concurrency = (OperationConcurrency)99)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = OperationConcurrency.Parallel)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = OperationConcurrency.Parallel, MaxConcurrency = 0)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = OperationConcurrency.Parallel, MaxConcurrency = -1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = (OperationConcurrency)99, MaxConcurrency = 2)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(MaxConcurrency = 2)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = OperationConcurrency.Reject, MaxConcurrency = -1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
     public async Task InvalidDeclarationsReceiveLocatedDiagnostics(string operation, string members, string id)
     {
         (Compilation _, GeneratorDriverRunResult result) = GeneratorTestHost.Run("using System.Threading.Tasks; using MiKiNuo.Mvi; "

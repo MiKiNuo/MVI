@@ -4,8 +4,14 @@ namespace MiKiNuo.Mvi.Headless.Consumer;
 
 internal static class Program
 {
-    private static async Task Main()
+    private static async Task Main(string[] args)
     {
+        if (args.Contains("--parallel", StringComparer.Ordinal))
+        {
+            await RunParallelAsync();
+            return;
+        }
+
         EditorFeature first = new();
         EditorFeature second = new();
         first.SetName("draft");
@@ -85,6 +91,47 @@ internal static class Program
         await MediatorDemo.RunAsync();
     }
 
+    private static async Task RunParallelAsync()
+    {
+        TaskCompletionSource<string> firstEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<string> secondEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<int> firstResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<int> secondResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        ParallelEditorFeature feature = new(async (input, token) =>
+        {
+            TaskCompletionSource<string> entered = input.Name == "first" ? firstEntered : secondEntered;
+            TaskCompletionSource<int> response = input.Name == "first" ? firstResponse : secondResponse;
+            entered.SetResult(input.Name);
+            return await response.Task.WaitAsync(token);
+        });
+        feature.SetName("first");
+        Task<OperationResult<int>> first = feature.SubmitAsync();
+        Require(await firstEntered.Task.WaitAsync(TimeSpan.FromSeconds(15)) == "first", "第一项必须使用自己的开始输入。");
+        feature.SetName("second");
+        Task<OperationResult<int>> second = feature.SubmitAsync();
+        Require(await secondEntered.Task.WaitAsync(TimeSpan.FromSeconds(15)) == "second", "第二项必须使用自己的开始输入。");
+        RuntimeSnapshot<EditorState> bothRunning = feature.Snapshot;
+        Require(bothRunning.OperationStates["SubmitAsync"].RunningCount == 2, "并行接纳必须保留两个身份。");
+        OperationResult<int> excess = await feature.SubmitAsync();
+        Require(excess.Kind == OperationResultKind.Rejected && excess.Reason == "ConcurrencyLimitReached", "达到上限必须明确拒绝。");
+        feature.SetName("edited during parallel IO");
+        secondResponse.SetResult(7);
+        OperationResult<int> secondResult = await second.WaitAsync(TimeSpan.FromSeconds(15));
+        Require(secondResult.Kind == OperationResultKind.Completed && secondResult.Value == 7
+            && feature.Snapshot.State.Total == 7 && feature.Snapshot.OperationStates["SubmitAsync"].RunningCount == 1,
+            "后启动先完成时必须保留其他执行与当前状态。");
+        Console.WriteLine("Parallel partial completion PASS: limit=2, excess=Rejected/ConcurrencyLimitReached, second=Completed/7, running=1.");
+        firstResponse.SetResult(3);
+        OperationResult<int> firstResult = await first.WaitAsync(TimeSpan.FromSeconds(15));
+        Require(firstResult.Kind == OperationResultKind.Completed && firstResult.Value == 3
+            && firstResult.OperationId != secondResult.OperationId, "每次执行必须有独立身份与业务结果。");
+        Require(feature.Snapshot.State.Total == 10 && feature.Snapshot.State.Name == "edited during parallel IO"
+            && !feature.Snapshot.OperationStates["SubmitAsync"].IsRunning
+            && bothRunning.State.Total == 0 && bothRunning.OperationStates["SubmitAsync"].RunningCount == 2,
+            "并行反馈必须基于当前状态累计，保留编辑与旧快照。");
+        Console.WriteLine("Headless bounded parallel PASS: independent inputs/results, out-of-order completion, total=10, running=0, immutable snapshots.");
+    }
+
     private static void Require(bool condition, string message)
     {
         if (!condition)
@@ -134,4 +181,19 @@ public sealed partial class EditorFeature(Func<EditorState, CancellationToken, V
     private ValueTask<int> SaveAsync(Operation<EditorState> operation) => SubmitAsync(operation);
 
     private static EditorState ApplyTotal(EditorState state, int total) => state with { Total = total };
+}
+
+/// <summary>通过声明的有限上限执行独立并行业务，并统一累计反馈。</summary>
+/// <param name="service">使用本次开始输入与取消令牌的外部服务。</param>
+public sealed partial class ParallelEditorFeature(Func<EditorState, CancellationToken, ValueTask<int>> service) : Feature<EditorState>(new())
+{
+    [Operation(Validate = nameof(CanSubmit), Concurrency = OperationConcurrency.Parallel, MaxConcurrency = 2)]
+    private async ValueTask<int> SubmitAsync(Operation<EditorState> operation)
+    {
+        int result = await service(operation.Snapshot, operation.CancellationToken);
+        await operation.UpdateAsync(static (state, value) => state with { Total = state.Total + value }, result);
+        return result;
+    }
+
+    private static bool CanSubmit(EditorState state) => !string.IsNullOrWhiteSpace(state.Name);
 }
