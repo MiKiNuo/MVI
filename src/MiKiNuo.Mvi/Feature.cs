@@ -32,6 +32,15 @@ public abstract class Feature<TState> : Feature where TState : notnull
     internal override object ExecutionOwner => store;
     internal override (CloseResult Result, Action Finish) CommitClose(Task<Exception?> childrenReleased)
         => store.CommitClose(childrenReleased);
+    internal override object ModelGate => store.ModelGate;
+    internal override (long Version, object State) ReadCloseCondition() => store.ReadCloseCondition();
+    internal override Task<OperationResult<bool>> ConfirmCondition(object state, CancellationToken cancellationToken)
+        => store.ConfirmClose((TState)state, ConfirmCloseAsync, cancellationToken);
+
+    /// <summary>依据本轮不可变状态确认关闭，默认允许；确认期间仍可使用所属范围服务。</summary>
+    /// <param name="confirmation">状态、协作取消令牌及子工作真实退出归属。</param>
+    /// <returns>是否允许依据本轮条件关闭。</returns>
+    protected virtual ValueTask<bool> ConfirmCloseAsync(CloseConfirmation<TState> confirmation) => ValueTask.FromResult(true);
 
     internal void AttachProjection(FeatureProjection<TState> projection) => store.AttachProjection(projection);
 
@@ -184,6 +193,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private readonly object gate = new();
     private RuntimeSnapshot<TState> snapshot;
     private bool reducing;
+    private long stateVersion;
     private FeatureProjection<TState>? projection;
     private readonly Dictionary<string, Operation<TState>> executions = new(StringComparer.Ordinal);
     private readonly HashSet<Operation<TState>> activeExecutions = [];
@@ -297,6 +307,23 @@ internal sealed class FeatureStore<TState> where TState : notnull
     }
 
     internal RuntimeSnapshot<TState> Snapshot => Volatile.Read(ref snapshot);
+    internal object ModelGate => gate;
+    internal (long Version, object State) ReadCloseCondition() => (stateVersion, snapshot.State);
+
+    internal Task<OperationResult<bool>> ConfirmClose(TState state, Func<CloseConfirmation<TState>, ValueTask<bool>> confirm,
+        CancellationToken cancellationToken)
+    {
+        Operation<TState> operation;
+        lock (gate)
+        {
+            if (closeResult is not null) return Task.FromResult(new OperationResult<bool>("CloseConfirmation", Guid.NewGuid(), OperationResultKind.Rejected, reason: "Closed"));
+            CancellationTokenSource source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            operation = new Operation<TState>(this, "CloseConfirmation", Guid.NewGuid(), state, source.Token, source) { IsConfirmation = true };
+            activeExecutions.Add(operation);
+        }
+
+        return RunEffect(operation, context => confirm(new CloseConfirmation<TState>(context)));
+    }
 
     internal bool IsClosed => Volatile.Read(ref closeResult) is not null;
 
@@ -941,6 +968,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
             return null;
         }
 
+        if (!EqualityComparer<TState>.Default.Equals(snapshot.State, next.State)) stateVersion = checked(stateVersion + 1);
         Volatile.Write(ref snapshot, next);
         FeatureProjection<TState>? display = projection;
         display?.Enqueue(next);
@@ -1082,6 +1110,17 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     private OperationResult<TResult> Finish<TResult>(Operation<TState> operation, TResult? value, out FeatureProjection<TState>? display)
     {
+        if (operation.IsConfirmation)
+        {
+            operation.Accepting = false;
+            operation.Work.Clear();
+            display = null;
+            OperationResultKind kind = operation.Failure is not null ? OperationResultKind.Faulted
+                : operation.CancellationToken.IsCancellationRequested ? OperationResultKind.Canceled : OperationResultKind.Completed;
+            return new OperationResult<TResult>(operation.Name, operation.Id, kind, kind == OperationResultKind.Completed ? value : default,
+                exception: operation.Failure);
+        }
+
         OperationCompletedIntent<TResult> intent = new(operation.Name, operation.Id, value,
             operation.CancellationToken.IsCancellationRequested, operation.Failure);
         OperationReduction<TState, TResult> reduction = Reduce(snapshot, intent);

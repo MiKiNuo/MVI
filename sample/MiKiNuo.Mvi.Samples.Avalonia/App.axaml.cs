@@ -33,7 +33,12 @@ public sealed partial class App : global::Avalonia.Application
             {
                 WorkspaceWindow window = new();
                 desktop.MainWindow = window;
-                if (Program.VerifyV2Workspace)
+                if (Program.VerifyV2Close)
+                {
+                    desktop.ShutdownMode = global::Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
+                    ConfigureVerification(desktop, window, () => CloseVerification.RunAsync(window), Program.CloseVerificationPath, "v2-close");
+                }
+                else if (Program.VerifyV2Workspace)
                 {
                     ConfigureVerification(desktop, window, () => WorkspaceVerification.RunAsync(window),
                         Program.WorkspaceVerificationPath, "v2-workspace");

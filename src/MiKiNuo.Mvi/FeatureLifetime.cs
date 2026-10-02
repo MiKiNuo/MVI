@@ -31,10 +31,19 @@ public abstract class Feature
         return FeatureOwnership.Close(this);
     }
 
+    /// <summary>准备整个活动实例树的业务确认，在条件仍有效时提交整体关闭。</summary>
+    /// <param name="cancellationToken">只取消提交前等待及确认协作执行，不授权提前释放其资源。</param>
+    /// <returns>明确的拒绝、取消、故障或原唯一关闭票据。</returns>
+    public Task<CloseRequestResult> RequestCloseAsync(CancellationToken cancellationToken = default)
+        => FeatureOwnership.RequestCloseAsync(this, cancellationToken);
+
     internal abstract void OwnScope(IAsyncDisposable scope);
     internal abstract void OwnConstructionScope(IAsyncDisposable scope, Task constructionExited);
     internal abstract object ExecutionOwner { get; }
     internal abstract (CloseResult Result, Action Finish) CommitClose(Task<Exception?> childrenReleased);
+    internal abstract object ModelGate { get; }
+    internal abstract (long Version, object State) ReadCloseCondition();
+    internal abstract Task<OperationResult<bool>> ConfirmCondition(object state, CancellationToken cancellationToken);
 }
 
 /// <summary>表示实例已逻辑关闭，资源是否释放由独立票据表达。</summary>

@@ -9,6 +9,8 @@ public sealed class WorkspaceWindow : Window, IAsyncDisposable
     private readonly List<(WorkspaceEditorFeature Feature, AvaloniaFeatureHost Host)> editors = [];
     private readonly WorkspaceService sharedService = new();
     private readonly AvaloniaFeatureHost detailHost;
+    private bool approvedClose;
+    private bool requestingClose;
 
     /// <summary>创建多开同业务对象和嵌套完整 Feature 的原生窗口。</summary>
     public WorkspaceWindow()
@@ -23,7 +25,7 @@ public sealed class WorkspaceWindow : Window, IAsyncDisposable
         Button remove = new() { Content = "移除最后实例" };
         Button coordinate = new() { Content = "明确协调全部编辑器" };
         add.Click += (_, _) => AddEditor();
-        remove.Click += (_, _) => { if (editors.Count != 0) RemoveEditor(editors[^1].Feature); };
+        remove.Click += async (_, _) => { if (editors.Count != 0) await RequestRemoveEditorAsync(editors[^1].Feature); };
         coordinate.Click += async (_, _) => await Root.CoordinateAsync(editors.Select(editor => editor.Feature.Load).ToArray());
         buttons.Children.Add(add);
         buttons.Children.Add(remove);
@@ -37,6 +39,20 @@ public sealed class WorkspaceWindow : Window, IAsyncDisposable
         detailHost = new();
         detailHost.Mount(Detail, static feature => new WorkspaceEditorView(feature));
         Panels.Children.Add(detailHost);
+        Closing += async (_, e) =>
+        {
+            if (approvedClose) return;
+            e.Cancel = true;
+            if (requestingClose) return;
+            requestingClose = true;
+            try
+            {
+                LastCloseRequest = Root.RequestCloseAsync();
+                CloseRequestResult result = await LastCloseRequest;
+                if (result.Kind == CloseRequestKind.Closed) { approvedClose = true; Close(); }
+            }
+            finally { requestingClose = false; }
+        };
         Closed += async (_, _) =>
         {
             foreach ((WorkspaceEditorFeature _, AvaloniaFeatureHost host) in editors) host.Dispose();
@@ -52,6 +68,15 @@ public sealed class WorkspaceWindow : Window, IAsyncDisposable
     internal WorkspaceEditorFeature Second { get; }
     internal WorkspaceEditorFeature Detail { get; }
     internal StackPanel Panels { get; }
+    internal Task<CloseRequestResult>? LastCloseRequest { get; private set; }
+    internal WorkspaceService Service => sharedService;
+
+    internal async Task<CloseRequestResult> RequestRemoveEditorAsync(WorkspaceEditorFeature feature)
+    {
+        CloseRequestResult result = await feature.RequestCloseAsync();
+        if (result.Kind == CloseRequestKind.Closed) RemoveEditor(feature);
+        return result;
+    }
 
     /// <summary>在全部所属实例真实退出后释放窗口手工拥有的共享服务。</summary>
     /// <returns>窗口业务资源完成释放的任务。</returns>
@@ -75,6 +100,8 @@ public sealed class WorkspaceWindow : Window, IAsyncDisposable
 
     internal CloseResult RemoveEditor(WorkspaceEditorFeature feature)
     {
+        int index = editors.FindIndex(editor => ReferenceEquals(editor.Feature, feature));
+        if (index < 0) return Root.Children.Remove(feature);
         if (ReferenceEquals(feature, First))
         {
             detailHost.Unmount();
@@ -82,7 +109,7 @@ public sealed class WorkspaceWindow : Window, IAsyncDisposable
             detailHost.Dispose();
         }
 
-        (WorkspaceEditorFeature _, AvaloniaFeatureHost host) = editors.Single(editor => ReferenceEquals(editor.Feature, feature));
+        (WorkspaceEditorFeature _, AvaloniaFeatureHost host) = editors[index];
         host.Unmount();
         Panels.Children.Remove(host);
         host.Dispose();

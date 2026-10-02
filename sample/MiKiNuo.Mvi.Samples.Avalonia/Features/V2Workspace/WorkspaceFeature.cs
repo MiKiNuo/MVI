@@ -15,6 +15,8 @@ public sealed record WorkspaceEditorState
     public string Text { get; init; } = string.Empty;
     /// <summary>获取业务对象标识。</summary>
     public int ObjectId { get; init; } = 7;
+    /// <summary>获取编辑文本是否含未保存内容。</summary>
+    public bool IsDirty => Text.Length != 0;
 }
 
 /// <summary>保存协调者已收到的独立实例响应。</summary>
@@ -56,10 +58,12 @@ public sealed partial class WorkspaceFeature : Feature<WorkspaceState>
 /// <summary>可在工作区或独立宿主中运行的编辑器，仅提供业务契约。</summary>
 public sealed partial class WorkspaceEditorFeature : Feature<WorkspaceEditorState>
 {
+    private readonly WorkspaceService service;
     /// <summary>创建具有独立状态、运行活动和可替换服务的编辑器。</summary>
     /// <param name="service">构造时解析的外部业务服务。</param>
     public WorkspaceEditorFeature(WorkspaceService service) : base(new())
     {
+        this.service = service;
         Load = CreateRequestPort<WorkspaceLoad, string>("Load", null, async (operation, message) =>
         {
             string result = await service.LoadAsync(message.Text, operation.CancellationToken);
@@ -71,6 +75,16 @@ public sealed partial class WorkspaceEditorFeature : Feature<WorkspaceEditorStat
 
     /// <summary>获取宿主可明确接线的业务端口。</summary>
     public RequestPort<WorkspaceLoad, string> Load { get; }
+
+    /// <summary>对本轮未保存内容询问业务确认，干净状态直接允许。</summary>
+    /// <param name="confirmation">已捕获状态及确认执行归属。</param>
+    /// <returns>是否批准本轮关闭条件。</returns>
+    protected override ValueTask<bool> ConfirmCloseAsync(CloseConfirmation<WorkspaceEditorState> confirmation)
+    {
+        ArgumentNullException.ThrowIfNull(confirmation);
+        return confirmation.Snapshot.IsDirty ? service.ConfirmAsync(confirmation.Snapshot.Text, confirmation.CancellationToken)
+            : ValueTask.FromResult(true);
+    }
 }
 
 /// <summary>为工作区提供可替换、可验证范围归属的业务服务。</summary>
@@ -78,6 +92,15 @@ public sealed class WorkspaceService : IAsyncDisposable
 {
     private readonly Func<string, CancellationToken, Task<string>> run;
     private int disposed;
+
+    /// <summary>获取或设置对未保存文本的业务确认，默认保留编辑。</summary>
+    public Func<string, CancellationToken, ValueTask<bool>> Confirmation { get; set; } = static (_, _) => ValueTask.FromResult(false);
+
+    /// <summary>依据本轮不可变文本执行关闭确认。</summary>
+    /// <param name="text">准备时的未保存文本。</param>
+    /// <param name="token">确认执行取消令牌。</param>
+    /// <returns>是否允许关闭。</returns>
+    public ValueTask<bool> ConfirmAsync(string text, CancellationToken token) => Confirmation(text, token);
 
     /// <summary>创建用于独立编辑器的外部服务。</summary>
     /// <param name="run">可替换的外部调用，默认返回原文本。</param>

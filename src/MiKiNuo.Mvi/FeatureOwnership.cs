@@ -84,6 +84,103 @@ public sealed class FeatureOwnership
         return result;
     }
 
+    internal static async Task<CloseRequestResult> RequestCloseAsync(Feature root, CancellationToken cancellationToken)
+    {
+        VerifyOutsideReduction();
+        while (true)
+        {
+            CloseRequestResult? interrupted = ReadInterruption(root, cancellationToken);
+            if (interrupted is not null) return interrupted;
+            CloseCondition[] conditions;
+            lock (Gate)
+            {
+                if (root.IsClosed) return new CloseRequestResult(CloseRequestKind.Closed, root.CommitClose(Task.FromResult<Exception?>(null)).Result);
+                Feature[] features = ActiveTree(root).OrderBy(feature => feature.InstanceId).ToArray();
+                foreach (Feature feature in features) Monitor.Enter(feature.ModelGate);
+                try
+                {
+                    conditions = features.Select(feature =>
+                    {
+                        (long version, object state) = feature.ReadCloseCondition();
+                        return new CloseCondition(feature, feature.Children.revision, version, state);
+                    }).ToArray();
+                }
+                finally
+                {
+                    foreach (Feature feature in features.Reverse()) Monitor.Exit(feature.ModelGate);
+                }
+            }
+
+            foreach (CloseCondition condition in conditions)
+            {
+                OperationResult<bool> confirmation;
+                try
+                {
+                    confirmation = await condition.Feature.ConfirmCondition(condition.State, cancellationToken)
+                        .WaitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return ReadInterruption(root, cancellationToken)!;
+                }
+
+                if (confirmation.Kind == OperationResultKind.Rejected && confirmation.Reason == "Closed") break;
+                if (confirmation.Kind == OperationResultKind.Canceled)
+                {
+                    CloseRequestResult? canceled = ReadInterruption(root, cancellationToken);
+                    if (canceled is not null) return canceled;
+                    break; // 确认成员自身退出，重新准备当前剩余树，不冒充调用者取消。
+                }
+                if (confirmation.Kind == OperationResultKind.Faulted) return new CloseRequestResult(CloseRequestKind.Faulted, exception: confirmation.Exception);
+                if (!confirmation.Value) return new CloseRequestResult(CloseRequestKind.Rejected);
+            }
+
+            List<Action> finish = [];
+            CloseResult? result = null;
+            lock (Gate)
+            {
+                if (root.IsClosed) return new CloseRequestResult(CloseRequestKind.Closed, root.CommitClose(Task.FromResult<Exception?>(null)).Result);
+                Feature[] current = ActiveTree(root).OrderBy(feature => feature.InstanceId).ToArray();
+                foreach (Feature feature in current) Monitor.Enter(feature.ModelGate);
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested) return new CloseRequestResult(CloseRequestKind.WaitCanceled);
+                    bool valid = current.Length == conditions.Length && conditions.Zip(current).All(pair =>
+                        ReferenceEquals(pair.First.Feature, pair.Second) && !pair.Second.IsClosed
+                        && pair.First.Revision == pair.Second.Children.revision
+                        && pair.First.StateVersion == pair.Second.ReadCloseCondition().Version);
+                    if (valid) result = Commit(root, finish);
+                }
+                finally
+                {
+                    foreach (Feature feature in current.Reverse()) Monitor.Exit(feature.ModelGate);
+                }
+            }
+
+            if (result is null) continue;
+            foreach (Action action in finish) action();
+            return new CloseRequestResult(CloseRequestKind.Closed, result);
+        }
+    }
+
+    private static IEnumerable<Feature> ActiveTree(Feature root)
+    {
+        yield return root;
+        foreach (FeatureMember member in root.Children.active.Values)
+        {
+            foreach (Feature child in ActiveTree(member.Child)) yield return child;
+        }
+    }
+
+    private static CloseRequestResult? ReadInterruption(Feature root, CancellationToken cancellationToken)
+    {
+        lock (Gate)
+        {
+            if (root.IsClosed) return new CloseRequestResult(CloseRequestKind.Closed, root.CommitClose(Task.FromResult<Exception?>(null)).Result);
+            return cancellationToken.IsCancellationRequested ? new CloseRequestResult(CloseRequestKind.WaitCanceled) : null;
+        }
+    }
+
     private static CloseResult Commit(Feature feature, List<Action> finish)
     {
         FeatureOwnership children = feature.Children;
