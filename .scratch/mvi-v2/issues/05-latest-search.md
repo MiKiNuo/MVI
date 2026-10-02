@@ -32,3 +32,9 @@
 - 独立 `code-review` 复核：Standards 0 项发现，Spec 0 项发现；13 个 C# 文件符合 UTF-8 BOM 与 CRLF，暂存 Diff 检查通过。
 
 运行与验收命令见 [搜索样例说明](../../../sample/MiKiNuo.Mvi.Samples.Avalonia/Features/V2Search/README.md)。操作的并发策略按声明固定；实例关闭、大页面/HUD 性能及 Queue/Parallel 仍由对应后续任务验收。
+
+## 合并到默认开发分支
+
+2026-10-02，任务 05 合入 `codex/mvi-v2`，保留已合入的任务 08 Mediator 请求端口。`Feature.cs` 的单处冲突组合为带默认 Reject 的操作入口与原请求端口方法，没有增加业务行为。
+
+整合后的完整 Release 构建通过（0 错误，原 v1 测试 5 条 MVI0013 警告）；全部 TUnit 测试 357/357 通过（v2 141/141、v1 216/216），无失败或跳过。独立消费者的 state、operation、mediator 三组自检及真实 Windows 搜索窗口验收均 PASS。合并前的重叠草稿保存在 Git stash `4f838209093a1485028ade73b6d9594578a3be85`，原 `.gitignore` 编辑已恢复且不纳入合并提交。

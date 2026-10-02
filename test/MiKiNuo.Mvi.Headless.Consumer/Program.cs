@@ -82,6 +82,7 @@ internal static class Program
             && !queued.Snapshot.OperationStates["SaveAsync"].IsRunning && queued.Snapshot.OperationStates["SaveAsync"].QueuedCount == 0,
             "队列完成必须保留并发编辑且运行与排队状态一致。");
         Console.WriteLine("Headless queue loop PASS: bounded waiting capacity, FIFO starts, current validated input, individual results and coherent completion.");
+        await MediatorDemo.RunAsync();
     }
 
     private static void Require(bool condition, string message)
