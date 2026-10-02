@@ -1,0 +1,17 @@
+config_version=5
+
+[application]
+config/name="MiKiNuo MVI HUD"
+run/main_scene="res://Hud.tscn"
+
+[display]
+window/size/viewport_width=1000
+window/size/viewport_height=700
+
+[dotnet]
+project/assembly_name="MiKiNuo.Mvi.Samples.Godot"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.035, 0.055, 0.085, 1)

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../MiKiNuo.Mvi/MiKiNuo.Mvi.csproj" />
+    <PackageReference Include="GodotSharp" />
+  </ItemGroup>
+</Project>

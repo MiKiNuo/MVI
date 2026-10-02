@@ -1,4 +1,4 @@
-using TUnit.Assertions;
+﻿using TUnit.Assertions;
 using TUnit.Core;
 
 namespace MiKiNuo.Mvi.Tests;
@@ -28,11 +28,11 @@ public sealed class ArchitectureDirectoryTests
     }
 
     /// <summary>
-    /// 验证示例目录只保留唯一的联网登录注册示例，
+    /// 验证示例目录只保留 Avalonia 联网示例与 Godot HUD 示例，
     /// 且不存在示例专属的构建期生成器项目（装配能力已收敛到框架 [MviFeature] 生成器）。
     /// </summary>
     [Test]
-    public async Task Sample_Should_OnlyContainUnifiedAvaloniaSampleAsync()
+    public async Task Sample_Should_OnlyContainSupportedPlatformSamplesAsync()
     {
         string root = FindRepositoryRoot();
         string sampleRoot = Path.Combine(root, "sample");
@@ -46,7 +46,7 @@ public sealed class ArchitectureDirectoryTests
             .ToList();
 
         await Assert.That(projectDirectories)
-            .IsEquivalentTo(new[] { "MiKiNuo.Mvi.Samples.Avalonia" });
+            .IsEquivalentTo(new[] { "MiKiNuo.Mvi.Samples.Avalonia", "MiKiNuo.Mvi.Samples.Godot" });
         await Assert.That(Directory.Exists(Path.Combine(sampleRoot, "MiKiNuo.Mvi.Samples.Avalonia.BuildTime")))
             .IsFalse();
     }

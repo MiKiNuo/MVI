@@ -7,6 +7,33 @@ namespace MiKiNuo.Mvi.V2.Tests;
 /// <summary>验证用户声明能够生成可编辑和只读的本地投影。</summary>
 public sealed class ProjectionDeclarationTests
 {
+    /// <summary>Godot 用户只声明 State、Feature 并使用生成输入与投影即可连接原生控件。</summary>
+    /// <returns>真实 Godot 类型的公开消费编译验证任务。</returns>
+    [Test]
+    public async Task GodotConsumerUsesGeneratedInputsAndNativeProjectionConnection()
+    {
+        const string source = """
+            using System;using Godot;using MiKiNuo.Mvi;using MiKiNuo.Mvi.Platforms.Godot;
+            public sealed record State { [Input] public string Name {get;init;} = ""; }
+            public sealed partial class Hud():Feature<State>(new());
+            public static class Consumer {
+                public static IDisposable Connect(Node view,LineEdit edit) {
+                    Hud feature = new();feature.SetName("pilot");
+                    GodotProjection connection = new(view);
+                    Hud.Projection projection = connection.Create(feature.CreateProjection);
+                    connection.BindInput(projection,edit,p=>p.Name);
+                    return connection;
+                }
+            }
+            """;
+        (Compilation output, GeneratorDriverRunResult result) = GeneratorTestHost.Run(source);
+        await Assert.That(result.Diagnostics).IsEmpty();
+        await Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Select(diagnostic => diagnostic.ToString()).ToArray()).IsEmpty();
+        using MemoryStream assembly = new();
+        await Assert.That(output.Emit(assembly).Success).IsTrue();
+    }
+
     /// <summary>验证保留名称冲突定位用户声明而非生成代码。</summary>
     /// <param name="member">与投影冲突的用户成员。</param>
     /// <param name="onFeature">是否在功能中声明该成员。</param>

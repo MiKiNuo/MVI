@@ -3,6 +3,7 @@
     <Project Path="src\MiKiNuo.Mvi\MiKiNuo.Mvi.csproj" />
     <Project Path="src\MiKiNuo.Mvi.Generators\MiKiNuo.Mvi.Generators.csproj" />
     <Project Path="src\MiKiNuo.Mvi.Avalonia\MiKiNuo.Mvi.Avalonia.csproj" />
+    <Project Path="src\MiKiNuo.Mvi.Godot\MiKiNuo.Mvi.Godot.csproj" />
     <Project Path="src\MiKiNuo.Mvi.Domain\MiKiNuo.Mvi.Domain.csproj" Type="C#" />
     <Project Path="src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
     <Project Path="src\MiKiNuo.Mvi.Application\MiKiNuo.Mvi.Application.csproj" Type="C#" />
@@ -12,6 +13,7 @@
   </Folder>
   <Folder Name="/sample/">
     <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" Type="C#" />
+    <Project Path="sample\MiKiNuo.Mvi.Samples.Godot\MiKiNuo.Mvi.Samples.Godot.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test\MiKiNuo.Mvi.V2.Tests\MiKiNuo.Mvi.V2.Tests.csproj" />

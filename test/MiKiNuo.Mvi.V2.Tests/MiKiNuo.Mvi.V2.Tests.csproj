@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/MiKiNuo.Mvi/MiKiNuo.Mvi.csproj" />
+    <ProjectReference Include="../../src/MiKiNuo.Mvi.Godot/MiKiNuo.Mvi.Godot.csproj" />
     <ProjectReference Include="../../src/MiKiNuo.Mvi.Generators/MiKiNuo.Mvi.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     <PackageReference Include="TUnit" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
