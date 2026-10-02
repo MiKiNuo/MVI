@@ -27,7 +27,7 @@ Snapshot 同时提供 State、Version 和不可变 OperationStates。成功输�
 
 ## 定向查询与详情组合
 
-`MediatorDemo.cs` 展示两个独立可复用的 `QueryFeature` 与 `DetailsFeature`。详情实例通过 `CreateRequestPort<TRequest, TResult>(operationName, validate, execute)` 将不可变请求映射到既有操作启动 Intent；当前状态与本次请求在同一提交区间验证，业务方法接收通过验证的 `Operation.Snapshot`，用 `Operation.UpdateAsync` 提交自己的状态。发送者仅持有业务契约、Mediator 和宿主选择的强类型端口，不依赖详情实现或状态类型。当前端口适配由作者显式声明，未扩展生成器。
+`MediatorDemo.cs` 展示两个独立可复用的 `QueryFeature` 与 `DetailsFeature`。详情实例通过 `CreateRequestPort<TRequest, TResult>(operationName, validate, execute)` 将不可变请求映射到既有操作启动 Intent；当前状态与本次请求在同一提交区间验证，业务方法接收通过验证的 `Operation.Snapshot`，用 `Operation.UpdateAsync` 提交自己的状态。发送者仅持有业务契约、Mediator 和宿主选择的强类型端口，不依赖详情实现或状态类型。当前端口适配由作者显式声明，未扩展生成器。端口可通过可选 `concurrency`、`capacity`、`maxConcurrency` 参数复用同名生成操作的声明，省略时仍为 Reject。实例首次接纳同名执行后固定该并发配置；其他入口策略或界限不一致时返回 `Rejected/OperationConfigurationMismatch`，保留已有运行与等待项。
 
 每个 `new Mediator()` 是独立通信范围。宿主调用 `Register(port)` 建立接线，返回的 `IDisposable` 只用于宿主清理该范围的路由，不是业务订阅。相同端口重复登记返回同一回执，不产生额外候选；回执释放后可重新接线，旧回执不会删除新路由。范围的候选集由已登记端口组成：唯一候选支持 `SendAsync<TRequest, TResult>(request)`；多候选返回 `AmbiguousTarget`，必须使用 `SendAsync(request, targetPort)`。请求与返回值类型共同确定契约，不使用类型名或注册顺序选目标。没有候选返回 `MissingTarget`；指定端口未在本范围接线或已经停用时返回 `TargetUnavailable`。跨范围需要宿主显式向另一个 Mediator 登记端口。
 

@@ -35,7 +35,7 @@ public abstract class Feature<TState> where TState : notnull
 
     /// <summary>将生成的操作调用交给实例统一接纳入口。</summary>
     /// <typeparam name="TResult">业务方法的返回值类型。</typeparam>
-    /// <param name="name">声明的业务操作名称。</param>
+    /// <param name="name">声明的业务操作名称；同名入口必须共用相同并发配置。</param>
     /// <param name="validate">启动时的纯验证方法。</param>
     /// <param name="execute">在提交门外执行的业务方法。</param>
     /// <param name="cancellationToken">本次执行的协作取消令牌。</param>
@@ -48,7 +48,7 @@ public abstract class Feature<TState> where TState : notnull
         OperationConcurrency concurrency = OperationConcurrency.Reject, int capacity = 0, int maxConcurrency = 0)
         => store.Start(name, validate, execute, cancellationToken, concurrency, capacity, maxConcurrency);
 
-    /// <summary>创建将业务请求映射到本实例统一操作入口的强类型端口。</summary>
+    /// <summary>创建使用默认重复拒绝策略的强类型请求端口。</summary>
     /// <typeparam name="TRequest">由业务契约定义的不可变请求类型。</typeparam>
     /// <typeparam name="TResult">目标操作的业务返回值类型。</typeparam>
     /// <param name="name">与程序调用共用的操作名称。</param>
@@ -58,11 +58,28 @@ public abstract class Feature<TState> where TState : notnull
     protected RequestPort<TRequest, TResult> CreateRequestPort<TRequest, TResult>(string name,
         Func<TState, TRequest, bool>? validate, Func<Operation<TState>, TRequest, ValueTask<TResult>> execute)
         where TRequest : notnull
+        => CreateRequestPort(name, validate, execute, OperationConcurrency.Reject);
+
+    /// <summary>创建显式共用同名操作并发配置的强类型请求端口。</summary>
+    /// <typeparam name="TRequest">由业务契约定义的不可变请求类型。</typeparam>
+    /// <typeparam name="TResult">目标操作的业务返回值类型。</typeparam>
+    /// <param name="name">与程序调用共用的操作名称。</param>
+    /// <param name="validate">在启动原子区间根据当前状态和本次请求执行的纯验证。</param>
+    /// <param name="execute">在提交门外处理请求并通过操作上下文反馈状态的业务方法。</param>
+    /// <param name="concurrency">与同名生成操作共用的显式接纳策略。</param>
+    /// <param name="capacity">与同名 Queue 操作共用的正数等待容量，其他策略使用零。</param>
+    /// <param name="maxConcurrency">与同名 Parallel 操作共用的正数并行上限，其他策略使用零。</param>
+    /// <returns>隐藏本实例具体类型和状态类型的独立契约端口。</returns>
+    protected RequestPort<TRequest, TResult> CreateRequestPort<TRequest, TResult>(string name,
+        Func<TState, TRequest, bool>? validate, Func<Operation<TState>, TRequest, ValueTask<TResult>> execute,
+        OperationConcurrency concurrency, int capacity = 0, int maxConcurrency = 0)
+        where TRequest : notnull
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(execute);
         return new RequestPort<TRequest, TResult>(request => DispatchOperation(name,
-            state => validate?.Invoke(state, request) ?? true, operation => execute(operation, request), CancellationToken.None));
+            state => validate?.Invoke(state, request) ?? true, operation => execute(operation, request),
+            CancellationToken.None, concurrency, capacity, maxConcurrency));
     }
 }
 
@@ -74,7 +91,8 @@ internal readonly struct InputIntent<TState, TValue>(TValue value, Func<TState, 
 /// <summary>描述启动请求及在入口采样的取消条件。</summary>
 internal readonly struct OperationStartIntent<TState, TResult>(string name, Guid id, Func<TState, bool>? validate,
     Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken,
-    OperationConcurrency concurrency, int capacity, int maxConcurrency, bool queueActive = false, bool fromQueue = false) where TState : notnull
+    OperationConcurrency concurrency, int capacity, int maxConcurrency, bool queueActive = false, bool fromQueue = false,
+    bool configurationMatches = true) where TState : notnull
 {
     internal string Name { get; } = name;
     internal Guid Id { get; } = id;
@@ -87,6 +105,7 @@ internal readonly struct OperationStartIntent<TState, TResult>(string name, Guid
     internal int MaxConcurrency { get; } = maxConcurrency;
     internal bool QueueActive { get; } = queueActive;
     internal bool FromQueue { get; } = fromQueue;
+    internal bool ConfigurationMatches { get; } = configurationMatches;
 }
 
 /// <summary>描述提交后执行的业务方法与通过验证的开始输入。</summary>
@@ -139,6 +158,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private FeatureProjection<TState>? projection;
     private readonly Dictionary<string, Operation<TState>> executions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OperationQueue> queues = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (OperationConcurrency Concurrency, int Capacity, int MaxConcurrency)> configurations = new(StringComparer.Ordinal);
 
     private sealed class OperationQueue
     {
@@ -231,6 +251,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         TaskCompletionSource<OperationResult<TResult>>? completion = null;
         QueuedOperation? pending = null;
         Guid id = Guid.NewGuid();
+        (OperationConcurrency Concurrency, int Capacity, int MaxConcurrency) configuration = (concurrency, capacity, maxConcurrency);
         lock (gate)
         {
             if (reducing)
@@ -247,11 +268,15 @@ internal sealed class FeatureStore<TState> where TState : notnull
                     queues.Add(name, queue);
                 }
 
+                bool configurationMatches = !configurations.TryGetValue(name,
+                    out (OperationConcurrency Concurrency, int Capacity, int MaxConcurrency) existing) || existing == configuration;
                 OperationStartIntent<TState, TResult> intent = new(name, id, validate, execute, cancellationToken,
-                    concurrency, capacity, maxConcurrency, queue?.Active == true);
+                    concurrency, capacity, maxConcurrency, queue?.Active == true, configurationMatches: configurationMatches);
                 reduction = Reduce(snapshot, intent);
                 if (reduction.Decision == OperationDecision.ExecuteEffect)
                 {
+                    // 已接纳的同名入口固定策略与界限，避免等待项缺少推进归属。
+                    configurations.TryAdd(name, configuration);
                     CancellationTokenSource? source = concurrency == OperationConcurrency.Latest
                         ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
                     operation = new Operation<TState>(this, name, intent.Id, reduction.Effect!.Value.Input,
@@ -445,6 +470,14 @@ internal sealed class FeatureStore<TState> where TState : notnull
                 new OperationState(runningIds, intent.Id, OperationResultKind.Rejected, "InvalidConcurrency", queuedCount: queuedCount));
             return new OperationReduction<TState, TResult>(next,
                 new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Rejected, reason: "InvalidConcurrency"));
+        }
+
+        if (!intent.ConfigurationMatches)
+        {
+            RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name,
+                new OperationState(runningIds, intent.Id, OperationResultKind.Rejected, "OperationConfigurationMismatch", queuedCount: queuedCount));
+            return new OperationReduction<TState, TResult>(next,
+                new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Rejected, reason: "OperationConfigurationMismatch"));
         }
 
         if (intent.CancellationRequested)
