@@ -31,6 +31,9 @@ public sealed class OperationDeclarationTests
                     editor.SetName("ready");
                     OperationResult<int> value = await editor.SubmitAsync(token);
                     OperationResult<string?> optional = await editor.RefreshAsync();
+                    using Editor.Projection projection = editor.CreateProjection(callback => callback());
+                    OperationCommand<int> command = projection.SubmitAsyncCommand;
+                    OperationCommand<string?> refresh = projection.RefreshAsyncCommand;
                 }
             }
             """);
@@ -82,5 +85,77 @@ public sealed class OperationDeclarationTests
             + "public sealed partial class Editor() : Feature<State>(new()) { " + operation + members + " }");
         await Assert.That(result.Diagnostics.Any(diagnostic => diagnostic.Id == id && diagnostic.Location.IsInSource)).IsTrue();
         await Assert.That(result.GeneratedTrees.Length).IsEqualTo(0);
+    }
+
+    /// <summary>操作命令与状态投影属性冲突时在原操作处给出框架诊断。</summary>
+    /// <returns>生成命令名称冲突验证任务。</returns>
+    [Test]
+    public async Task OperationCommandCollisionReceivesLocatedDiagnostic()
+    {
+        (Compilation _, GeneratorDriverRunResult result) = GeneratorTestHost.Run("""
+            using System.Threading.Tasks;
+            using MiKiNuo.Mvi;
+            public sealed record State { public string SubmitAsyncCommand { get; init; } = ""; }
+            public sealed partial class Editor() : Feature<State>(new()) {
+                [Operation] private ValueTask<int> SubmitAsync(Operation<State> operation) => ValueTask.FromResult(7);
+            }
+            """);
+        await Assert.That(result.Diagnostics.Any(static diagnostic => diagnostic.Id == "MVI2009" && diagnostic.Location.IsInSource)).IsTrue();
+        await Assert.That(result.GeneratedTrees).IsEmpty();
+    }
+
+    /// <summary>合法操作名与投影工厂同名时仍生成无警告的可消费命令。</summary>
+    /// <returns>生成成员与继承成员兼容验证任务。</returns>
+    [Test]
+    public async Task LegalOperationNameCanMatchProjectionFactory()
+    {
+        (Compilation compilation, GeneratorDriverRunResult result) = GeneratorTestHost.Run("""
+            using System.Threading.Tasks;
+            using MiKiNuo.Mvi;
+            public sealed record State;
+            public sealed partial class Editor() : Feature<State>(new()) {
+                [Operation] private Task<int> CreateOperation(Operation<State> operation) => Task.FromResult(7);
+            }
+            public static class Consumer {
+                public static async Task Run() {
+                    Editor editor = new();
+                    using Editor.Projection projection = editor.CreateProjection(callback => callback());
+                    OperationCommand<int> command = projection.CreateOperationCommand;
+                    OperationResult<int> result = await editor.CreateOperation();
+                }
+            }
+            """);
+        await Assert.That(result.Diagnostics).IsEmpty();
+        await Assert.That(compilation.GetDiagnostics().Where(static diagnostic =>
+            diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+            .Select(static diagnostic => diagnostic.ToString()).ToArray()).IsEmpty();
+    }
+
+    /// <summary>既有输入名可以与新增泛型工厂同名，仍生成无警告的投影与命令。</summary>
+    /// <returns>输入声明兼容验证任务。</returns>
+    [Test]
+    public async Task LegalInputNameCanMatchProjectionFactory()
+    {
+        (Compilation compilation, GeneratorDriverRunResult result) = GeneratorTestHost.Run("""
+            using System.Threading.Tasks;
+            using MiKiNuo.Mvi;
+            public sealed record State { [Input] public string CreateOperationCommand { get; init; } = ""; }
+            public sealed partial class Editor() : Feature<State>(new()) {
+                [Operation] private Task<int> SubmitAsync(Operation<State> operation) => Task.FromResult(7);
+            }
+            public static class Consumer {
+                public static async Task Run() {
+                    Editor editor = new();
+                    using Editor.Projection projection = editor.CreateProjection(callback => callback());
+                    projection.CreateOperationCommand = "ready";
+                    OperationCommand<int> command = projection.SubmitAsyncCommand;
+                    OperationResult<int> result = await editor.SubmitAsync();
+                }
+            }
+            """);
+        await Assert.That(result.Diagnostics.Select(static diagnostic => diagnostic.ToString()).ToArray()).IsEmpty();
+        await Assert.That(compilation.GetDiagnostics().Where(static diagnostic =>
+            diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+            .Select(static diagnostic => diagnostic.ToString()).ToArray()).IsEmpty();
     }
 }

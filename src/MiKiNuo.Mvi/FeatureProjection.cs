@@ -26,6 +26,8 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
     private bool disposed;
     private bool scheduled;
     private long scheduleId;
+    private event Action? CommandsChanged;
+    private event Action? CommandsDisposed;
 
     /// <summary>准备本地投影；派生构造函数完成字段初始化后再建立连接。</summary>
     /// <param name="feature">该 View 所属的功能实例。</param>
@@ -54,6 +56,34 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
 
     /// <summary>建立该实例唯一的活动本地 View 连接。</summary>
     protected void InitializeProjection() => feature.AttachProjection(this);
+
+    /// <summary>创建复用生成操作入口的本地 UI 命令。</summary>
+    /// <typeparam name="TResult">操作的业务返回值类型。</typeparam>
+    /// <param name="name">操作名称。</param>
+    /// <param name="validate">已展示状态的纯验证反馈。</param>
+    /// <param name="execute">生成的统一操作入口。</param>
+    /// <returns>在该投影生命周期内活动的原生命令。</returns>
+    protected OperationCommand<TResult> CreateOperationCommand<TResult>(string name, Func<TState, bool>? validate,
+        Func<Task<OperationResult<TResult>>> execute)
+    {
+        EnsureActive();
+        OperationCommand<TResult> command = new(() =>
+        {
+            RuntimeSnapshot<TState> current = Snapshot;
+            try
+            {
+                return !(current.OperationStates.TryGetValue(name, out OperationState? operation) && operation.IsRunning)
+                    && (validate?.Invoke(current.State) ?? true);
+            }
+            catch
+            {
+                return false;
+            }
+        }, () => { EnsureActive(); return execute(); });
+        CommandsChanged += command.NotifyChanged;
+        CommandsDisposed += command.Detach;
+        return command;
+    }
 
     /// <summary>拒绝已释放 View 的输入回写。</summary>
     protected void EnsureActive()
@@ -120,6 +150,9 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
             pending.Clear();
             inputFeedback.Clear();
             PropertyChanged = null;
+            CommandsDisposed?.Invoke();
+            CommandsDisposed = null;
+            CommandsChanged = null;
         }
 
         feature.DetachProjection(this);
@@ -199,6 +232,7 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
                 Volatile.Write(ref snapshot, next);
                 OnSnapshotChanged(previous.State, next.State);
                 NotifyPropertyChanged(nameof(Snapshot));
+                CommandsChanged?.Invoke();
                 if (mode == ProjectionMode.Coalesce)
                 {
                     return;

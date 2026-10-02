@@ -1,4 +1,4 @@
-using MiKiNuo.Mvi.Application.MVI.Store;
+﻿using MiKiNuo.Mvi.Application.MVI.Store;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.Register;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.ResetPassword;
 using MiKiNuo.Mvi.Tests.TestSupport;
@@ -106,6 +106,28 @@ public sealed class SampleValidationMiddlewareTests
             new RegisterReducer(),
             new NoopEffectDispatcher<RegisterEffect>(),
             [new RegisterValidationMiddleware()]);
+    }
+
+    /// <summary>共享规则提取仍保留旧版纯空白密码的基础提交守卫与无错误反馈。</summary>
+    /// <returns>旧版规则行为兼容验证任务。</returns>
+    [Test]
+    public async Task WhitespacePasswordsRetainV1SubmissionGuardAsync()
+    {
+        using MviStore<RegisterState, RegisterIntent, RegisterEffect> register = CreateRegisterStore();
+        await register.DispatchAsync(new RegisterIntent.ChangeUserName("neo"));
+        await register.DispatchAsync(new RegisterIntent.ChangeEmail("neo@example.com"));
+        await register.DispatchAsync(new RegisterIntent.ChangePassword("      "));
+        await register.DispatchAsync(new RegisterIntent.ChangeConfirmPassword("      "));
+        await register.DispatchAsync(new RegisterIntent.Submit());
+        await Assert.That(register.CurrentState.IsBusy).IsFalse();
+        await Assert.That(register.CurrentState.ErrorMessage).IsNull();
+        using MviStore<ResetPasswordState, ResetPasswordIntent, ResetPasswordEffect> reset = CreateResetPasswordStore();
+        await reset.DispatchAsync(new ResetPasswordIntent.ChangeUserName("neo"));
+        await reset.DispatchAsync(new ResetPasswordIntent.ChangeNewPassword("      "));
+        await reset.DispatchAsync(new ResetPasswordIntent.ChangeConfirmPassword("      "));
+        await reset.DispatchAsync(new ResetPasswordIntent.Submit());
+        await Assert.That(reset.CurrentState.IsBusy).IsFalse();
+        await Assert.That(reset.CurrentState.ErrorMessage).IsNull();
     }
 
     private static MviStore<ResetPasswordState, ResetPasswordIntent, ResetPasswordEffect> CreateResetPasswordStore()

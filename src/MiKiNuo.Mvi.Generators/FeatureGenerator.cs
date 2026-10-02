@@ -246,6 +246,14 @@ public sealed class FeatureGenerator : IIncrementalGenerator
             }
         }
 
+        foreach (IMethodSymbol operation in operations)
+        {
+            if (properties.ContainsKey(operation.Name + "Command"))
+            {
+                diagnostics.Add(Diagnostic.Create(OperationConflict, operation.Locations[0], operation.Name + "Command"));
+            }
+        }
+
         if (diagnostics.Count != 0)
         {
             return new FeatureModel(hintName, string.Empty, diagnostics.ToImmutable());
@@ -281,7 +289,25 @@ public sealed class FeatureGenerator : IIncrementalGenerator
             .Append("    public sealed class Projection : global::MiKiNuo.Mvi.FeatureProjection<").Append(stateType).Append(">\n    {\n")
             .Append("        private readonly @").Append(feature.Name).Append(" __feature;\n")
             .Append("        internal Projection(@").Append(feature.Name).Append(" feature, global::System.Action<global::System.Action> schedule, global::MiKiNuo.Mvi.ProjectionMode mode) : base(feature, schedule, mode)\n")
-            .Append("        {\n            __feature = feature;\n            InitializeProjection();\n        }\n");
+            .Append("        {\n            __feature = feature;\n");
+        foreach (IMethodSymbol operation in operations.OrderBy(static method => method.Name, StringComparer.Ordinal))
+        {
+            AttributeData attribute = FindAttribute(operation, operationAttribute)!;
+            string? validate = attribute.NamedArguments.FirstOrDefault(static pair => pair.Key == "Validate").Value.Value as string;
+            source.Append("            @").Append(operation.Name).Append("Command = CreateOperationCommand(\"")
+                .Append(operation.Name).Append("\", ").Append(validate is null ? "null" : "@" + validate)
+                .Append(", () => __feature.@").Append(operation.Name).Append("());\n");
+        }
+
+        source.Append("            InitializeProjection();\n        }\n");
+        foreach (IMethodSymbol operation in operations.OrderBy(static method => method.Name, StringComparer.Ordinal))
+        {
+            string resultType = ((INamedTypeSymbol)operation.ReturnType).TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+                SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier));
+            source.Append("        /// <summary>通过统一验证入口执行业务操作的原生命令。</summary>\n")
+                .Append("        public global::MiKiNuo.Mvi.OperationCommand<").Append(resultType).Append("> @")
+                .Append(operation.Name).Append("Command { get; }\n");
+        }
         foreach (IPropertySymbol property in properties.Values.OrderBy(static property => property.Name, StringComparer.Ordinal))
         {
             string valueType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
