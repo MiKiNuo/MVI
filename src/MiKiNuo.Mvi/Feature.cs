@@ -41,6 +41,23 @@ public abstract class Feature<TState> where TState : notnull
     protected Task<OperationResult<TResult>> DispatchOperation<TResult>(string name, Func<TState, bool>? validate,
         Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken)
         => store.Start(name, validate, execute, cancellationToken);
+
+    /// <summary>创建将业务请求映射到本实例统一操作入口的强类型端口。</summary>
+    /// <typeparam name="TRequest">由业务契约定义的不可变请求类型。</typeparam>
+    /// <typeparam name="TResult">目标操作的业务返回值类型。</typeparam>
+    /// <param name="name">与程序调用共用的操作名称。</param>
+    /// <param name="validate">在启动原子区间根据当前状态和本次请求执行的纯验证。</param>
+    /// <param name="execute">在提交门外处理请求并通过操作上下文反馈状态的业务方法。</param>
+    /// <returns>隐藏本实例具体类型和状态类型的独立契约端口。</returns>
+    protected RequestPort<TRequest, TResult> CreateRequestPort<TRequest, TResult>(string name,
+        Func<TState, TRequest, bool>? validate, Func<Operation<TState>, TRequest, ValueTask<TResult>> execute)
+        where TRequest : notnull
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(execute);
+        return new RequestPort<TRequest, TResult>(request => DispatchOperation(name,
+            state => validate?.Invoke(state, request) ?? true, operation => execute(operation, request), CancellationToken.None));
+    }
 }
 
 internal readonly struct InputIntent<TState, TValue>(TValue value, Func<TState, TValue, TState> reduce)

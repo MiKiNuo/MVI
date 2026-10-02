@@ -41,6 +41,7 @@ internal static class Program
         Require(submitting.Snapshot.State.Total == 11 && submitting.Snapshot.State.Name == "edited during IO"
             && !submitting.Snapshot.OperationStates["SubmitAsync"].IsRunning, "完成必须已提交反馈、保留并发编辑并结束运行状态。");
         Console.WriteLine("Headless operation loop PASS: validation, starting input, concurrent editing, typed feedback and completion.");
+        await MediatorDemo.RunAsync();
     }
 
     private static void Require(bool condition, string message)

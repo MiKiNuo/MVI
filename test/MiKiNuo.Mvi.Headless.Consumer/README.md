@@ -13,3 +13,15 @@ Snapshot 同时提供 State、Version 和不可变 OperationStates。成功输�
 `OperationStates[name].RunningId` 表达仍在真实执行的操作；`LastAttemptId`、`LastResult`、`Reason`、`Exception` 表达最近发布的调用反馈，按反馈提交顺序演进。重复拒绝只改变调用反馈并保留 RunningId；当前执行随后结束时，完成反馈替换先前拒绝反馈并清除自己的 RunningId。执行结果区分 Completed、Rejected、Canceled、Superseded、Faulted，正常业务失败值仍是 Completed。当前只实现默认同名重复拒绝，Superseded 为后续策略预留。取消不回滚既有提交，晚反馈不能正常成功；纯规则故障保留原业务状态并产生带异常的 Faulted。
 
 业务方法应等待其子工作，或在退出前用 `operation.Track(task)` 登记仍可能访问实例资源的已启动工作。完成屏障继续接纳这些子工作登记的嵌套工作，取消或故障期间仍等待真实退出；屏障结束后的登记和更新会失败。Completed 保证业务方法、已登记工作和有关状态提交完成。示例通过可控服务完成信号自检启动验证、慢服务期间编辑、强类型反馈与完成，无需 UI 或额外依赖。
+
+## 定向查询与详情组合
+
+`MediatorDemo.cs` 展示两个独立可复用的 `QueryFeature` 与 `DetailsFeature`。详情实例通过 `CreateRequestPort<TRequest, TResult>(operationName, validate, execute)` 将不可变请求映射到既有操作启动 Intent；当前状态与本次请求在同一提交区间验证，业务方法接收通过验证的 `Operation.Snapshot`，用 `Operation.UpdateAsync` 提交自己的状态。发送者仅持有业务契约、Mediator 和宿主选择的强类型端口，不依赖详情实现或状态类型。当前端口适配由作者显式声明，未扩展生成器。
+
+每个 `new Mediator()` 是独立通信范围。宿主调用 `Register(port)` 建立接线，返回的 `IDisposable` 只用于宿主清理该范围的路由，不是业务订阅。相同端口重复登记返回同一回执，不产生额外候选；回执释放后可重新接线，旧回执不会删除新路由。范围的候选集由已登记端口组成：唯一候选支持 `SendAsync<TRequest, TResult>(request)`；多候选返回 `AmbiguousTarget`，必须使用 `SendAsync(request, targetPort)`。请求与返回值类型共同确定契约，不使用类型名或注册顺序选目标。没有候选返回 `MissingTarget`；指定端口未在本范围接线或已经停用时返回 `TargetUnavailable`。跨范围需要宿主显式向另一个 Mediator 登记端口。
+
+`port.Deactivate()` 永久阻止该端口后续接纳，与请求接纳原子排序；已接纳目标工作继续执行和提交反馈。停用不会自动移除范围候选，宿主需要释放注册回执更新组合接线。范围锁只保护候选选择，不包围目标验证或执行；解除注册阻止后续目标选择，已选定请求仍可进入尚可用的端口。这些句柄只管理请求接线和接纳，不承担 Feature 关闭或资源释放。
+
+`RequestResult.Kind` 区分 `Responded`、缺失、歧义、不可用和 `WaitCanceled`；`Responded` 携带原始 `OperationResult<TResult>`，保留目标的拒绝、取消、故障与正常业务返回值。正常业务失败值仍可为 `Completed`。SendAsync 正常取得目标结果意味着业务方法、已登记工作和有关状态提交完成；响应需要改变查询状态时，查询通过自己的 `Operation.UpdateAsync` 更新。传入的 `waitCancellationToken` 在接纳前取消时不启动目标，接纳后只取消调用方等待，目标执行默认不继承它；显式传播取消策略属于后续任务。
+
+演示自检唯一与歧义路由、同类型详情处理同一业务对象时的实例隔离、宿主明确多目标协调、目标验证、业务失败值、跨范围接线和不可用端口。整个组合没有订阅、反订阅、Publish、Subscribe 或跨实例状态观察图。
