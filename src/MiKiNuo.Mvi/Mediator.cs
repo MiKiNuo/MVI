@@ -48,9 +48,15 @@ public sealed class RequestPort<TRequest, TResult> where TRequest : notnull
 {
     private readonly object gate = new();
     private readonly Func<TRequest, CancellationToken, Task<OperationResult<TResult>>> start;
+    private readonly Func<TRequest, Guid, (PostReceipt<TResult> Receipt, Action? Schedule)> post;
     private bool accepting = true;
 
-    internal RequestPort(Func<TRequest, CancellationToken, Task<OperationResult<TResult>>> start) => this.start = start;
+    internal RequestPort(Func<TRequest, CancellationToken, Task<OperationResult<TResult>>> start,
+        Func<TRequest, Guid, (PostReceipt<TResult> Receipt, Action? Schedule)> post)
+    {
+        this.start = start;
+        this.post = post;
+    }
 
     /// <summary>永久停止本端口后续接纳；与接纳原子排序，已接纳的目标执行及其状态反馈继续完成。</summary>
     public void Deactivate()
@@ -80,6 +86,21 @@ public sealed class RequestPort<TRequest, TResult> where TRequest : notnull
         // 接纳决定已经完成；后续停用不能撤销该请求，启动及平台回调在门外执行。
         return (RequestResultKind.Responded, start(request, executionCancellationToken));
     }
+
+    internal PostReceipt<TResult> Post(TRequest message, Guid id)
+    {
+        PostReceipt<TResult> receipt;
+        Action? schedule;
+        lock (gate)
+        {
+            if (!accepting) return new PostReceipt<TResult>(id, PostResultKind.TargetUnavailable);
+            // 仅把实例的纯入箱决定与停用原子排序；业务及消费者调度都在端口门外。
+            (receipt, schedule) = post(message, id);
+        }
+
+        schedule?.Invoke();
+        return receipt;
+    }
 }
 
 /// <summary>在宿主显式建立的契约范围内选择独立实例并等待其处理完成。</summary>
@@ -87,6 +108,36 @@ public sealed class Mediator
 {
     private readonly object gate = new();
     private readonly Dictionary<(Type Request, Type Result), List<Registration>> registrations = [];
+
+    /// <summary>向宿主明确选定的已接线端口投递，仅取得目标实例收件箱的接纳回执。</summary>
+    /// <typeparam name="TMessage">不可变业务消息类型。</typeparam>
+    /// <typeparam name="TResult">后续处理的业务返回值类型。</typeparam>
+    /// <param name="message">本次定向业务消息。</param>
+    /// <param name="target">宿主明确选定的强类型端口。</param>
+    /// <returns>容量或目标不可用的拒绝原因，或关联后续处理结果的接纳回执。</returns>
+    public PostReceipt<TResult> Post<TMessage, TResult>(TMessage message, RequestPort<TMessage, TResult> target) where TMessage : notnull
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(target);
+        Guid id = Guid.NewGuid();
+        RequestPort<TMessage, TResult>? selected = target;
+        return SelectTarget(ref selected) == RequestResultKind.Responded ? target.Post(message, id)
+            : new PostReceipt<TResult>(id, PostResultKind.TargetUnavailable);
+    }
+
+    /// <summary>尝试定向投递，并通过完整回执保留接纳或拒绝原因。</summary>
+    /// <typeparam name="TMessage">不可变业务消息类型。</typeparam>
+    /// <typeparam name="TResult">后续处理的业务返回值类型。</typeparam>
+    /// <param name="message">本次定向业务消息。</param>
+    /// <param name="target">宿主明确选定的强类型端口。</param>
+    /// <param name="receipt">包含关联身份、拒绝原因和已接纳消息完成任务的回执。</param>
+    /// <returns>消息是否已进入目标实例收件箱。</returns>
+    public bool TryPost<TMessage, TResult>(TMessage message, RequestPort<TMessage, TResult> target, out PostReceipt<TResult> receipt)
+        where TMessage : notnull
+    {
+        receipt = Post(message, target);
+        return receipt.Kind == PostResultKind.Accepted;
+    }
 
     /// <summary>将端口接入本范围；已登记端口组成候选集，同一端口重复接线返回同一回执，跨范围由宿主分别接线。</summary>
     /// <typeparam name="TRequest">业务契约的不可变请求类型。</typeparam>

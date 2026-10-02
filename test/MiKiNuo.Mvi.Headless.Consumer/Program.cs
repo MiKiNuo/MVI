@@ -89,6 +89,7 @@ internal static class Program
             "队列完成必须保留并发编辑且运行与排队状态一致。");
         Console.WriteLine("Headless queue loop PASS: bounded waiting capacity, FIFO starts, current validated input, individual results and coherent completion.");
         await MediatorDemo.RunAsync();
+        await PostDemo.RunAsync();
     }
 
     private static async Task RunParallelAsync()

@@ -10,10 +10,12 @@ public abstract class Feature<TState> : Feature where TState : notnull
 
     /// <summary>使用初始业务状态创建独立实例。</summary>
     /// <param name="initialState">实例的初始不可变状态。</param>
-    protected Feature(TState initialState)
+    /// <param name="postCapacity">本实例共享收件箱的正数容量，包含正在处理及等待处理的未终结投递。</param>
+    protected Feature(TState initialState, int postCapacity = 16)
     {
         ArgumentNullException.ThrowIfNull(initialState);
-        store = new FeatureStore<TState>(initialState);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(postCapacity);
+        store = new FeatureStore<TState>(initialState, postCapacity);
         FeatureFactory.Capture(this);
     }
 
@@ -99,7 +101,9 @@ public abstract class Feature<TState> : Feature where TState : notnull
         RequestPort<TRequest, TResult> port = new((request, executionCancellationToken) => DispatchOperation(name,
             state => validate?.Invoke(state, request) ?? true, operation => execute(operation, request),
             cancellationPolicy == RequestCancellationPolicy.Propagate ? executionCancellationToken : CancellationToken.None,
-            concurrency, capacity, maxConcurrency));
+            concurrency, capacity, maxConcurrency),
+            (request, id) => store.Post(name, id, state => validate?.Invoke(state, request) ?? true,
+                operation => execute(operation, request), concurrency, capacity, maxConcurrency));
         store.RegisterPort(port.Deactivate);
         return port;
     }
@@ -180,6 +184,10 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private FeatureProjection<TState>? projection;
     private readonly Dictionary<string, Operation<TState>> executions = new(StringComparer.Ordinal);
     private readonly HashSet<Operation<TState>> activeExecutions = [];
+    private readonly Queue<PostEnvelope> inbox = new();
+    private readonly int postCapacity;
+    private int pendingPosts;
+    private bool consumingPosts;
     private readonly List<Action> ports = [];
     private CloseResult? closeResult;
     private TaskCompletionSource? drained;
@@ -203,7 +211,86 @@ internal sealed class FeatureStore<TState> where TState : notnull
         internal CancellationTokenRegistration Registration { get; set; }
     }
 
-    internal FeatureStore(TState state) => snapshot = new RuntimeSnapshot<TState>(state, 0);
+    private sealed class PostEnvelope(Func<Task> process, Action cancel)
+    {
+        internal Func<Task> Process { get; } = process;
+        internal Action Cancel { get; } = cancel;
+    }
+
+    internal FeatureStore(TState state, int postCapacity)
+    {
+        snapshot = new RuntimeSnapshot<TState>(state, 0);
+        this.postCapacity = postCapacity;
+    }
+
+    internal (PostReceipt<TResult> Receipt, Action? Schedule) Post<TResult>(string name, Guid id, Func<TState, bool> validate,
+        Func<Operation<TState>, ValueTask<TResult>> execute, OperationConcurrency concurrency, int capacity, int maxConcurrency)
+    {
+        TaskCompletionSource<OperationResult<TResult>> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool startConsumer;
+        lock (gate)
+        {
+            if (closeResult is not null) return (new PostReceipt<TResult>(id, PostResultKind.TargetUnavailable), null);
+            if (pendingPosts == postCapacity) return (new PostReceipt<TResult>(id, PostResultKind.InboxFull), null);
+            inbox.Enqueue(new PostEnvelope(ProcessAsync,
+                () => completion.SetResult(new OperationResult<TResult>(name, id, OperationResultKind.Canceled, reason: "Closed"))));
+            pendingPosts++;
+            startConsumer = !consumingPosts;
+            consumingPosts = true;
+        }
+
+        return (new PostReceipt<TResult>(id, PostResultKind.Accepted, completion.Task), startConsumer ? Schedule : null);
+
+        void Schedule()
+        {
+            try { _ = Task.Run(ConsumePostsAsync); }
+            catch (Exception) { _ = ConsumePostsAsync(); }
+        }
+
+        async Task ProcessAsync()
+        {
+            OperationResult<TResult> result;
+            try
+            {
+                result = await Start(name, validate, execute, CancellationToken.None, concurrency, capacity, maxConcurrency, id)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception failure)
+            {
+                result = new OperationResult<TResult>(name, id, OperationResultKind.Faulted, exception: failure);
+            }
+
+            lock (gate) pendingPosts--;
+            completion.SetResult(result);
+        }
+    }
+
+    private async Task ConsumePostsAsync()
+    {
+        OperationExecutionContext.Current.Value = this;
+        while (true)
+        {
+            PostEnvelope envelope;
+            lock (gate)
+            {
+                if (!inbox.TryDequeue(out PostEnvelope? next))
+                {
+                    consumingPosts = false;
+                    SignalDrained();
+                    return;
+                }
+
+                envelope = next;
+            }
+
+            await envelope.Process().ConfigureAwait(false);
+        }
+    }
+
+    private void SignalDrained()
+    {
+        if (closeResult is not null && activeExecutions.Count == 0 && !consumingPosts) drained!.TrySetResult();
+    }
 
     internal RuntimeSnapshot<TState> Snapshot => Volatile.Read(ref snapshot);
 
@@ -240,6 +327,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         Action[] deactivate;
         FeatureProjection<TState>? view;
         List<QueuedOperation> waiting = [];
+        PostEnvelope[] posted;
         List<(Operation<TState> Operation, TaskCompletionSource Completed)> cancellation = [];
         List<Exception> failures = [];
         Task exit;
@@ -250,12 +338,15 @@ internal sealed class FeatureStore<TState> where TState : notnull
             result = new CloseResult(new CloseTicket(this));
             closeResult = result;
             drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            if (activeExecutions.Count == 0) drained.SetResult();
+            SignalDrained();
             exit = drained.Task;
             deactivate = ports.ToArray();
             ports.Clear();
             view = projection;
             projection = null;
+            posted = inbox.ToArray();
+            inbox.Clear();
+            pendingPosts -= posted.Length;
             foreach (OperationQueue queue in queues.Values)
             {
                 foreach (QueuedOperation pending in queue.Waiting)
@@ -303,6 +394,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
             pending.Canceled();
         }
 
+        foreach (PostEnvelope envelope in posted) envelope.Cancel();
+
         _ = Task.Run(ReleaseAsync);
         return result;
 
@@ -334,7 +427,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         lock (gate)
         {
             activeExecutions.Remove(operation);
-            if (closeResult is not null && activeExecutions.Count == 0) drained!.TrySetResult();
+            SignalDrained();
         }
     }
 
@@ -399,7 +492,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     internal Task<OperationResult<TResult>> Start<TResult>(string name, Func<TState, bool>? validate,
         Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken,
-        OperationConcurrency concurrency, int capacity, int maxConcurrency)
+        OperationConcurrency concurrency, int capacity, int maxConcurrency, Guid? admittedId = null)
     {
 
         OperationReduction<TState, TResult> reduction;
@@ -410,7 +503,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         OperationQueue? queue = null;
         TaskCompletionSource<OperationResult<TResult>>? completion = null;
         QueuedOperation? pending = null;
-        Guid id = Guid.NewGuid();
+        Guid id = admittedId ?? Guid.NewGuid();
         (OperationConcurrency Concurrency, int Capacity, int MaxConcurrency) configuration = (concurrency, capacity, maxConcurrency);
         lock (gate)
         {
