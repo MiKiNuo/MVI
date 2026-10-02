@@ -19,7 +19,7 @@ public sealed class OperationDeclarationTests
             namespace Demo;
             public sealed record State { [Input] public string Name { get; init; } = ""; }
             public sealed partial class Editor() : Feature<State>(new()) {
-                [Operation(Validate = nameof(CanSubmit))]
+                [Operation(Validate = nameof(CanSubmit), Concurrency = OperationConcurrency.Latest)]
                 private ValueTask<int> SubmitAsync(Operation<State> operation) => ValueTask.FromResult(7);
                 [Operation(Concurrency = OperationConcurrency.Queue, Capacity = 3)]
                 private Task<string?> RefreshAsync(Operation<State> operation) => Task.FromResult<string?>(null);
@@ -67,6 +67,7 @@ public sealed class OperationDeclarationTests
     [Arguments("[Operation(Concurrency = OperationConcurrency.Queue, Capacity = -1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
     [Arguments("[Operation(Capacity = 1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
     [Arguments("[Operation(Concurrency = (OperationConcurrency)99, Capacity = 1)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
+    [Arguments("[Operation(Concurrency = (OperationConcurrency)99)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;", "", "MVI2010")]
     public async Task InvalidDeclarationsReceiveLocatedDiagnostics(string operation, string members, string id)
     {
         (Compilation _, GeneratorDriverRunResult result) = GeneratorTestHost.Run("using System.Threading.Tasks; using MiKiNuo.Mvi; "

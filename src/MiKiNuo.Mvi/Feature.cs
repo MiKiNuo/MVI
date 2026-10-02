@@ -116,6 +116,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private RuntimeSnapshot<TState> snapshot;
     private bool reducing;
     private FeatureProjection<TState>? projection;
+    private readonly Dictionary<string, Operation<TState>> executions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OperationQueue> queues = new(StringComparer.Ordinal);
 
     private sealed class OperationQueue
@@ -199,15 +200,18 @@ internal sealed class FeatureStore<TState> where TState : notnull
         Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken,
         OperationConcurrency concurrency, int capacity)
     {
-        if (concurrency is not OperationConcurrency.Reject and not OperationConcurrency.Queue
+        if (concurrency is not OperationConcurrency.Reject and not OperationConcurrency.Latest and not OperationConcurrency.Queue
             || concurrency == OperationConcurrency.Queue && capacity <= 0
-            || concurrency == OperationConcurrency.Reject && capacity != 0)
+            || concurrency != OperationConcurrency.Queue && capacity != 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(capacity), "并发策略必须有效，Queue 等待容量必须为正数，Reject 不接受容量。");
+            throw new ArgumentOutOfRangeException(nameof(capacity), "并发策略必须有效，Queue 等待容量必须为正数，Reject 和 Latest 不接受容量。");
         }
 
         OperationReduction<TState, TResult> reduction;
         FeatureProjection<TState>? display;
+        Operation<TState>? operation = null;
+        Operation<TState>? previous = null;
+        TaskCompletionSource? cancellationCompleted = null;
         OperationQueue? queue = null;
         TaskCompletionSource<OperationResult<TResult>>? completion = null;
         QueuedOperation? pending = null;
@@ -231,6 +235,22 @@ internal sealed class FeatureStore<TState> where TState : notnull
                 OperationStartIntent<TState, TResult> intent = new(name, id, validate, execute, cancellationToken,
                     concurrency, capacity, queue?.Active == true);
                 reduction = Reduce(snapshot, intent);
+                if (reduction.Decision == OperationDecision.ExecuteEffect)
+                {
+                    CancellationTokenSource? source = concurrency == OperationConcurrency.Latest
+                        ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
+                    operation = new Operation<TState>(this, name, intent.Id, reduction.Effect!.Value.Input,
+                        source?.Token ?? cancellationToken, source);
+                    if (concurrency == OperationConcurrency.Latest && executions.TryGetValue(name, out previous))
+                    {
+                        // 在门内登记屏障，防止旧执行先退出并释放门外取消请求仍需使用的资源。
+                        cancellationCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        previous.Work.Add(cancellationCompleted.Task);
+                    }
+
+                    executions[name] = operation;
+                }
+
                 display = Commit(reduction.Snapshot);
                 if (reduction.Decision == OperationDecision.Enqueue)
                 {
@@ -252,6 +272,11 @@ internal sealed class FeatureStore<TState> where TState : notnull
             }
         }
 
+        if (previous is not null)
+        {
+            _ = CancelSupersededAsync(previous, cancellationCompleted!);
+        }
+
         if (pending is not null && cancellationToken.CanBeCanceled)
         {
             RegisterQueuedCancellation(pending, cancellationToken);
@@ -261,7 +286,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         {
             OperationDecision.Enqueue => completion!.Task,
             OperationDecision.ReturnResult => Task.FromResult(reduction.Result!),
-            _ => queue is null ? RunEffect(reduction.Effect!.Value) : RunQueueEffect(reduction.Effect!.Value, queue),
+            _ => queue is null ? RunEffect(operation!, execute) : RunQueueEffect(operation!, execute, queue),
         };
         RequestOperationDisplay(display, id);
         return execution;
@@ -323,6 +348,14 @@ internal sealed class FeatureStore<TState> where TState : notnull
         OperationStartIntent<TState, TResult> intent = new(request.Name, request.Id, request.Validate, request.Execute,
             request.CancellationToken, request.Concurrency, request.Capacity, fromQueue: true);
         OperationReduction<TState, TResult> reduction = Reduce(snapshot, intent);
+        Operation<TState>? operation = null;
+        if (reduction.Decision == OperationDecision.ExecuteEffect)
+        {
+            operation = new Operation<TState>(this, request.Name, request.Id, reduction.Effect!.Value.Input,
+                request.CancellationToken, null);
+            executions[request.Name] = operation;
+        }
+
         FeatureProjection<TState>? display = Commit(reduction.Snapshot);
         return () =>
         {
@@ -340,15 +373,16 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
             async Task CompleteQueuedAsync()
             {
-                OperationResult<TResult> result = await RunQueueEffect(reduction.Effect!.Value, queue).ConfigureAwait(false);
+                OperationResult<TResult> result = await RunQueueEffect(operation!, request.Execute, queue).ConfigureAwait(false);
                 completion.SetResult(result);
             }
         };
     }
 
-    private async Task<OperationResult<TResult>> RunQueueEffect<TResult>(OperationEffect<TState, TResult> effect, OperationQueue queue)
+    private async Task<OperationResult<TResult>> RunQueueEffect<TResult>(Operation<TState> operation,
+        Func<Operation<TState>, ValueTask<TResult>> execute, OperationQueue queue)
     {
-        OperationResult<TResult> result = await RunEffect(effect).ConfigureAwait(false);
+        OperationResult<TResult> result = await RunEffect(operation, execute).ConfigureAwait(false);
         ThreadPool.QueueUserWorkItem(_ => AdvanceQueue(queue));
         return result;
     }
@@ -395,7 +429,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
                 new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Canceled));
         }
 
-        if (!intent.FromQueue && (operationState?.IsRunning == true || intent.QueueActive))
+        if (!intent.FromQueue && intent.Concurrency != OperationConcurrency.Latest
+            && (operationState?.IsRunning == true || intent.QueueActive))
         {
             if (intent.Concurrency == OperationConcurrency.Queue && queuedCount < intent.Capacity)
             {
@@ -428,7 +463,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
         if (!valid)
         {
             RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name,
-                new OperationState(null, intent.Id, OperationResultKind.Rejected, "ValidationFailed", queuedCount: queuedCount));
+                new OperationState(operationState?.RunningId, intent.Id, OperationResultKind.Rejected, "ValidationFailed", queuedCount: queuedCount));
             return new OperationReduction<TState, TResult>(next,
                 new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Rejected, reason: "ValidationFailed"));
         }
@@ -438,13 +473,27 @@ internal sealed class FeatureStore<TState> where TState : notnull
         return new OperationReduction<TState, TResult>(started, effect: new OperationEffect<TState, TResult>(intent, current.State));
     }
 
-    private Task<OperationResult<TResult>> RunEffect<TResult>(OperationEffect<TState, TResult> effect)
+    private async Task CancelSupersededAsync(Operation<TState> operation, TaskCompletionSource completed)
     {
-        OperationStartIntent<TState, TResult> request = effect.Request;
-        Operation<TState> operation = new(this, request.Name, request.Id, effect.Input, request.CancellationToken);
         try
         {
-            return Task.Run(() => ExecuteAsync(operation, request.Execute));
+            await operation.CancellationSource!.CancelAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            RecordFailure(operation, exception);
+        }
+        finally
+        {
+            completed.SetResult();
+        }
+    }
+
+    private Task<OperationResult<TResult>> RunEffect<TResult>(Operation<TState> operation, Func<Operation<TState>, ValueTask<TResult>> execute)
+    {
+        try
+        {
+            return Task.Run(() => ExecuteAsync(operation, execute));
         }
         catch (Exception exception)
         {
@@ -456,6 +505,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
                 result = Finish<TResult>(operation, default, out display);
             }
 
+            operation.CancellationSource?.Dispose();
             RequestOperationDisplay(display, result.OperationId);
             return Task.FromResult(result);
         }
@@ -498,6 +548,11 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private void EnsureActive(Operation<TState> operation)
     {
         EnsureOwned(operation);
+        if (snapshot.OperationStates.GetValueOrDefault(operation.Name)?.RunningId != operation.Id)
+        {
+            throw new OperationSupersededException();
+        }
+
         operation.CancellationToken.ThrowIfCancellationRequested();
         if (operation.Failure is not null)
         {
@@ -507,7 +562,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     private void EnsureOwned(Operation<TState> operation)
     {
-        if (!operation.Accepting || snapshot.OperationStates.GetValueOrDefault(operation.Name)?.RunningId != operation.Id)
+        if (!operation.Accepting)
         {
             throw new InvalidOperationException("操作上下文已经结束，不能继续提交反馈。");
         }
@@ -532,7 +587,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
         lock (gate)
         {
             // 令牌关联关系不可查询；执行已取消时，关联令牌产生的取消异常也属于协作取消。
-            if (exception is not OperationCanceledException || !operation.CancellationToken.IsCancellationRequested)
+            if (exception is not OperationSupersededException
+                && (exception is not OperationCanceledException || !operation.CancellationToken.IsCancellationRequested))
             {
                 operation.Failure ??= exception;
             }
@@ -611,6 +667,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
             if (completed is not null)
             {
+                operation.CancellationSource?.Dispose();
                 RequestOperationDisplay(display, completed.OperationId);
                 return completed;
             }
@@ -653,6 +710,11 @@ internal sealed class FeatureStore<TState> where TState : notnull
         OperationReduction<TState, TResult> reduction = Reduce(snapshot, intent);
         operation.Accepting = false;
         operation.Work.Clear();
+        if (executions.GetValueOrDefault(operation.Name)?.Id == operation.Id)
+        {
+            executions.Remove(operation.Name);
+        }
+
         display = Commit(reduction.Snapshot);
         return reduction.Result!;
     }
@@ -662,8 +724,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
         if (current.OperationStates.GetValueOrDefault(intent.Name)?.RunningId != intent.Id)
         {
             return new OperationReduction<TState, TResult>(current,
-                new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Faulted, reason: "InactiveOperation",
-                    exception: new InvalidOperationException("操作结束反馈不属于当前运行身份。")));
+                new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Superseded, reason: "Superseded",
+                    exception: intent.Failure));
         }
 
         OperationResultKind kind = intent.Failure is not null ? OperationResultKind.Faulted

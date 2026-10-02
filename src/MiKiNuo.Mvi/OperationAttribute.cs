@@ -5,6 +5,8 @@ public enum OperationConcurrency
 {
     /// <summary>已有执行时拒绝重复调用。</summary>
     Reject,
+    /// <summary>新执行取代旧执行的反馈身份，并请求旧执行协作取消。</summary>
+    Latest,
     /// <summary>将调用放入容量有限的顺序等待队列。</summary>
     Queue,
 }
