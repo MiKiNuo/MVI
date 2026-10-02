@@ -1,5 +1,14 @@
 ﻿namespace MiKiNuo.Mvi;
 
+/// <summary>声明契约端口是否接受调用方显式提供的目标执行取消令牌。</summary>
+public enum RequestCancellationPolicy
+{
+    /// <summary>接纳后由目标管理执行，忽略发送方提供的执行取消令牌。</summary>
+    TargetOwned,
+    /// <summary>将发送方显式提供的执行取消令牌用于目标协作取消，不自动传播等待令牌。</summary>
+    Propagate,
+}
+
 /// <summary>表示请求的路由或等待结论，与目标操作执行结果分别表达。</summary>
 public enum RequestResultKind
 {
@@ -38,10 +47,10 @@ public sealed class RequestResult<TResult>
 public sealed class RequestPort<TRequest, TResult> where TRequest : notnull
 {
     private readonly object gate = new();
-    private readonly Func<TRequest, Task<OperationResult<TResult>>> start;
+    private readonly Func<TRequest, CancellationToken, Task<OperationResult<TResult>>> start;
     private bool accepting = true;
 
-    internal RequestPort(Func<TRequest, Task<OperationResult<TResult>>> start) => this.start = start;
+    internal RequestPort(Func<TRequest, CancellationToken, Task<OperationResult<TResult>>> start) => this.start = start;
 
     /// <summary>永久停止本端口后续接纳；与接纳原子排序，已接纳的目标执行及其状态反馈继续完成。</summary>
     public void Deactivate()
@@ -53,7 +62,7 @@ public sealed class RequestPort<TRequest, TResult> where TRequest : notnull
     }
 
     internal (RequestResultKind Kind, Task<OperationResult<TResult>>? Execution) Admit(TRequest request,
-        CancellationToken waitCancellationToken)
+        CancellationToken waitCancellationToken, CancellationToken executionCancellationToken)
     {
         lock (gate)
         {
@@ -69,7 +78,7 @@ public sealed class RequestPort<TRequest, TResult> where TRequest : notnull
         }
 
         // 接纳决定已经完成；后续停用不能撤销该请求，启动及平台回调在门外执行。
-        return (RequestResultKind.Responded, start(request));
+        return (RequestResultKind.Responded, start(request, executionCancellationToken));
     }
 }
 
@@ -113,10 +122,11 @@ public sealed class Mediator
     /// <typeparam name="TResult">业务契约的返回值类型。</typeparam>
     /// <param name="request">本次不可变业务请求。</param>
     /// <param name="waitCancellationToken">只控制请求接纳前取消和调用方等待，不传播到已接纳的目标执行。</param>
+    /// <param name="executionCancellationToken">仅在目标端口声明 Propagate 时用于执行协作取消；TargetOwned 忽略该令牌。与等待令牌分别控制；两者使用同一令牌也必须显式传入。</param>
     /// <returns>路由或等待结论，以及目标返回的原始操作结果。</returns>
     public Task<RequestResult<TResult>> SendAsync<TRequest, TResult>(TRequest request,
-        CancellationToken waitCancellationToken = default) where TRequest : notnull
-        => SendCoreAsync<TRequest, TResult>(request, null, waitCancellationToken);
+        CancellationToken waitCancellationToken = default, CancellationToken executionCancellationToken = default) where TRequest : notnull
+        => SendCoreAsync<TRequest, TResult>(request, null, waitCancellationToken, executionCancellationToken);
 
     /// <summary>请求宿主明确选择且已在本范围接线的端口，等待目标处理和有关状态提交完成。</summary>
     /// <typeparam name="TRequest">业务契约的不可变请求类型。</typeparam>
@@ -124,16 +134,18 @@ public sealed class Mediator
     /// <param name="request">本次不可变业务请求。</param>
     /// <param name="target">宿主为发送者选择的强类型目标端口。</param>
     /// <param name="waitCancellationToken">只控制请求接纳前取消和调用方等待，不传播到已接纳的目标执行。</param>
+    /// <param name="executionCancellationToken">仅在目标端口声明 Propagate 时用于执行协作取消；TargetOwned 忽略该令牌。与等待令牌分别控制；两者使用同一令牌也必须显式传入。</param>
     /// <returns>路由或等待结论，以及目标返回的原始操作结果。</returns>
     public Task<RequestResult<TResult>> SendAsync<TRequest, TResult>(TRequest request, RequestPort<TRequest, TResult> target,
-        CancellationToken waitCancellationToken = default) where TRequest : notnull
+        CancellationToken waitCancellationToken = default, CancellationToken executionCancellationToken = default) where TRequest : notnull
     {
         ArgumentNullException.ThrowIfNull(target);
-        return SendCoreAsync(request, target, waitCancellationToken);
+        return SendCoreAsync(request, target, waitCancellationToken, executionCancellationToken);
     }
 
     private async Task<RequestResult<TResult>> SendCoreAsync<TRequest, TResult>(TRequest request,
-        RequestPort<TRequest, TResult>? target, CancellationToken waitCancellationToken) where TRequest : notnull
+        RequestPort<TRequest, TResult>? target, CancellationToken waitCancellationToken,
+        CancellationToken executionCancellationToken) where TRequest : notnull
     {
         ArgumentNullException.ThrowIfNull(request);
         if (waitCancellationToken.IsCancellationRequested)
@@ -147,7 +159,8 @@ public sealed class Mediator
             return new RequestResult<TResult>(route);
         }
 
-        (RequestResultKind kind, Task<OperationResult<TResult>>? execution) = target!.Admit(request, waitCancellationToken);
+        (RequestResultKind kind, Task<OperationResult<TResult>>? execution) = target!.Admit(request, waitCancellationToken,
+            executionCancellationToken);
         if (execution is null)
         {
             return new RequestResult<TResult>(kind);

@@ -202,6 +202,163 @@ public sealed class MediatorOperationPolicyTests
         }
     }
 
+    /// <summary>取消排队请求的调用方等待仍保留目标工作及其 FIFO 位置。</summary>
+    /// <param name="propagate">端口是否允许显式执行取消。</param>
+    /// <returns>表示排队等待取消隔离验证完成的任务。</returns>
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task QueuedWaitCancellationPreservesTargetWorkAndFifo(bool propagate)
+    {
+        using CancellationTokenSource waitingCancellation = new();
+        ConcurrentQueue<int> starts = new();
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        PolicyPortFeature feature = new(async (value, _) =>
+        {
+            starts.Enqueue(value);
+            if (value == 1)
+            {
+                entered.SetResult();
+                await release.Task;
+            }
+
+            return value;
+        });
+        Mediator mediator = new();
+        RequestPort<PolicyPortRequest, int> port = feature.CreatePort("QueueAsync", OperationConcurrency.Queue, capacity: 2,
+            cancellationPolicy: propagate ? RequestCancellationPolicy.Propagate : RequestCancellationPolicy.TargetOwned);
+        using IDisposable registration = mediator.Register(port);
+        Task<OperationResult<int>> first = feature.QueueAsync();
+        await entered.Task.WaitAsync(Watchdog);
+        Task<RequestResult<int>> queued = mediator.SendAsync(new PolicyPortRequest(2), port, waitingCancellation.Token);
+        Task<OperationResult<int>>? third = null;
+        try
+        {
+            await Assert.That(feature.Snapshot.OperationStates["QueueAsync"].QueuedCount).IsEqualTo(1);
+            waitingCancellation.Cancel();
+            RequestResult<int> stoppedWaiting = await queued.WaitAsync(Watchdog);
+            await Assert.That(stoppedWaiting.Kind).IsEqualTo(RequestResultKind.WaitCanceled);
+            await Assert.That(stoppedWaiting.OperationResult).IsNull();
+            await Assert.That(feature.Snapshot.OperationStates["QueueAsync"].QueuedCount).IsEqualTo(1);
+            feature.SetValue(3);
+            third = feature.QueueAsync();
+            release.SetResult();
+            await first.WaitAsync(Watchdog);
+            await third.WaitAsync(Watchdog);
+            await Assert.That(starts.SequenceEqual([1, 2, 3])).IsTrue();
+            await Assert.That(feature.Snapshot.State.Values.SequenceEqual([1, 2, 3])).IsTrue();
+            await Assert.That(feature.Snapshot.OperationStates["QueueAsync"].QueuedCount).IsEqualTo(0);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await first.WaitAsync(Watchdog);
+            if (third is not null)
+            {
+                await third.WaitAsync(Watchdog);
+            }
+        }
+    }
+
+    /// <summary>显式执行取消移除尚未开始的排队请求，容量归还且其他入口继续推进。</summary>
+    /// <returns>表示排队执行取消验证完成的任务。</returns>
+    [Test]
+    public async Task PropagatedCancellationRemovesQueuedRequestWithoutStartingService()
+    {
+        using CancellationTokenSource executionCancellation = new();
+        ConcurrentQueue<int> starts = new();
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        PolicyPortFeature feature = new(async (value, _) =>
+        {
+            starts.Enqueue(value);
+            if (value == 1)
+            {
+                entered.SetResult();
+                await release.Task;
+            }
+
+            return value;
+        });
+        Mediator mediator = new();
+        RequestPort<PolicyPortRequest, int> port = feature.CreatePort("QueueAsync", OperationConcurrency.Queue, capacity: 2,
+            cancellationPolicy: RequestCancellationPolicy.Propagate);
+        using IDisposable registration = mediator.Register(port);
+        Task<OperationResult<int>> first = feature.QueueAsync();
+        await entered.Task.WaitAsync(Watchdog);
+        Task<RequestResult<int>> canceled = mediator.SendAsync(new PolicyPortRequest(2), port,
+            executionCancellationToken: executionCancellation.Token);
+        Task<RequestResult<int>> third = mediator.SendAsync(new PolicyPortRequest(3), port);
+        try
+        {
+            await Assert.That(feature.Snapshot.OperationStates["QueueAsync"].QueuedCount).IsEqualTo(2);
+            executionCancellation.Cancel();
+            RequestResult<int> result = await canceled.WaitAsync(Watchdog);
+            await Assert.That(result.Kind).IsEqualTo(RequestResultKind.Responded);
+            await Assert.That(result.OperationResult!.Kind).IsEqualTo(OperationResultKind.Canceled);
+            await Assert.That(result.OperationResult.HasValue).IsFalse();
+            await Assert.That(feature.Snapshot.OperationStates["QueueAsync"].QueuedCount).IsEqualTo(1);
+            await Assert.That(first.IsCompleted).IsFalse();
+            release.SetResult();
+            await first.WaitAsync(Watchdog);
+            await Assert.That((await third.WaitAsync(Watchdog)).OperationResult!.Kind).IsEqualTo(OperationResultKind.Completed);
+            await Assert.That(starts.SequenceEqual([1, 3])).IsTrue();
+            await Assert.That(feature.Snapshot.State.Values.SequenceEqual([1, 3])).IsTrue();
+        }
+        finally
+        {
+            release.TrySetResult();
+            await first.WaitAsync(Watchdog);
+            await canceled.WaitAsync(Watchdog);
+            await third.WaitAsync(Watchdog);
+        }
+    }
+
+    /// <summary>Latest 的链接执行令牌在不合作方法真实退出前持续有效，不提前返回取消结果。</summary>
+    /// <returns>表示 Latest 协作取消归属验证完成的任务。</returns>
+    [Test]
+    public async Task PropagatedLatestCancellationWaitsForUncooperativeServiceExit()
+    {
+        using CancellationTokenSource executionCancellation = new();
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource canceled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        PolicyPortFeature feature = new(async (value, token) =>
+        {
+            using CancellationTokenRegistration callback = token.Register(() => canceled.SetResult());
+            entered.SetResult();
+            await release.Task;
+            return value;
+        });
+        Mediator mediator = new();
+        RequestPort<PolicyPortRequest, int> port = feature.CreatePort("LatestAsync", OperationConcurrency.Latest,
+            cancellationPolicy: RequestCancellationPolicy.Propagate);
+        using IDisposable registration = mediator.Register(port);
+        Task<RequestResult<int>> request = mediator.SendAsync(new PolicyPortRequest(1), port,
+            executionCancellationToken: executionCancellation.Token);
+        try
+        {
+            await entered.Task.WaitAsync(Watchdog);
+            executionCancellation.Cancel();
+            await canceled.Task.WaitAsync(Watchdog);
+            await Assert.That(request.IsCompleted).IsFalse();
+            await Assert.That(feature.Snapshot.OperationStates["LatestAsync"].IsRunning).IsTrue();
+            release.SetResult();
+            RequestResult<int> result = await request.WaitAsync(Watchdog);
+            await Assert.That(result.Kind).IsEqualTo(RequestResultKind.Responded);
+            await Assert.That(result.OperationResult!.Kind).IsEqualTo(OperationResultKind.Canceled);
+            await Assert.That(feature.Snapshot.State.Values.IsEmpty).IsTrue();
+            await Assert.That(feature.Snapshot.OperationStates["LatestAsync"].IsRunning).IsFalse();
+            await Assert.That(feature.Snapshot.OperationStates["LatestAsync"].LastResult).IsEqualTo(OperationResultKind.Canceled);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await request.WaitAsync(Watchdog);
+        }
+    }
+
     /// <summary>同名策略一致但声明界限不同也必须明确拒绝，并保留在途执行。</summary>
     /// <param name="parallel">是否验证 Parallel 上限，否时验证 Queue 等待容量。</param>
     /// <returns>同名界限错配验证任务。</returns>
@@ -273,9 +430,10 @@ internal sealed partial class PolicyPortFeature : Feature<PolicyPortState>
     private ValueTask<int> QueueAsync(Operation<PolicyPortState> operation) => RunAsync(operation, operation.Snapshot.Value);
 
     internal RequestPort<PolicyPortRequest, int> CreatePort(string name, OperationConcurrency concurrency,
-        int capacity = 0, int maxConcurrency = 0)
+        int capacity = 0, int maxConcurrency = 0,
+        RequestCancellationPolicy cancellationPolicy = RequestCancellationPolicy.TargetOwned)
         => CreateRequestPort<PolicyPortRequest, int>(name, null, (operation, request) => RunAsync(operation, request.Value),
-            concurrency, capacity, maxConcurrency);
+            concurrency, capacity, maxConcurrency, cancellationPolicy);
 
     [Operation(Concurrency = OperationConcurrency.Latest)]
     private ValueTask<int> LatestAsync(Operation<PolicyPortState> operation) => RunAsync(operation, operation.Snapshot.Value);

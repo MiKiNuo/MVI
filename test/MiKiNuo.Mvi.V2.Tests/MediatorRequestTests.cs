@@ -380,25 +380,74 @@ public sealed class MediatorRequestTests
         await Assert.That(ReferenceEquals(details.Snapshot, before)).IsTrue();
     }
 
-    /// <summary>验证取消调用方等待后目标仍拥有执行，并通过受跟踪工作完成状态提交。</summary>
+    /// <summary>验证目标拥有执行时忽略执行取消令牌，契约选择传播时预取消不启动服务。</summary>
+    /// <param name="propagate">端口是否声明传播独立执行令牌。</param>
+    /// <param name="explicitTarget">发送时是否明确指定目标端口。</param>
+    /// <returns>表示执行预取消契约验证完成的任务。</returns>
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(false, true)]
+    [Arguments(true, false)]
+    [Arguments(true, true)]
+    public async Task PreCanceledExecutionTokenOnlyStopsOptedInTarget(bool propagate, bool explicitTarget)
+    {
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+        int serviceCalls = 0;
+        RequestDetailsFeature details = new((_, _) =>
+        {
+            serviceCalls++;
+            return ValueTask.FromResult("target result");
+        }, cancellationPolicy: propagate ? RequestCancellationPolicy.Propagate : RequestCancellationPolicy.TargetOwned);
+        Mediator mediator = new();
+        using IDisposable registration = mediator.Register(details.Load);
+        RequestResult<string> result = await (explicitTarget
+            ? mediator.SendAsync(new LoadDetails(7), details.Load, executionCancellationToken: cancellation.Token)
+            : mediator.SendAsync<LoadDetails, string>(new(7), executionCancellationToken: cancellation.Token)).WaitAsync(Watchdog);
+        await Assert.That(result.Kind).IsEqualTo(RequestResultKind.Responded);
+        await Assert.That(result.OperationResult!.Kind).IsEqualTo(propagate ? OperationResultKind.Canceled : OperationResultKind.Completed);
+        await Assert.That(serviceCalls).IsEqualTo(propagate ? 0 : 1);
+        await Assert.That(details.Snapshot.OperationStates["Load"].IsRunning).IsFalse();
+    }
+
+    /// <summary>验证取消等待不自动传播，即使端口支持传播也由目标继续记录晚成功或晚故障。</summary>
+    /// <param name="fault">目标是否在等待结束后发生故障。</param>
+    /// <param name="propagate">端口是否支持显式执行取消。</param>
     /// <returns>表示等待取消与目标执行归属验证完成的任务。</returns>
     [Test]
-    public async Task WaitCancellationDoesNotCancelAcceptedTargetExecution()
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    [Arguments(true, true)]
+    public async Task WaitCancellationDoesNotCancelAcceptedTargetExecution(bool fault, bool propagate)
     {
         using CancellationTokenSource cancellation = new();
         TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource committed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<OperationState> finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        InvalidOperationException failure = new("late target failure");
         bool targetTokenCanCancel = true;
         RequestDetailsFeature details = new(async (operation, _) =>
         {
             targetTokenCanCancel = operation.CancellationToken.CanBeCanceled;
+            await operation.UpdateAsync(static (state, value) => state with { Text = value }, "already committed");
             entered.SetResult();
             await release.Task;
-            await operation.UpdateAsync(static (state, value) => state with { Text = value }, "target continued");
-            committed.SetResult();
+            if (fault)
+            {
+                throw failure;
+            }
+
             return "target continued";
-        });
+        }, cancellationPolicy: propagate ? RequestCancellationPolicy.Propagate : RequestCancellationPolicy.TargetOwned);
+        using RequestInlineProjection projection = new(details);
+        projection.PropertyChanged += (_, _) =>
+        {
+            if (details.Snapshot.OperationStates.TryGetValue("Load", out OperationState? state) && !state.IsRunning)
+            {
+                finished.TrySetResult(state);
+            }
+        };
         Mediator mediator = new();
         using IDisposable registration = mediator.Register(details.Load);
         Task<RequestResult<string>> waiting = mediator.SendAsync(new LoadDetails(7), details.Load, cancellation.Token);
@@ -411,16 +460,202 @@ public sealed class MediatorRequestTests
             await Assert.That(canceled.OperationResult).IsNull();
             await Assert.That(targetTokenCanCancel).IsFalse();
             await Assert.That(details.Snapshot.OperationStates["Load"].IsRunning).IsTrue();
+            await Assert.That(details.Snapshot.State.Text).IsEqualTo("already committed");
             release.SetResult();
-            await committed.Task.WaitAsync(Watchdog);
-            await Assert.That(details.Snapshot.State.Text).IsEqualTo("target continued");
+            OperationState completed = await finished.Task.WaitAsync(Watchdog);
+            await Assert.That(completed.LastResult).IsEqualTo(fault ? OperationResultKind.Faulted : OperationResultKind.Completed);
+            await Assert.That(completed.Exception).IsEqualTo(fault ? failure : null);
+            await Assert.That(details.Snapshot.State.Text).IsEqualTo(fault ? "already committed" : "target continued");
         }
         finally
         {
             release.TrySetResult();
-            await committed.Task.WaitAsync(Watchdog);
+            await finished.Task.WaitAsync(Watchdog);
         }
     }
+
+    /// <summary>验证显式执行取消持续覆盖目标登记的工作，等待结束不能提前清除运行身份。</summary>
+    /// <param name="cancelWait">是否先独立取消调用方等待。</param>
+    /// <param name="latest">是否验证 Latest 所有的链接取消令牌。</param>
+    /// <returns>表示传播取消和真实退出验证完成的任务。</returns>
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    [Arguments(true, true)]
+    public async Task PropagatedCancellationWaitsForTrackedWorkToReallyExit(bool cancelWait, bool latest)
+    {
+        using CancellationTokenSource waitingCancellation = new();
+        using CancellationTokenSource executionCancellation = new();
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> observedCancellation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<OperationState> finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RequestDetailsFeature details = new(async (operation, _) =>
+        {
+            await operation.UpdateAsync(static (state, value) => state with { Text = value }, "committed before cancellation");
+            operation.Track(TrackedAsync(operation));
+            return "committed before cancellation";
+        }, cancellationPolicy: RequestCancellationPolicy.Propagate,
+            concurrency: latest ? OperationConcurrency.Latest : OperationConcurrency.Reject);
+        using RequestInlineProjection projection = new(details);
+        projection.PropertyChanged += (_, _) =>
+        {
+            if (details.Snapshot.OperationStates.TryGetValue("Load", out OperationState? state) && !state.IsRunning)
+            {
+                finished.TrySetResult(state);
+            }
+        };
+        Mediator mediator = new();
+        using IDisposable registration = mediator.Register(details.Load);
+        Task<RequestResult<string>> request = mediator.SendAsync(new LoadDetails(7), details.Load,
+            waitingCancellation.Token, executionCancellation.Token);
+        try
+        {
+            await entered.Task.WaitAsync(Watchdog);
+            if (cancelWait)
+            {
+                waitingCancellation.Cancel();
+                RequestResult<string> canceled = await request.WaitAsync(Watchdog);
+                await Assert.That(canceled.Kind).IsEqualTo(RequestResultKind.WaitCanceled);
+                await Assert.That(canceled.OperationResult).IsNull();
+                await Assert.That(executionCancellation.IsCancellationRequested).IsFalse();
+            }
+
+            executionCancellation.Cancel();
+            await Assert.That(details.Snapshot.OperationStates["Load"].IsRunning).IsTrue();
+            await Assert.That(finished.Task.IsCompleted).IsFalse();
+            await Assert.That(details.Snapshot.State.Text).IsEqualTo("committed before cancellation");
+            if (!cancelWait)
+            {
+                await Assert.That(request.IsCompleted).IsFalse();
+            }
+
+            release.SetResult();
+            await Assert.That(await observedCancellation.Task.WaitAsync(Watchdog)).IsTrue();
+            OperationState completed = await finished.Task.WaitAsync(Watchdog);
+            await Assert.That(completed.LastResult).IsEqualTo(OperationResultKind.Canceled);
+            await Assert.That(completed.Exception).IsNull();
+            await Assert.That(details.Snapshot.State.Text).IsEqualTo("committed before cancellation");
+            RequestResult<string> result = await request.WaitAsync(Watchdog);
+            if (!cancelWait)
+            {
+                await Assert.That(result.Kind).IsEqualTo(RequestResultKind.Responded);
+                await Assert.That(result.OperationResult!.Kind).IsEqualTo(OperationResultKind.Canceled);
+                await Assert.That(result.OperationResult.HasValue).IsFalse();
+            }
+        }
+        finally
+        {
+            release.TrySetResult();
+            await request.WaitAsync(Watchdog);
+            await finished.Task.WaitAsync(Watchdog);
+        }
+
+        async Task TrackedAsync(Operation<RequestDetailsState> operation)
+        {
+            entered.SetResult();
+            await release.Task;
+            observedCancellation.SetResult(operation.CancellationToken.IsCancellationRequested);
+            operation.CancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
+    /// <summary>验证已完成响应与取消同时竞争时只产生互斥的等待结论和有效目标结果。</summary>
+    /// <param name="cancelExecution">是否竞争取消目标执行，否时只取消调用方等待。</param>
+    /// <returns>表示取消与完成竞争验证完成的任务。</returns>
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task WaitCancellationAndCompletionRaceKeepDistinctResults(bool cancelExecution)
+    {
+        for (int attempt = 0; attempt < 12; attempt++)
+        {
+            using CancellationTokenSource cancellation = new();
+            TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource race = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            RequestDetailsFeature details = new(async (_, _) =>
+            {
+                entered.SetResult();
+                await release.Task;
+                return "completed despite waiter";
+            }, cancellationPolicy: RequestCancellationPolicy.Propagate);
+            using RequestInlineProjection projection = new(details);
+            projection.PropertyChanged += (_, _) =>
+            {
+                if (details.Snapshot.OperationStates.TryGetValue("Load", out OperationState? state) && !state.IsRunning)
+                {
+                    finished.TrySetResult();
+                }
+            };
+            Mediator mediator = new();
+            using IDisposable registration = mediator.Register(details.Load);
+            Task<RequestResult<string>> request = mediator.SendAsync(new LoadDetails(7), details.Load,
+                cancelExecution ? CancellationToken.None : cancellation.Token,
+                cancelExecution ? cancellation.Token : CancellationToken.None);
+            await entered.Task.WaitAsync(Watchdog);
+            Task cancel = Task.Run(async () =>
+            {
+                await race.Task;
+                cancellation.Cancel();
+            });
+            Task complete = Task.Run(async () =>
+            {
+                await race.Task;
+                release.SetResult();
+            });
+            race.SetResult();
+            await Task.WhenAll(cancel, complete).WaitAsync(Watchdog);
+            RequestResult<string> result = await request.WaitAsync(Watchdog);
+            await Assert.That(result.Kind is RequestResultKind.WaitCanceled or RequestResultKind.Responded).IsTrue();
+            if (cancelExecution)
+            {
+                await Assert.That(result.Kind).IsEqualTo(RequestResultKind.Responded);
+                await Assert.That(result.OperationResult!.Kind is OperationResultKind.Canceled or OperationResultKind.Completed).IsTrue();
+            }
+            else if (result.Kind == RequestResultKind.WaitCanceled)
+            {
+                await Assert.That(result.OperationResult).IsNull();
+            }
+            else
+            {
+                await Assert.That(result.OperationResult!.Kind).IsEqualTo(OperationResultKind.Completed);
+            }
+
+            await finished.Task.WaitAsync(Watchdog);
+            await Assert.That(details.Snapshot.OperationStates["Load"].LastResult)
+                .IsEqualTo(cancelExecution ? result.OperationResult!.Kind : OperationResultKind.Completed);
+            if (!cancelExecution || result.OperationResult!.Kind == OperationResultKind.Completed)
+            {
+                await Assert.That(details.Snapshot.State.Text).IsEqualTo("completed despite waiter");
+            }
+        }
+    }
+
+    /// <summary>验证目标响应已返回后取消等待不会改写已观察结果。</summary>
+    /// <returns>表示响应先完成验证结束的任务。</returns>
+    [Test]
+    public async Task CompletedResponseIsUnaffectedByLaterWaitCancellation()
+    {
+        using CancellationTokenSource cancellation = new();
+        RequestDetailsFeature details = new();
+        Mediator mediator = new();
+        using IDisposable registration = mediator.Register(details.Load);
+        RequestResult<string> result = await mediator.SendAsync(new LoadDetails(7), details.Load, cancellation.Token).WaitAsync(Watchdog);
+        cancellation.Cancel();
+        await Assert.That(result.Kind).IsEqualTo(RequestResultKind.Responded);
+        await Assert.That(result.OperationResult!.Kind).IsEqualTo(OperationResultKind.Completed);
+        await Assert.That(details.Snapshot.State.Text).IsEqualTo("details 7");
+    }
+
+    /// <summary>验证契约端口拒绝未定义的取消策略。</summary>
+    /// <returns>表示取消策略校验完成的任务。</returns>
+    [Test]
+    public async Task UndefinedCancellationPolicyIsRejected()
+        => await Assert.That(() => new RequestDetailsFeature(cancellationPolicy: (RequestCancellationPolicy)99))
+            .Throws<ArgumentOutOfRangeException>();
 
     /// <summary>验证请求原子采样输入，纯规则期间不持有范围与端口锁，接纳后停用不撤销请求。</summary>
     /// <returns>表示原子请求启动与范围独立性验证完成的任务。</returns>
@@ -640,11 +875,14 @@ internal sealed partial class RequestDetailsFeature : Feature<RequestDetailsStat
     private readonly Func<RequestDetailsState, LoadDetails, bool> validate;
 
     public RequestDetailsFeature(Func<Operation<RequestDetailsState>, LoadDetails, ValueTask<string>>? service = null,
-        Func<RequestDetailsState, LoadDetails, bool>? validate = null) : base(new())
+        Func<RequestDetailsState, LoadDetails, bool>? validate = null,
+        RequestCancellationPolicy cancellationPolicy = RequestCancellationPolicy.TargetOwned,
+        OperationConcurrency concurrency = OperationConcurrency.Reject) : base(new())
     {
         this.service = service ?? (static (_, request) => ValueTask.FromResult($"details {request.ObjectId}"));
         this.validate = validate ?? (static (state, request) => state.Enabled && request.ObjectId > 0);
-        Load = CreateRequestPort<LoadDetails, string>("Load", this.validate, HandleAsync);
+        Load = CreateRequestPort<LoadDetails, string>("Load", this.validate, HandleAsync, concurrency,
+            cancellationPolicy: cancellationPolicy);
     }
 
     public RequestPort<LoadDetails, string> Load { get; }

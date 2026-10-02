@@ -54,11 +54,13 @@ public abstract class Feature<TState> where TState : notnull
     /// <param name="name">与程序调用共用的操作名称。</param>
     /// <param name="validate">在启动原子区间根据当前状态和本次请求执行的纯验证。</param>
     /// <param name="execute">在提交门外处理请求并通过操作上下文反馈状态的业务方法。</param>
+    /// <param name="cancellationPolicy">接纳后的执行取消归属；默认 TargetOwned 忽略发送方执行令牌，Propagate 接受显式执行令牌。</param>
     /// <returns>隐藏本实例具体类型和状态类型的独立契约端口。</returns>
     protected RequestPort<TRequest, TResult> CreateRequestPort<TRequest, TResult>(string name,
-        Func<TState, TRequest, bool>? validate, Func<Operation<TState>, TRequest, ValueTask<TResult>> execute)
+        Func<TState, TRequest, bool>? validate, Func<Operation<TState>, TRequest, ValueTask<TResult>> execute,
+        RequestCancellationPolicy cancellationPolicy = RequestCancellationPolicy.TargetOwned)
         where TRequest : notnull
-        => CreateRequestPort(name, validate, execute, OperationConcurrency.Reject);
+        => CreateRequestPort(name, validate, execute, OperationConcurrency.Reject, cancellationPolicy: cancellationPolicy);
 
     /// <summary>创建显式共用同名操作并发配置的强类型请求端口。</summary>
     /// <typeparam name="TRequest">由业务契约定义的不可变请求类型。</typeparam>
@@ -69,17 +71,25 @@ public abstract class Feature<TState> where TState : notnull
     /// <param name="concurrency">与同名生成操作共用的显式接纳策略。</param>
     /// <param name="capacity">与同名 Queue 操作共用的正数等待容量，其他策略使用零。</param>
     /// <param name="maxConcurrency">与同名 Parallel 操作共用的正数并行上限，其他策略使用零。</param>
+    /// <param name="cancellationPolicy">接纳后的执行取消归属；默认 TargetOwned 忽略发送方执行令牌，Propagate 接受显式执行令牌。</param>
     /// <returns>隐藏本实例具体类型和状态类型的独立契约端口。</returns>
     protected RequestPort<TRequest, TResult> CreateRequestPort<TRequest, TResult>(string name,
         Func<TState, TRequest, bool>? validate, Func<Operation<TState>, TRequest, ValueTask<TResult>> execute,
-        OperationConcurrency concurrency, int capacity = 0, int maxConcurrency = 0)
+        OperationConcurrency concurrency, int capacity = 0, int maxConcurrency = 0,
+        RequestCancellationPolicy cancellationPolicy = RequestCancellationPolicy.TargetOwned)
         where TRequest : notnull
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(execute);
-        return new RequestPort<TRequest, TResult>(request => DispatchOperation(name,
+        if (!Enum.IsDefined(cancellationPolicy))
+        {
+            throw new ArgumentOutOfRangeException(nameof(cancellationPolicy));
+        }
+
+        return new RequestPort<TRequest, TResult>((request, executionCancellationToken) => DispatchOperation(name,
             state => validate?.Invoke(state, request) ?? true, operation => execute(operation, request),
-            CancellationToken.None, concurrency, capacity, maxConcurrency));
+            cancellationPolicy == RequestCancellationPolicy.Propagate ? executionCancellationToken : CancellationToken.None,
+            concurrency, capacity, maxConcurrency));
     }
 }
 
