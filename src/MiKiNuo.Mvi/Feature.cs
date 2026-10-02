@@ -1,4 +1,6 @@
-﻿namespace MiKiNuo.Mvi;
+﻿using System.Collections.Immutable;
+
+namespace MiKiNuo.Mvi;
 
 /// <summary>为一个独立功能实例提供统一状态输入入口。</summary>
 /// <typeparam name="TState">由生成器验证的不可变业务状态类型。</typeparam>
@@ -37,10 +39,13 @@ public abstract class Feature<TState> where TState : notnull
     /// <param name="validate">启动时的纯验证方法。</param>
     /// <param name="execute">在提交门外执行的业务方法。</param>
     /// <param name="cancellationToken">本次执行的协作取消令牌。</param>
+    /// <param name="concurrency">同名操作的接纳策略。</param>
+    /// <param name="maxConcurrency">并行接纳的正数上限；默认拒绝策略使用零。</param>
     /// <returns>业务方法退出且有关状态提交后的结构化结果。</returns>
     protected Task<OperationResult<TResult>> DispatchOperation<TResult>(string name, Func<TState, bool>? validate,
-        Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken)
-        => store.Start(name, validate, execute, cancellationToken);
+        Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken,
+        OperationConcurrency concurrency = OperationConcurrency.Reject, int maxConcurrency = 0)
+        => store.Start(name, validate, execute, cancellationToken, concurrency, maxConcurrency);
 }
 
 internal readonly struct InputIntent<TState, TValue>(TValue value, Func<TState, TValue, TState> reduce)
@@ -50,7 +55,8 @@ internal readonly struct InputIntent<TState, TValue>(TValue value, Func<TState, 
 
 /// <summary>描述启动请求及在入口采样的取消条件。</summary>
 internal readonly struct OperationStartIntent<TState, TResult>(string name, Guid id, Func<TState, bool>? validate,
-    Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken) where TState : notnull
+    Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken,
+    OperationConcurrency concurrency, int maxConcurrency) where TState : notnull
 {
     internal string Name { get; } = name;
     internal Guid Id { get; } = id;
@@ -58,6 +64,8 @@ internal readonly struct OperationStartIntent<TState, TResult>(string name, Guid
     internal Func<Operation<TState>, ValueTask<TResult>> Execute { get; } = execute;
     internal CancellationToken CancellationToken { get; } = cancellationToken;
     internal bool CancellationRequested { get; } = cancellationToken.IsCancellationRequested;
+    internal OperationConcurrency Concurrency { get; } = concurrency;
+    internal int MaxConcurrency { get; } = maxConcurrency;
 }
 
 /// <summary>描述提交后执行的业务方法与通过验证的开始输入。</summary>
@@ -163,7 +171,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
     }
 
     internal Task<OperationResult<TResult>> Start<TResult>(string name, Func<TState, bool>? validate,
-        Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken)
+        Func<Operation<TState>, ValueTask<TResult>> execute, CancellationToken cancellationToken,
+        OperationConcurrency concurrency, int maxConcurrency)
     {
         OperationReduction<TState, TResult> reduction;
         FeatureProjection<TState>? display;
@@ -177,7 +186,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
             reducing = true;
             try
             {
-                OperationStartIntent<TState, TResult> intent = new(name, Guid.NewGuid(), validate, execute, cancellationToken);
+                OperationStartIntent<TState, TResult> intent = new(name, Guid.NewGuid(), validate, execute, cancellationToken,
+                    concurrency, maxConcurrency);
                 reduction = Reduce(snapshot, intent);
                 display = Commit(reduction.Snapshot);
             }
@@ -197,20 +207,31 @@ internal sealed class FeatureStore<TState> where TState : notnull
         OperationStartIntent<TState, TResult> intent)
     {
         OperationState? operationState = current.OperationStates.GetValueOrDefault(intent.Name);
+        ImmutableList<Guid> runningIds = operationState?.RunningIds ?? ImmutableList<Guid>.Empty;
+        if (intent.Concurrency == OperationConcurrency.Reject ? intent.MaxConcurrency != 0
+            : intent.Concurrency != OperationConcurrency.Parallel || intent.MaxConcurrency <= 0)
+        {
+            RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name,
+                new OperationState(runningIds, intent.Id, OperationResultKind.Rejected, "InvalidConcurrency"));
+            return new OperationReduction<TState, TResult>(next,
+                new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Rejected, reason: "InvalidConcurrency"));
+        }
+
         if (intent.CancellationRequested)
         {
             RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name,
-                new OperationState(operationState?.RunningId, intent.Id, OperationResultKind.Canceled));
+                new OperationState(runningIds, intent.Id, OperationResultKind.Canceled));
             return new OperationReduction<TState, TResult>(next,
                 new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Canceled));
         }
 
-        if (operationState?.IsRunning == true)
+        if (runningIds.Count >= (intent.Concurrency == OperationConcurrency.Reject ? 1 : intent.MaxConcurrency))
         {
+            string reason = intent.Concurrency == OperationConcurrency.Reject ? "AlreadyRunning" : "ConcurrencyLimitReached";
             RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name,
-                new OperationState(operationState.RunningId, intent.Id, OperationResultKind.Rejected, "AlreadyRunning"));
+                new OperationState(runningIds, intent.Id, OperationResultKind.Rejected, reason));
             return new OperationReduction<TState, TResult>(next,
-                new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Rejected, reason: "AlreadyRunning"));
+                new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Rejected, reason: reason));
         }
 
         bool valid;
@@ -228,12 +249,13 @@ internal sealed class FeatureStore<TState> where TState : notnull
         if (!valid)
         {
             RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name,
-                new OperationState(null, intent.Id, OperationResultKind.Rejected, "ValidationFailed"));
+                new OperationState(runningIds, intent.Id, OperationResultKind.Rejected, "ValidationFailed"));
             return new OperationReduction<TState, TResult>(next,
                 new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Rejected, reason: "ValidationFailed"));
         }
 
-        RuntimeSnapshot<TState> started = WithOperationState(current, intent.Name, new OperationState(intent.Id, intent.Id, null));
+        RuntimeSnapshot<TState> started = WithOperationState(current, intent.Name,
+            new OperationState(runningIds.Add(intent.Id), intent.Id, null));
         return new OperationReduction<TState, TResult>(started, effect: new OperationEffect<TState, TResult>(intent, current.State));
     }
 
@@ -306,7 +328,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     private void EnsureOwned(Operation<TState> operation)
     {
-        if (!operation.Accepting || snapshot.OperationStates.GetValueOrDefault(operation.Name)?.RunningId != operation.Id)
+        if (!operation.Accepting || snapshot.OperationStates.GetValueOrDefault(operation.Name)?.RunningIds.Contains(operation.Id) != true)
         {
             throw new InvalidOperationException("操作上下文已经结束，不能继续提交反馈。");
         }
@@ -458,7 +480,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     private static OperationReduction<TState, TResult> Reduce<TResult>(RuntimeSnapshot<TState> current, OperationCompletedIntent<TResult> intent)
     {
-        if (current.OperationStates.GetValueOrDefault(intent.Name)?.RunningId != intent.Id)
+        OperationState? operationState = current.OperationStates.GetValueOrDefault(intent.Name);
+        if (operationState?.RunningIds.Contains(intent.Id) != true)
         {
             return new OperationReduction<TState, TResult>(current,
                 new OperationResult<TResult>(intent.Name, intent.Id, OperationResultKind.Faulted, reason: "InactiveOperation",
@@ -467,7 +490,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
         OperationResultKind kind = intent.Failure is not null ? OperationResultKind.Faulted
             : intent.Canceled ? OperationResultKind.Canceled : OperationResultKind.Completed;
-        RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name, new OperationState(null, intent.Id, kind, exception: intent.Failure));
+        RuntimeSnapshot<TState> next = WithOperationState(current, intent.Name,
+            new OperationState(operationState.RunningIds.Remove(intent.Id), intent.Id, kind, exception: intent.Failure));
         return new OperationReduction<TState, TResult>(next, new OperationResult<TResult>(intent.Name, intent.Id, kind,
             kind == OperationResultKind.Completed ? intent.Value : default, exception: intent.Failure));
     }
