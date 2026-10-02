@@ -65,7 +65,9 @@ public sealed class CloseTicket
 
     internal Task<ReleaseResult> Completion => completion.Task;
     internal bool DependsOnCurrentExecution => FeatureFactory.DependsOnConstruction(owner)
-        || FeatureOwnership.DependsOnExecution(owner, OperationExecutionContext.Current.Value);
+        || FeatureOwnership.DependsOnExecution(owner, OperationExecutionContext.Current.Value?.Owner)
+        || OperationExecutionContext.DependsOnSynchronousCallback(owner)
+        || OperationExecutionContext.DependsOnRequest(owner);
 
     /// <summary>获取真实释放完成及释放异常；所属操作直接访问自身票据时拒绝自等待。</summary>
     public Task<ReleaseResult> Released
@@ -117,5 +119,70 @@ public sealed class FeatureClosedException : InvalidOperationException
 
 internal static class OperationExecutionContext
 {
-    internal static AsyncLocal<object?> Current { get; } = new();
+    [ThreadStatic]
+    private static FreshScope? synchronous;
+    internal static AsyncLocal<ExecutionFrame?> Current { get; } = new();
+    internal static AsyncLocal<RequestEdge?> Requests { get; } = new();
+
+    internal static bool DependsOnRequest(object owner)
+    {
+        for (RequestEdge? edge = Requests.Value; edge is not null && edge.IsActive; edge = edge.Parent)
+        {
+            if (edge.IsActive && FeatureOwnership.DependsOnExecution(owner, edge.Caller)) return true;
+        }
+
+        return false;
+    }
+
+    internal static FreshScope Fresh() => new();
+
+    internal static object? ResourceCaller => Current.Value?.Owner ?? synchronous?.ResourceOwner;
+    internal static RequestEdge? ResourceRequests => Requests.Value ?? synchronous?.ResourceEdges;
+    internal static FreshScope? ResourceLifetime => Current.Value is null ? synchronous : null;
+
+    internal static bool DependsOnSynchronousCallback(object owner)
+    {
+        for (FreshScope? scope = synchronous; scope is not null; scope = scope.previous)
+        {
+            if (scope.ResourceOwner is not null && FeatureOwnership.DependsOnExecution(owner, scope.ResourceOwner)) return true;
+            for (RequestEdge? edge = scope.ResourceEdges; edge is not null && edge.IsActive; edge = edge.Parent)
+            {
+                if (FeatureOwnership.DependsOnExecution(owner, edge.Caller)) return true;
+            }
+        }
+        return false;
+    }
+
+    internal sealed class FreshScope : IDisposable
+    {
+        private int active = 1;
+        internal bool IsActive => Volatile.Read(ref active) != 0;
+        internal readonly FreshScope? previous = synchronous;
+        private readonly ExecutionFrame? frame = Current.Value;
+        private readonly RequestEdge? requests = Requests.Value;
+        internal object? ResourceOwner => frame?.Owner ?? previous?.ResourceOwner;
+        internal RequestEdge? ResourceEdges => requests ?? previous?.ResourceEdges;
+        internal FreshScope() { synchronous = this; Current.Value = null; Requests.Value = null; }
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref active, 0);
+            Current.Value = frame; Requests.Value = requests; synchronous = previous;
+        }
+    }
+}
+
+internal sealed class ExecutionFrame(object owner, Action validate)
+{
+    internal object Owner { get; } = owner;
+    internal void Validate() => validate();
+}
+
+internal sealed class RequestEdge(object caller, object target, RequestEdge? parent, OperationExecutionContext.FreshScope? lifetime = null)
+{
+    private int active = 1;
+    internal object Caller { get; } = caller;
+    internal object Target { get; } = target;
+    internal RequestEdge? Parent { get; } = parent;
+    internal bool IsActive => Volatile.Read(ref active) != 0 && lifetime?.IsActive != false;
+    internal void End() => Interlocked.Exchange(ref active, 0);
 }

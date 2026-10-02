@@ -281,7 +281,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     private async Task ConsumePostsAsync()
     {
-        OperationExecutionContext.Current.Value = this;
+        OperationExecutionContext.Current.Value = null;
+        OperationExecutionContext.Requests.Value = null;
         while (true)
         {
             PostEnvelope envelope;
@@ -914,7 +915,8 @@ internal sealed class FeatureStore<TState> where TState : notnull
     {
         EnsureOwned(operation);
         if (closeResult is not null) throw new FeatureClosedException();
-        if (snapshot.OperationStates.GetValueOrDefault(operation.Name)?.RunningIds.Contains(operation.Id) != true)
+        if (operation.IsConfirmation ? !activeExecutions.Contains(operation)
+            : snapshot.OperationStates.GetValueOrDefault(operation.Name)?.RunningIds.Contains(operation.Id) != true)
         {
             throw new OperationSupersededException();
         }
@@ -977,6 +979,7 @@ internal sealed class FeatureStore<TState> where TState : notnull
 
     private void RequestOperationDisplay(FeatureProjection<TState>? display, Guid operationId)
     {
+        using OperationExecutionContext.FreshScope fresh = OperationExecutionContext.Fresh();
         try
         {
             display?.RequestDisplay();
@@ -1001,8 +1004,11 @@ internal sealed class FeatureStore<TState> where TState : notnull
     private async Task<OperationResult<TResult>> ExecuteAsync<TResult>(Operation<TState> operation,
         Func<Operation<TState>, ValueTask<TResult>> execute)
     {
-        object? previous = OperationExecutionContext.Current.Value;
-        OperationExecutionContext.Current.Value = this;
+        ExecutionFrame? previous = OperationExecutionContext.Current.Value;
+        OperationExecutionContext.Current.Value = new ExecutionFrame(this, () =>
+        {
+            lock (gate) EnsureActive(operation);
+        });
         try
         {
             return await ExecuteCoreAsync(operation, execute).ConfigureAwait(false);

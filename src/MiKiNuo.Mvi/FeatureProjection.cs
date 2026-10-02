@@ -194,6 +194,7 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
 
     internal void RequestDisplay()
     {
+        using OperationExecutionContext.FreshScope fresh = OperationExecutionContext.Fresh();
         long id;
         lock (gate)
         {
@@ -226,6 +227,7 @@ public abstract class FeatureProjection<TState> : INotifyPropertyChanged, IDispo
 
     private void Display(long id)
     {
+        using OperationExecutionContext.FreshScope fresh = OperationExecutionContext.Fresh();
         try
         {
             while (true)

@@ -118,12 +118,14 @@ public sealed class Mediator
     /// <returns>容量或目标不可用的拒绝原因，或关联后续处理结果的接纳回执。</returns>
     public PostReceipt<TResult> Post<TMessage, TResult>(TMessage message, RequestPort<TMessage, TResult> target) where TMessage : notnull
     {
+        OperationExecutionContext.Current.Value?.Validate();
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(target);
         Guid id = Guid.NewGuid();
         RequestPort<TMessage, TResult>? selected = target;
-        return SelectTarget(ref selected) == RequestResultKind.Responded ? target.Post(message, id)
-            : new PostReceipt<TResult>(id, PostResultKind.TargetUnavailable);
+        if (SelectTarget(ref selected) != RequestResultKind.Responded) return new PostReceipt<TResult>(id, PostResultKind.TargetUnavailable);
+        using OperationExecutionContext.FreshScope fresh = OperationExecutionContext.Fresh();
+        return target.Post(message, id);
     }
 
     /// <summary>尝试定向投递，并通过完整回执保留接纳或拒绝原因。</summary>
@@ -200,6 +202,8 @@ public sealed class Mediator
         CancellationToken executionCancellationToken) where TRequest : notnull
     {
         ArgumentNullException.ThrowIfNull(request);
+        ExecutionFrame? caller = OperationExecutionContext.Current.Value;
+        caller?.Validate();
         if (waitCancellationToken.IsCancellationRequested)
         {
             return new RequestResult<TResult>(RequestResultKind.WaitCanceled);
@@ -211,21 +215,27 @@ public sealed class Mediator
             return new RequestResult<TResult>(route);
         }
 
-        (RequestResultKind kind, Task<OperationResult<TResult>>? execution) = target!.Admit(request, waitCancellationToken,
-            executionCancellationToken);
-        if (execution is null)
-        {
-            return new RequestResult<TResult>(kind);
-        }
-
+        RequestEdge? previous = OperationExecutionContext.Requests.Value;
+        object? resourceCaller = OperationExecutionContext.ResourceCaller;
+        RequestEdge? edge = resourceCaller is null ? null : new RequestEdge(resourceCaller, target!.Owner!.ExecutionOwner,
+            OperationExecutionContext.ResourceRequests, OperationExecutionContext.ResourceLifetime);
+        if (edge is not null) OperationExecutionContext.Requests.Value = edge;
         try
         {
+            (RequestResultKind kind, Task<OperationResult<TResult>>? execution) = target!.Admit(request, waitCancellationToken,
+                executionCancellationToken);
+            if (execution is null) return new RequestResult<TResult>(kind);
             OperationResult<TResult> response = await execution.WaitAsync(waitCancellationToken).ConfigureAwait(false);
             return new RequestResult<TResult>(RequestResultKind.Responded, response);
         }
         catch (OperationCanceledException) when (waitCancellationToken.IsCancellationRequested)
         {
             return new RequestResult<TResult>(RequestResultKind.WaitCanceled);
+        }
+        finally
+        {
+            edge?.End();
+            OperationExecutionContext.Requests.Value = previous;
         }
     }
 

@@ -24,6 +24,8 @@ internal static class Program
     internal static string WorkspaceVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-workspace-verification.txt");
     internal static bool VerifyV2Close { get; private set; }
     internal static string CloseVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-close-verification.txt");
+    internal static bool VerifyV2Navigation { get; private set; }
+    internal static string NavigationVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-navigation-verification.txt");
     /// <summary>
     /// 启动应用程序。
     /// </summary>
@@ -34,7 +36,10 @@ internal static class Program
     {
         VerifyV2Workspace = args.Contains("--verify-v2-workspace", StringComparer.Ordinal);
         VerifyV2Close = args.Contains("--verify-v2-close", StringComparer.Ordinal);
-        UseV2Workspace = VerifyV2Close || VerifyV2Workspace || args.Contains("--v2-workspace", StringComparer.Ordinal);
+        VerifyV2Navigation = args.Contains("--verify-v2-navigation", StringComparer.Ordinal);
+        UseV2Workspace = VerifyV2Navigation || VerifyV2Close || VerifyV2Workspace || args.Contains("--v2-workspace", StringComparer.Ordinal);
+        string? navigationResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-navigation-result=", StringComparison.Ordinal));
+        if (navigationResult is not null) NavigationVerificationPath = Path.GetFullPath(navigationResult["--v2-navigation-result=".Length..]);
         string? closeResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-close-result=", StringComparison.Ordinal));
         if (closeResult is not null) CloseVerificationPath = Path.GetFullPath(closeResult["--v2-close-result=".Length..]);
         string? workspaceResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-workspace-result=", StringComparison.Ordinal));
