@@ -6,13 +6,15 @@ public sealed class Operation<TState> where TState : notnull
 {
     private readonly FeatureStore<TState> store;
 
-    internal Operation(FeatureStore<TState> store, string name, Guid id, TState snapshot, CancellationToken cancellationToken)
+    internal Operation(FeatureStore<TState> store, string name, Guid id, TState snapshot, CancellationToken cancellationToken,
+        CancellationTokenSource? cancellationSource)
     {
         this.store = store;
         Name = name;
         Id = id;
         Snapshot = snapshot;
         CancellationToken = cancellationToken;
+        CancellationSource = cancellationSource;
     }
 
     internal string Name { get; }
@@ -24,6 +26,8 @@ public sealed class Operation<TState> where TState : notnull
     internal bool Accepting { get; set; } = true;
 
     internal List<Task> Work { get; } = [];
+
+    internal CancellationTokenSource? CancellationSource { get; }
 
     /// <summary>获取通过启动验证时采样的业务输入。</summary>
     public TState Snapshot { get; }
@@ -51,7 +55,7 @@ public sealed class Operation<TState> where TState : notnull
     /// <typeparam name="TPayload">不可变业务反馈载荷的类型。</typeparam>
     /// <param name="reducer">依据当前状态和载荷计算下一状态的纯转换。</param>
     /// <param name="payload">本次反馈载荷。</param>
-    /// <returns>提交完成或有效无变化时成功完成的任务。</returns>
+    /// <returns>提交完成或有效无变化时成功完成的任务；被取代时以 OperationSupersededException 明确失败。</returns>
     public ValueTask UpdateAsync<TPayload>(Func<TState, TPayload, TState> reducer, TPayload payload)
     {
         try
