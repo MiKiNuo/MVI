@@ -1,0 +1,102 @@
+﻿[
+  {
+    "name": "MVI2001-nonpartial",
+    "id": "MVI2001",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\n// diagnostic\npublic sealed class Editor() : Feature<State>(new());"
+  },
+  {
+    "name": "MVI2002-mutable-state",
+    "id": "MVI2002",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State {\n// diagnostic\npublic int[] Values { get; init; } = [];\n}\npublic sealed partial class Editor() : Feature<State>(new());"
+  },
+  {
+    "name": "MVI2003-invalid-input",
+    "id": "MVI2003",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State {\n// diagnostic\n[Input] public int Count { get; }\n}\npublic sealed partial class Editor() : Feature<State>(new());"
+  },
+  {
+    "name": "MVI2004-invalid-rule",
+    "id": "MVI2004",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State { [Input] public int Count { get; init; } }\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[OnInput(\"Count\")] private State Change(State state, int value) => state;\n}"
+  },
+  {
+    "name": "MVI2005-ambiguous-rules",
+    "id": "MVI2005",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State { [Input] public int Count { get; init; } }\npublic sealed partial class Editor() : Feature<State>(new()) {\n[OnInput(\"Count\")] private static State First(State state, int value) => state;\n// diagnostic\n[OnInput(\"Count\")] private static State Second(State state, int value) => state;\n}"
+  },
+  {
+    "name": "MVI2006-input-conflict",
+    "id": "MVI2006",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State { [Input] public int Count { get; init; } }\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\npublic void SetCount(int value) { }\n}"
+  },
+  {
+    "name": "MVI2007-invalid-operation",
+    "id": "MVI2007",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[Operation] public ValueTask<int> SubmitAsync(Operation<State> operation) => default;\n}"
+  },
+  {
+    "name": "MVI2008-invalid-validation",
+    "id": "MVI2008",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[Operation(Validate=\"Missing\")] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;\n}"
+  },
+  {
+    "name": "MVI2009-operation-conflict",
+    "id": "MVI2009",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[Operation] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;\npublic Task<int> SubmitAsync(CancellationToken token) => Task.FromResult(1);\n}"
+  },
+  {
+    "name": "MVI2010-invalid-concurrency",
+    "id": "MVI2010",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[Operation(Concurrency=OperationConcurrency.Queue)] private ValueTask<int> SubmitAsync(Operation<State> operation) => default;\n}"
+  },
+  {
+    "name": "MVI2011-invalid-request",
+    "id": "MVI2011",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed record Message;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[RequestHandler] public ValueTask<int> Load(Operation<State> operation, Message message) => default;\n}"
+  },
+  {
+    "name": "MVI2012-invalid-request-validation",
+    "id": "MVI2012",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed record Message;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[RequestHandler(Validate=\"Missing\")] private ValueTask<int> Load(Operation<State> operation, Message message) => default;\n}"
+  },
+  {
+    "name": "MVI2013-duplicate-request",
+    "id": "MVI2013",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed record Message;\npublic sealed partial class Editor() : Feature<State>(new()) {\n[RequestHandler] private ValueTask<int> Load(Operation<State> operation, Message message) => default;\n// diagnostic\n[RequestHandler] private Task<int> OtherLoad(Operation<State> operation, Message message) => Task.FromResult(1);\n}"
+  },
+  {
+    "name": "MVI2014-request-entry-conflict",
+    "id": "MVI2014",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed record Message;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[RequestHandler] private ValueTask<int> Load(Operation<State> operation, Message message) => default;\npublic int CreateLoadPort() => 1;\n}"
+  },
+  {
+    "name": "MVI2015-invalid-request-policy",
+    "id": "MVI2015",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed record Message;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[RequestHandler(CancellationPolicy=(RequestCancellationPolicy)9)] private ValueTask<int> Load(Operation<State> operation, Message message) => default;\n}"
+  },
+  {
+    "name": "MVI2016-factory-conflict",
+    "id": "MVI2016",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\npublic static int CreateAsync() => 1;\n}"
+  },
+  {
+    "name": "MVI2016-preferred-constructors",
+    "id": "MVI2016",
+    "source": "using MiKiNuo.Mvi;\nusing Microsoft.Extensions.DependencyInjection;\npublic sealed record State;\npublic sealed partial class Editor : Feature<State> {\n// diagnostic\n[ActivatorUtilitiesConstructor] public Editor() : base(new()) { }\n// diagnostic\n[ActivatorUtilitiesConstructor] public Editor(int value) : base(new()) { }\n}"
+  },
+  {
+    "name": "MVI2011-nonpublic-message",
+    "id": "MVI2011",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\ninternal sealed record Message;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[RequestHandler] private ValueTask<int> Load(Operation<State> operation, Message message) => default;\n}"
+  },
+  {
+    "name": "MVI2011-nonpublic-result",
+    "id": "MVI2011",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed record Message;\ninternal sealed record Result;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[RequestHandler] private ValueTask<Result> Load(Operation<State> operation, Message message) => default;\n}"
+  },
+  {
+    "name": "MVI2011-ref-like-message",
+    "id": "MVI2011",
+    "source": "using MiKiNuo.Mvi;\npublic sealed record State;\npublic sealed partial class Editor() : Feature<State>(new()) {\n// diagnostic\n[RequestHandler] private ValueTask<int> Load(Operation<State> operation, Span<int> message) => default;\n}"
+  }
+]
