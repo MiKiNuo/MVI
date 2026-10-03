@@ -1,18 +1,18 @@
-sequenceDiagram
+﻿sequenceDiagram
     actor User as 用户
     participant View as LoginView
-    participant Adapter as ViewAdapter
-    participant Runtime as Login FeatureRuntime
-    participant Reducer as GeneratedReducer
-    participant Runner as EffectRunner
+    participant Adapter as 生成 Projection + 平台连接
+    participant Runtime as Login FeatureStore
+    participant Reducer as FeatureStore.Reduce
+    participant Runner as FeatureStore.ExecuteAsync
     participant Auth as IAuthService
 
     User->>View: 输入用户名与密码
     View->>Adapter: 平台绑定回写
-    Adapter->>Runtime: GeneratedIntent.InputChanged
+    Adapter->>Runtime: InputIntent
     critical CommitGate
         Runtime->>Reducer: Reduce(currentSnapshot, intent)
-        Reducer-->>Runtime: Reduction(nextSnapshot, [], Accepted)
+        Reducer-->>Runtime: RuntimeSnapshot(nextState, operations, version)
         Runtime->>Runtime: 原子提交 RuntimeSnapshot 与 Version
     end
     Runtime-->>Adapter: 直接调度字段投影
@@ -20,14 +20,14 @@ sequenceDiagram
 
     User->>View: 点击登录
     View->>Adapter: 生成 Submit 命令
-    Adapter->>Runtime: GeneratedIntent.StartOperation
+    Adapter->>Runtime: OperationStartIntent
     critical CommitGate
         Runtime->>Reducer: Reduce(currentSnapshot, StartOperation)
         alt 当前状态通过启动验证
-            Reducer-->>Runtime: Reduction(RunningSnapshot, [SubmitEffect], Accepted)
+            Reducer-->>Runtime: OperationReduction(RunningSnapshot, [SubmitEffect], Accepted)
             Runtime->>Runtime: 原子提交操作身份、Running 与 Version
         else 启动验证拒绝
-            Reducer-->>Runtime: Reduction(RejectedSnapshot, [], Rejected)
+            Reducer-->>Runtime: OperationReduction(RejectedSnapshot, [], Rejected)
             Runtime->>Runtime: 提交本次验证反馈与 Version，不生成执行 Effect
         end
     end
@@ -43,14 +43,14 @@ sequenceDiagram
         critical CommitGate
             Runtime->>Reducer: Reduce(currentSnapshot, resultIntent)
             Reducer->>Reducer: 核对操作有效性并应用纯转换
-            Reducer-->>Runtime: Reduction(nextSnapshot, [], Accepted)
+            Reducer-->>Runtime: RuntimeSnapshot(nextState, operations, version)
             Runtime->>Runtime: 基于当前业务状态提交结果与 Version
         end
         Runtime-->>Runner: UpdateAsync 的状态提交完成
         Runner->>Runtime: OperationCompleted 内部 Intent
         critical CommitGate
             Runtime->>Reducer: Reduce(currentSnapshot, completionIntent)
-            Reducer-->>Runtime: Reduction(CompletedSnapshot, [], Accepted)
+            Reducer-->>Runtime: OperationReduction(CompletedSnapshot, [], Accepted)
             Runtime->>Runtime: 原子提交 OperationStates 与 Version
         end
         Runtime-->>Adapter: 调度最新统一快照投影

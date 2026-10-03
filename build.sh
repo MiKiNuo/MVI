@@ -2,4 +2,4 @@
 set -euo pipefail
 dotnet restore MiKiNuo.Mvi.slnx
 dotnet build MiKiNuo.Mvi.slnx --no-restore
-dotnet test MiKiNuo.Mvi.slnx --no-build
+dotnet test --solution MiKiNuo.Mvi.slnx --no-build

@@ -1,31 +1,27 @@
-flowchart TB
+﻿flowchart TB
     subgraph App["应用作者"]
-        Feature["«component» State + Feature<br/>纯规则与异步 Operation 声明"]
-        View["«component» View<br/>界面与绑定声明"]
+        Feature["«component» State + Feature 子类型<br/>Input / Operation / RequestHandler 声明"]
+        View["«component» View<br/>原生控件与本地接线"]
     end
-
-    subgraph Compile["核心包内的 analyzer 资产 · 仅编译期"]
-        Generator["«component» Source Generator<br/>强类型输入、转换与执行适配"]
+    subgraph Compile["MiKiNuo.Mvi 包内唯一 analyzer · 仅编译期"]
+        Generator["«component» MiKiNuo.Mvi.Generators<br/>输入、命令、Projection、端口与工厂"]
     end
-
-    subgraph Platform["选择 Avalonia 或 Godot 平台包"]
-        Adapter["«component» ViewAdapter<br/>输入回写、快照投影、UI 调度"]
+    subgraph Platform["MiKiNuo.Mvi.Avalonia / MiKiNuo.Mvi.Godot"]
+        Adapter["«component» 平台 Projection / FeatureHost<br/>输入连接、UI 调度、视图挂载与卸载"]
     end
-
     subgraph Core["MiKiNuo.Mvi 核心运行时"]
-        Runtime["«component» FeatureRuntime · 每实例独立<br/>Store / Reducer / Snapshot / EffectRunner"]
-        Mediator["«component» Mediator<br/>实例地址、契约与定向投递"]
+        Runtime["«component» Feature / FeatureStore · 每实例独立<br/>Reduce / RuntimeSnapshot / ExecuteAsync"]
+        Mediator["«component» Mediator / RequestPort<br/>定向接纳、等待与处理结果"]
+        Ownership["«component» FeatureOwnership / FeatureFactory<br/>所有权、独立 Scope 与关闭票据"]
     end
-
     Other["«component» 其他独立 Feature"]
-    Services["«component» 应用外部服务<br/>HTTP、文件、平台 UI 服务"]
-
-    Generator -.->|读取业务声明| Feature
-    Generator -.->|生成运行适配| Runtime
-    Generator -.->|生成绑定适配| Adapter
-    View -->|输入与平台绑定| Adapter
-    Adapter -->|Intent 入口| Runtime
-    Runtime -->|调用纯规则与 Operation| Feature
-    Feature -->|异步业务使用| Services
-    Runtime <-->|发送契约消息 / 接收目标 Intent| Mediator
-    Other <-->|指定目标的契约投递| Mediator
+    Services["«component» 应用外部服务<br/>HTTP、文件、导航与 UI 服务"]
+    Feature -.->|声明输入| Generator
+    Generator -.->|生成强类型入口| Feature
+    View -->|本地绑定与原生信号| Adapter
+    Adapter -->|生成输入与操作调用| Runtime
+    Runtime -->|门内纯规则 / 门外 Operation| Feature
+    Feature -->|异步业务调用| Services
+    Runtime <-->|明确契约端口| Mediator
+    Other <-->|定向请求 / Post| Mediator
+    Ownership -->|所有权与关闭| Runtime

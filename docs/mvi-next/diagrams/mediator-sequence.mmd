@@ -1,22 +1,22 @@
-sequenceDiagram
+﻿sequenceDiagram
     participant View as EditorA View
-    participant Source as EditorA Runtime
-    participant SourceRunner as EditorA EffectRunner
+    participant Source as EditorA FeatureStore
+    participant SourceRunner as EditorA FeatureStore.ExecuteAsync
     participant Mediator as Mediator
-    participant Target as EditorB Runtime
-    participant Reducer as EditorB GeneratedReducer
-    participant TargetRunner as EditorB EffectRunner
+    participant Target as EditorB FeatureStore
+    participant Reducer as EditorB FeatureStore.Reduce
+    participant TargetRunner as EditorB FeatureStore.ExecuteAsync
 
     View->>Source: 生成业务 Intent
     Source->>Source: 纯 Reduce 与本实例状态提交
-    Source->>SourceRunner: 执行已接纳 GeneratedEffect
-    SourceRunner->>Mediator: SendAsync(editorB, SaveRequest)
+    Source->>SourceRunner: 执行已接纳 OperationEffect
+    SourceRunner->>Mediator: SendAsync(SaveRequest, editorBPort)
     Mediator->>Target: 定向交付 SaveRequest
-    Target->>Target: 契约入口映射 GeneratedIntent.Save
+    Target->>Target: 契约入口映射 OperationStartIntent
     Note over Mediator,Target: 关闭或收件箱已满可返回拒绝结果
     critical EditorB CommitGate
         Target->>Reducer: Reduce(currentSnapshot, saveIntent)
-        Reducer-->>Target: Reduction(RunningSnapshot, [SaveEffect], Accepted)
+        Reducer-->>Target: OperationReduction(RunningSnapshot, [SaveEffect], Accepted)
         Target->>Target: 原子提交 Running 与 Version
     end
     Target->>TargetRunner: 锁外执行 SaveEffect
@@ -25,7 +25,7 @@ sequenceDiagram
         TargetRunner->>Target: 内部 Intent
         critical EditorB CommitGate
             Target->>Reducer: Reduce(currentSnapshot, feedbackIntent)
-            Reducer-->>Target: Reduction(nextSnapshot, [], Accepted)
+            Reducer-->>Target: RuntimeSnapshot(nextState, operations, version)
             Target->>Target: 原子提交统一快照与 Version
         end
         Target-->>TargetRunner: 反馈处理完成
@@ -38,7 +38,7 @@ sequenceDiagram
     Note over SourceRunner,Target: 接纳后取消源等待，不证明目标执行停止
 
     opt 只需要收件箱接纳结果
-        SourceRunner->>Mediator: Post(editorB, 明确契约消息)
+        SourceRunner->>Mediator: Post(明确契约消息, editorBPort)
         Mediator->>Target: 定向交付消息
         Target->>Target: 映射 Intent 并进入本实例收件箱
         Target-->>Mediator: Accepted

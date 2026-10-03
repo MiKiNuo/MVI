@@ -1,4 +1,4 @@
-name: Publish NuGet
+﻿name: Publish NuGet
 
 on:
   push:
@@ -63,79 +63,17 @@ jobs:
           Write-Host "PACKAGE_VERSION=$version"
           Write-Host "PUBLISH_TO_NUGET=$publish"
 
-      - name: Restore package projects
+      - name: Build, test, pack and verify consumers
         shell: pwsh
-        run: |
-          $projects = @(
-            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
-            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
-            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet restore $project
-          }
-
-      - name: Build package projects
-        shell: pwsh
-        run: |
-          $projects = @(
-            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
-            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
-            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet build $project `
-              -c Release `
-              --no-restore `
-              -p:Version=${{ env.PACKAGE_VERSION }} `
-              -p:ContinuousIntegrationBuild=true
-          }
-
-      - name: Clean package output
-        shell: pwsh
-        run: |
-          if (Test-Path "${{ env.PACKAGE_OUTPUT }}") {
-            Remove-Item "${{ env.PACKAGE_OUTPUT }}" -Recurse -Force
-          }
-
-          New-Item -ItemType Directory -Path "${{ env.PACKAGE_OUTPUT }}" | Out-Null
-
-      - name: Pack NuGet packages
-        shell: pwsh
-        run: |
-          $projects = @(
-            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
-            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
-            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet pack $project `
-              -c Release `
-              --no-build `
-              -p:PackageVersion=${{ env.PACKAGE_VERSION }} `
-              -p:ContinuousIntegrationBuild=true `
-              -o "${{ env.PACKAGE_OUTPUT }}"
-          }
+        run: ./scripts/pack-local.ps1 -Version "${{ env.PACKAGE_VERSION }}" -NonGraphical
 
       - name: Upload NuGet package artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages-${{ env.PACKAGE_VERSION }}
           path: |
-            ${{ env.PACKAGE_OUTPUT }}/*.nupkg
-            ${{ env.PACKAGE_OUTPUT }}/*.snupkg
+            ${{ env.PACKAGE_OUTPUT }}/${{ env.PACKAGE_VERSION }}/*.nupkg
+            ${{ env.PACKAGE_OUTPUT }}/${{ env.PACKAGE_VERSION }}/evidence/**
           if-no-files-found: error
 
       - name: Publish to NuGet.org
@@ -146,7 +84,7 @@ jobs:
             throw "Missing repository secret: NUGET_API_KEY"
           }
 
-          Get-ChildItem "${{ env.PACKAGE_OUTPUT }}" -Filter "*.nupkg" | ForEach-Object {
+          Get-ChildItem -LiteralPath "${{ env.PACKAGE_OUTPUT }}/${{ env.PACKAGE_VERSION }}" -Filter "*.nupkg" | ForEach-Object {
             dotnet nuget push $_.FullName `
               --api-key "${{ secrets.NUGET_API_KEY }}" `
               --source "${{ env.NUGET_SOURCE }}" `

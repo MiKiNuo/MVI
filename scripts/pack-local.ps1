@@ -1,37 +1,28 @@
+﻿#requires -Version 7.2
+
 param(
     [Parameter(Mandatory = $true)]
-    [string] $Version
+    [string] $Version,
+    [string] $GodotPath,
+    [switch] $NonGraphical
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$solution = Join-Path $repoRoot 'MiKiNuo.Mvi.slnx'
+if ([IO.Path]::GetFileName($Version) -ne $Version -or $Version -in @('.', '..')) { throw 'Version must be a NuGet version, not a path.' }
+$output = Join-Path $repoRoot "artifacts/packages/$Version"
 
-$solution = "MiKiNuo.Mvi.slnx"
-$output = "artifacts/packages"
-
-if (Test-Path $output) {
-    Remove-Item $output -Recurse -Force
-}
-
-New-Item -ItemType Directory -Path $output | Out-Null
+& (Join-Path $repoRoot 'test/MiKiNuo.Mvi.PackageConsumers/verify-output-boundary.ps1')
 
 dotnet restore $solution
-dotnet build $solution -c Release --no-restore -p:Version=$Version
-dotnet test $solution -c Release --no-build
+if ($LASTEXITCODE -ne 0) { throw 'Solution restore failed.' }
+dotnet build $solution -c Release --no-restore -p:UseSharedCompilation=false
+if ($LASTEXITCODE -ne 0) { throw 'Solution build failed.' }
+dotnet test --solution $solution -c Release --no-build --results-directory (Join-Path $repoRoot 'TestResults')
+if ($LASTEXITCODE -ne 0) { throw 'Solution tests failed.' }
 
-$projects = @(
-    "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
-    "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
-    "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-    "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj"
-)
-
-foreach ($project in $projects) {
-    dotnet pack $project `
-        -c Release `
-        --no-build `
-        -p:PackageVersion=$Version `
-        -p:ContinuousIntegrationBuild=true `
-        -o $output
-}
-
-Write-Host "Packages generated in $output"
+$arguments = @{ Version = $Version; PackageOutput = $output; NonGraphical = $NonGraphical }
+if ($GodotPath) { $arguments.GodotPath = $GodotPath }
+& (Join-Path $PSScriptRoot 'verify-package-consumers.ps1') @arguments
+Write-Host "Verified three packages in $output"

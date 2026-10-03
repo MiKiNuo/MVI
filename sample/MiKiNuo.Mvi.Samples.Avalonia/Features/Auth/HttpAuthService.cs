@@ -1,7 +1,6 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
-using MiKiNuo.Mvi.Domain.DI;
 
 namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
 
@@ -12,7 +11,6 @@ namespace MiKiNuo.Mvi.Samples.Avalonia.Features.Auth;
 /// 登录走 POST /auth/login，注册走 POST /users/add，
 /// 用于在真实网络条件下验证 MVI 异步链路（Intent → Effect → 回流）。
 /// </remarks>
-[DiService(ServiceLifetime.Singleton, ServiceType = typeof(IAuthService))]
 public sealed class HttpAuthService : IAuthService, IDisposable
 {
     private readonly HttpClient _httpClient = new()

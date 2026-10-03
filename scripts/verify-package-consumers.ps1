@@ -1,13 +1,18 @@
 ﻿#requires -Version 7.2
 
 param(
-    [string] $GodotPath = (Join-Path $PSScriptRoot '../.scratch/mvi-v2/tools/godot-4.6.2/Godot_v4.6.2-stable_mono_win64/Godot_v4.6.2-stable_mono_win64_console.exe')
+    [string] $GodotPath = (Join-Path $PSScriptRoot '../.scratch/mvi-v2/tools/godot-4.6.2/Godot_v4.6.2-stable_mono_win64/Godot_v4.6.2-stable_mono_win64_console.exe'),
+    [string] $Version,
+    [string] $PackageOutput,
+    [switch] $NonGraphical
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $runId = [Guid]::NewGuid().ToString('N')
-$version = '2.0.0-consumer19.' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmss') + '.run' + $runId
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = '2.0.0-consumer.' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmss') + '.run' + $runId
+}
 $workspace = Join-Path ([IO.Path]::GetTempPath()) ('mvi-package-consumers-' + $runId)
 $feed = Join-Path $workspace 'feed'
 $logs = Join-Path $workspace 'logs'
@@ -16,9 +21,18 @@ $commands = [Collections.Generic.List[object]]::new()
 $results = [Collections.Generic.List[object]]::new()
 $encoding = [Text.UTF8Encoding]::new($true)
 $oldPackages = $env:NUGET_PACKAGES
+$oldLocation = Get-Location
 
 function Write-Utf8([string] $Path, [string] $Content) {
     [IO.File]::WriteAllText($Path, $Content.Replace("`r`n", "`n").Replace("`n", "`r`n"), $encoding)
+}
+
+function Get-NormalizedPackageVersion([string] $Value) {
+    $sdkVersion = (& dotnet --version).Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve the active .NET SDK.' }
+    $dotnetRoot = Split-Path (Get-Command dotnet).Source -Parent
+    Add-Type -LiteralPath (Join-Path $dotnetRoot "sdk/$sdkVersion/NuGet.Versioning.dll")
+    return [NuGet.Versioning.NuGetVersion]::Parse($Value).ToNormalizedString()
 }
 
 function Invoke-Logged([string] $Name, [string] $Executable, [string[]] $Arguments, [switch] $AllowFailure) {
@@ -99,7 +113,7 @@ function Check-ConsumerAssets([string] $Directory, [int] $ExpectedGenerated, [st
     if ($assetFiles.Count -ne 1) { throw "Expected one NuGet asset manifest in $Directory." }
     $assets = Get-Content -LiteralPath $assetFiles[0].FullName -Raw | ConvertFrom-Json
     $framework = @($assets.libraries.PSObject.Properties.Name | Where-Object { $_ -like 'MiKiNuo.Mvi*' } | Sort-Object)
-    $expected = @($ExpectedFrameworkPackages | ForEach-Object { $_ + '/' + $version } | Sort-Object)
+    $expected = @($ExpectedFrameworkPackages | ForEach-Object { $_ + '/' + $normalizedVersion } | Sort-Object)
     if ($analyzers.Count -ne 1 -or $generated.Count -ne $ExpectedGenerated -or $references.Count -ne $expected.Count `
         -or @($references | Sort-Object -Unique).Count -ne $references.Count -or (Compare-Object $framework $expected)) {
         throw "Unexpected framework assets in $Directory (analyzers=$($analyzers.Count), generated=$($generated.Count), references=$($references.Count))."
@@ -126,8 +140,10 @@ function Check-ConsumerAssets([string] $Directory, [int] $ExpectedGenerated, [st
 }
 
 New-Item -ItemType Directory -Path $feed, $logs | Out-Null
+$normalizedVersion = Get-NormalizedPackageVersion $Version
 Write-Host "Workspace=$workspace"
 Write-Host "Version=$version"
+Write-Host "PackageVersion=$normalizedVersion"
 if ($workspace.StartsWith($repoRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Consumers must be outside the repository.' }
 for ($ancestor = [IO.DirectoryInfo]::new($workspace).Parent; $null -ne $ancestor; $ancestor = $ancestor.Parent) {
     foreach ($name in @('Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props', '.editorconfig')) {
@@ -142,16 +158,17 @@ Write-Utf8 (Join-Path $workspace 'NuGet.Config') @"
 </configuration>
 "@
 $candidateDirectories = @('src/MiKiNuo.Mvi', 'src/MiKiNuo.Mvi.Avalonia', 'src/MiKiNuo.Mvi.Godot', 'src/MiKiNuo.Mvi.Generators', `
-    'sample/MiKiNuo.Mvi.Samples.Avalonia/Features/V2Auth', 'sample/MiKiNuo.Mvi.Samples.Avalonia/Features/Auth', 'sample/MiKiNuo.Mvi.Samples.Godot', 'test/MiKiNuo.Mvi.PackageConsumers')
+    'sample/MiKiNuo.Mvi.Samples.Avalonia', 'sample/MiKiNuo.Mvi.Samples.Godot', 'test/MiKiNuo.Mvi.V2.Tests', `
+    'test/MiKiNuo.Mvi.Headless.Consumer', 'test/MiKiNuo.Mvi.PackageConsumers')
 $sourceFiles = @($candidateDirectories | ForEach-Object { Get-ChildItem -LiteralPath (Join-Path $repoRoot $_) -Recurse -File } | `
-    Where-Object { $_.FullName -notmatch '[\\/](bin|obj|\.godot)[\\/]' -and $_.Extension -in @('.cs', '.csproj', '.json', '.godot', '.tscn') })
-$sourceFiles += @(Get-Item -LiteralPath $PSCommandPath, (Join-Path $repoRoot 'Directory.Build.props'), (Join-Path $repoRoot 'Directory.Build.targets'), `
-    (Join-Path $repoRoot 'Directory.Packages.props'), (Join-Path $repoRoot '.editorconfig'))
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj|\.godot)[\\/]' -and $_.Extension -in @('.cs', '.csproj', '.json', '.godot', '.tscn', '.axaml', '.ps1') })
+$sourceFiles += @(Get-Item -LiteralPath $PSCommandPath, (Join-Path $repoRoot 'scripts/pack-local.ps1'), (Join-Path $repoRoot 'Directory.Build.props'), `
+    (Join-Path $repoRoot 'Directory.Packages.props'), (Join-Path $repoRoot '.editorconfig'), (Join-Path $repoRoot 'MiKiNuo.Mvi.slnx'))
 $sourceHashes = @($sourceFiles | Sort-Object FullName -Unique | ForEach-Object { [ordered]@{ path = [IO.Path]::GetRelativePath($repoRoot, $_.FullName); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash } })
 $candidateText = ($sourceHashes | ForEach-Object { $_.path + '|' + $_.sha256 }) -join "`n"
 $candidateHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($candidateText)))
 $head = (& git -C $repoRoot rev-parse HEAD) | Select-Object -Last 1
-Write-Utf8 (Join-Path $workspace 'candidate.json') ([ordered]@{ head = $head; sourceSha256 = $candidateHash; version = $version; files = $sourceHashes } | ConvertTo-Json -Depth 8)
+Write-Utf8 (Join-Path $workspace 'candidate.json') ([ordered]@{ head = $head; sourceSha256 = $candidateHash; version = $version; packageVersion = $normalizedVersion; files = $sourceHashes } | ConvertTo-Json -Depth 8)
 
 try {
     Set-Location -LiteralPath $repoRoot
@@ -174,7 +191,7 @@ try {
         try {
             $entries = @($zip.Entries.FullName)
             $analyzerEntries = @($entries | Where-Object { $_ -like '*MiKiNuo.Mvi.Generators.dll' })
-            $isCore = $package.Name -eq "MiKiNuo.Mvi.$version.nupkg"
+            $isCore = $package.Name -eq "MiKiNuo.Mvi.$normalizedVersion.nupkg"
             if (($isCore -and ($analyzerEntries.Count -ne 1 -or $analyzerEntries[0] -ne 'analyzers/dotnet/cs/MiKiNuo.Mvi.Generators.dll')) `
                 -or (!$isCore -and $analyzerEntries.Count -ne 0) -or ($entries -match 'lib/.*/MiKiNuo.Mvi.Generators|Infrastructure|Directory.Build|editorconfig')) {
                 throw "Invalid compile-time package boundary: $($package.Name)"
@@ -196,10 +213,6 @@ try {
     Get-ChildItem -LiteralPath (Join-Path $repoRoot 'sample/MiKiNuo.Mvi.Samples.Avalonia/Features/V2Auth') -Filter '*.cs' | `
         Where-Object { $_.Name -notlike 'Remount*' } | Copy-Item -Destination $avalonia
     Get-ChildItem -LiteralPath (Join-Path $repoRoot 'sample/MiKiNuo.Mvi.Samples.Avalonia/Features/Auth') -Filter '*.cs' | Copy-Item -Destination $avalonia
-    # The v1 sample's registration attribute is excluded only from this external staging copy; slice 20 removes the old registration at its source.
-    $httpCopy = Join-Path $avalonia 'HttpAuthService.cs'
-    $httpSource = [IO.File]::ReadAllText($httpCopy).Replace('using MiKiNuo.Mvi.Domain.DI;', '').Replace('[DiService(ServiceLifetime.Singleton, ServiceType = typeof(IAuthService))]', '')
-    Write-Utf8 $httpCopy $httpSource
     $godot = New-Consumer 'Godot' @('MiKiNuo.Mvi.Godot') -Godot
     Get-ChildItem -LiteralPath (Join-Path $repoRoot 'sample/MiKiNuo.Mvi.Samples.Godot') -File | `
         Where-Object { $_.Extension -in @('.cs', '.tscn', '.godot') } | Copy-Item -Destination $godot
@@ -215,13 +228,17 @@ try {
     }
     [void](Invoke-Logged 'core-run' 'dotnet' @((Join-Path $core 'bin/Debug/net10.0/Consumer.dll')))
     [void](Invoke-Logged 'dual-run' 'dotnet' @((Join-Path $dual 'bin/Debug/net10.0/Consumer.dll')))
-    $avaloniaResult = Join-Path $workspace 'avalonia-result.txt'
-    Invoke-Gui 'avalonia-run' 'dotnet' @((Join-Path $avalonia 'bin/Debug/net10.0/Consumer.dll'), "--result-path=$avaloniaResult")
-    if (!(Get-Content -LiteralPath $avaloniaResult -Raw).StartsWith('PASS v2-auth:')) { throw 'Avalonia acceptance did not pass.' }
-    $godotResult = Join-Path $workspace 'godot-result.json'
-    Invoke-Gui 'godot-run' ([IO.Path]::GetFullPath($GodotPath)) @('--path', $godot, 'res://Composition.tscn', '--rendering-method', 'gl_compatibility', '--resolution', '1000x700', '--', '--composition-self-test', "--result-path=$godotResult")
-    $godotReport = Get-Content -LiteralPath $godotResult -Raw | ConvertFrom-Json
-    if ($godotReport.passed -ne $true) { throw 'Godot acceptance did not pass.' }
+    $avaloniaResult = $null
+    $godotResult = $null
+    if (!$NonGraphical) {
+        $avaloniaResult = Join-Path $workspace 'avalonia-result.txt'
+        Invoke-Gui 'avalonia-run' 'dotnet' @((Join-Path $avalonia 'bin/Debug/net10.0/Consumer.dll'), "--result-path=$avaloniaResult")
+        if (!(Get-Content -LiteralPath $avaloniaResult -Raw).StartsWith('PASS v2-auth:')) { throw 'Avalonia acceptance did not pass.' }
+        $godotResult = Join-Path $workspace 'godot-result.json'
+        Invoke-Gui 'godot-run' ([IO.Path]::GetFullPath($GodotPath)) @('--path', $godot, 'res://Composition.tscn', '--rendering-method', 'gl_compatibility', '--resolution', '1000x700', '--', '--composition-self-test', "--result-path=$godotResult")
+        $godotReport = Get-Content -LiteralPath $godotResult -Raw | ConvertFrom-Json
+        if ($godotReport.passed -ne $true) { throw 'Godot acceptance did not pass.' }
+    }
 
     $diagnosticResults = @()
     foreach ($case in (Get-Content -LiteralPath (Join-Path $templates 'diagnostics.json') -Raw | ConvertFrom-Json)) {
@@ -244,8 +261,29 @@ try {
     foreach ($file in $sourceHashes) {
         if ((Get-FileHash -LiteralPath (Join-Path $repoRoot $file.path) -Algorithm SHA256).Hash -ne $file.sha256) { throw "Candidate changed during validation: $($file.path)" }
     }
-    Write-Utf8 (Join-Path $workspace 'result.json') ([ordered]@{ status = 'PASS'; version = $version; candidateSha256 = $candidateHash; packages = 3; consumers = 4; diagnosticCases = $diagnosticResults.Count; diagnosticIds = @($diagnosticResults.id | Sort-Object -Unique); avaloniaResult = $avaloniaResult; godotResult = $godotResult } | ConvertTo-Json -Depth 8)
-    Write-Host "PASS: three fresh packages, four isolated consumers, both native UI scenarios, $($diagnosticResults.Count) located diagnostic cases. Evidence=$workspace"
+    $scope = if ($NonGraphical) { 'non-graphical' } else { 'full-native-ui' }
+    $status = if ($NonGraphical) { 'PASS_NON_GRAPHICAL' } else { 'PASS' }
+    if ($PackageOutput) {
+        $destination = [IO.Path]::GetFullPath($PackageOutput)
+        if (Test-Path -LiteralPath $destination) {
+            $unexpected = @(Get-ChildItem -LiteralPath $destination -File -Filter '*.nupkg' | Where-Object { $_.Name -notin $packages.Name })
+            if ($unexpected.Count -ne 0) { throw "Output contains unverified packages: $($unexpected.Name -join ', ')" }
+        }
+        New-Item -ItemType Directory -Force -Path $destination | Out-Null
+        foreach ($package in $packages) { Copy-Item -LiteralPath $package.FullName -Destination $destination }
+    }
+    Write-Utf8 (Join-Path $workspace 'result.json') ([ordered]@{ status = $status; scope = $scope; nativeUi = !$NonGraphical; version = $version; packageVersion = $normalizedVersion; candidateSha256 = $candidateHash; packages = 3; consumers = 4; diagnosticCases = $diagnosticResults.Count; diagnosticIds = @($diagnosticResults.id | Sort-Object -Unique); avaloniaResult = $avaloniaResult; godotResult = $godotResult; packageOutput = $PackageOutput } | ConvertTo-Json -Depth 8)
+    if ($PackageOutput) {
+        $evidence = Join-Path $destination 'evidence'
+        New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+        Get-ChildItem -LiteralPath $workspace -Filter '*.json' -File | Copy-Item -Destination $evidence
+        Copy-Item -LiteralPath $logs -Destination $evidence -Recurse -Force
+        foreach ($case in $diagnosticResults) {
+            Copy-Item -LiteralPath $case.sarif -Destination (Join-Path $evidence ($case.name + '.sarif'))
+        }
+    }
+    Write-Host "${status}: three fresh packages, four isolated consumers, scope=$scope, $($diagnosticResults.Count) located diagnostic cases. Evidence=$workspace"
 } finally {
     $env:NUGET_PACKAGES = $oldPackages
+    Set-Location -LiteralPath $oldLocation.Path
 }

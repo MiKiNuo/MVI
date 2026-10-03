@@ -12,7 +12,6 @@ internal static class Program
     internal static bool UseV2Search { get; private set; }
     internal static bool VerifyV2Search { get; private set; }
     internal static string SearchVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-search-verification.txt");
-    internal static bool UseV2Auth { get; private set; }
     internal static bool VerifyV2Auth { get; private set; }
     internal static string AuthVerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-auth-verification.txt");
     internal static string VerificationPath { get; private set; } = Path.Combine(AppContext.BaseDirectory, "v2-input-verification.txt");
@@ -59,7 +58,6 @@ internal static class Program
         }
 
         VerifyV2Auth = args.Contains("--verify-v2-auth", StringComparer.Ordinal);
-        UseV2Auth = VerifyV2Auth || args.Contains("--v2-auth", StringComparer.Ordinal);
         string? authResult = args.FirstOrDefault(static argument => argument.StartsWith("--v2-auth-result=", StringComparison.Ordinal));
         if (authResult is not null) AuthVerificationPath = Path.GetFullPath(authResult["--v2-auth-result=".Length..]);
         string? result = args.FirstOrDefault(static argument => argument.StartsWith("--v2-input-result=", StringComparison.Ordinal));

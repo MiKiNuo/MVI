@@ -1,7 +1,5 @@
 ﻿using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using MiKiNuo.Mvi.Platforms.Avalonia.Threading;
-using MiKiNuo.Mvi.Samples.Avalonia.Composition;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Input;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Search;
 using MiKiNuo.Mvi.Samples.Avalonia.Features.V2Auth;
@@ -70,7 +68,17 @@ public sealed partial class App : global::Avalonia.Application
                         Program.SearchVerificationPath, "v2-search");
                 }
             }
-            else if (Program.UseV2Auth)
+            else if (Program.UseV2Input)
+            {
+                InputFormWindow window = new();
+                desktop.MainWindow = window;
+                if (Program.VerifyV2Input)
+                {
+                    ConfigureVerification(desktop, window, () => InputFormVerification.RunAsync(window),
+                        Program.VerificationPath, "v2-input");
+                }
+            }
+            else
             {
                 VerificationAuthService? service = Program.VerifyV2Auth ? new() : null;
                 AuthFormsWindow window = new(service);
@@ -103,21 +111,6 @@ public sealed partial class App : global::Avalonia.Application
                         }
                     };
                 }
-            }
-            else if (Program.UseV2Input)
-            {
-                InputFormWindow window = new();
-                desktop.MainWindow = window;
-                if (Program.VerifyV2Input)
-                {
-                    ConfigureVerification(desktop, window, () => InputFormVerification.RunAsync(window),
-                        Program.VerificationPath, "v2-input");
-                }
-            }
-            else
-            {
-                SampleCompositionRoot compositionRoot = new(new AvaloniaMviUiDispatcher());
-                desktop.MainWindow = compositionRoot.CreateMainWindow();
             }
         }
 

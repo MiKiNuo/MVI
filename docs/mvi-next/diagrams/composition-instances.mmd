@@ -1,32 +1,32 @@
-classDiagram
+﻿classDiagram
     direction TB
 
     class Workspace {
         <<instance>>
         +WorkspaceFeature
-        +Address workspace
-        +Guard()
-        +LogicalClose()
-        +Drain()
+        +InstanceId
+        +RequestCloseAsync()
+        +Close()
+        +CloseTicket.Released
     }
-    class WorkspaceRuntime {
+    class WorkspaceStore {
         <<instance>>
         +WorkspaceState
-        +WorkspaceOperations
-        +WorkspaceGate
+        +OperationStates
+        +FeatureStore.gate
     }
     class WorkspaceView {
         <<instance>>
-        +LocalBindings
+        +FeatureProjection
         +Unmount()
     }
     class EditorA {
         <<instance>>
         +EditorFeature
-        +Address editorA
+        +InstanceId A
         +EditorPortA
     }
-    class RuntimeA {
+    class StoreA {
         <<instance>>
         +StateA
         +OperationsA
@@ -34,16 +34,16 @@ classDiagram
     }
     class EditorViewA {
         <<instance>>
-        +BindingsA
+        +FeatureProjection A
         +Unmount()
     }
     class EditorB {
         <<instance>>
         +EditorFeature
-        +Address editorB
+        +InstanceId B
         +EditorPortB
     }
-    class RuntimeB {
+    class StoreB {
         <<instance>>
         +StateB
         +OperationsB
@@ -51,19 +51,19 @@ classDiagram
     }
     class EditorViewB {
         <<instance>>
-        +BindingsB
+        +FeatureProjection B
         +Unmount()
     }
     class Mediator {
         <<instance>>
-        +ExplicitTargets
+        +Register(RequestPort)
     }
 
-    Workspace "1" *-- "1" WorkspaceRuntime : 本实例内核
+    Workspace "1" *-- "1" WorkspaceStore : 本实例内核
     Workspace "1" *-- "1" EditorA : 拥有与关闭
     Workspace "1" *-- "1" EditorB : 拥有与关闭
-    EditorA "1" *-- "1" RuntimeA : 独立运行内核
-    EditorB "1" *-- "1" RuntimeB : 独立运行内核
+    EditorA "1" *-- "1" StoreA : 独立运行内核
+    EditorB "1" *-- "1" StoreB : 独立运行内核
     WorkspaceView ..> Workspace : 卸载只解绑
     WorkspaceView o-- EditorViewA : 视觉挂载
     WorkspaceView o-- EditorViewB : 视觉挂载

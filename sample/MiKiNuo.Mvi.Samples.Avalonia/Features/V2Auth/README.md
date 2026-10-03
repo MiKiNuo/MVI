@@ -1,14 +1,14 @@
-# v2 认证表单
+﻿# v2 认证表单
 
-任务 04 将已有的登录、注册、重置密码业务接入 v2。每个表单由自己的 State、Feature、View 构成；三个实例分别拥有状态和操作身份。窗口使用本地标签页展示三个表单，成功结果在原表单展示。默认示例切换属于任务 20，跨 Feature 导航与关闭属于后续任务。
+任务 04 将已有的登录、注册、重置密码业务接入 v2。每个表单由自己的 State、Feature、View 构成；三个实例分别拥有状态和操作身份。窗口使用本地标签页展示三个表单，成功结果在原表单展示。当前无参数启动默认进入这三个 v2 表单；跨 Feature 导航与关闭已在 V2Workspace 演示中实现。
 
 从仓库根目录启动真实 Avalonia 窗口：
 
 ```powershell
-rtk proxy dotnet run --project sample/MiKiNuo.Mvi.Samples.Avalonia/MiKiNuo.Mvi.Samples.Avalonia.csproj -- --v2-auth
+dotnet run --project sample/MiKiNuo.Mvi.Samples.Avalonia/MiKiNuo.Mvi.Samples.Avalonia.csproj
 ```
 
-正常运行复用已有的 `IAuthService`、`HttpAuthService` 与 `AuthResult`。登录、注册和重置密码继续采用现有业务校验；共享纯规则与 v1 中间件共用。网络服务保留原有示例行为，包括重置密码通过 DummyJSON 的用户更新接口演示网络往返。
+正常运行复用已有的 `IAuthService`、`HttpAuthService` 与 `AuthResult`。登录、注册和重置密码继续采用现有业务校验；共享纯规则由 AuthValidation 提供。旧中间件与 DI 属性已退役。网络服务保留原有示例行为，包括重置密码通过 DummyJSON 的用户更新接口演示网络往返。
 
 ## 作者声明
 
@@ -45,14 +45,14 @@ View 的输入连接与投影随 View 释放；投影释放后，保留的旧命
 Release 构建后运行：
 
 ```powershell
-rtk proxy dotnet run --project sample/MiKiNuo.Mvi.Samples.Avalonia/MiKiNuo.Mvi.Samples.Avalonia.csproj -c Release --no-build -- --verify-v2-auth
+dotnet run --project sample/MiKiNuo.Mvi.Samples.Avalonia/MiKiNuo.Mvi.Samples.Avalonia.csproj -c Release --no-build -- --verify-v2-auth
 ```
 
 验收使用可控认证服务和实际 Windows Avalonia 窗口，检查平台窗口句柄、原生输入与命令、提交验证、慢 IO 中的输入与加载、重复拒绝、结果分类、等待与绘制的边界及 UI 线程。它操作原生控件属性，不模拟物理键盘；可控服务使结果可复现，不依赖线上认证接口。
 
 结果默认写入样例可执行目录的 `v2-auth-verification.txt`。通过 `--v2-auth-result=<绝对路径>` 可以指定已有目录中的结果文件。宿主在验收后退出，以退出码表示通过或失败。
 
-## 本次验证（2026-10-02）
+## 历史切片 04 验证（2026-10-02）
 
 本次实现位于 `codex/v2-auth-04`，基线为 `0d70b53507a543b9a063c71c1b204f7943de5f8c`。原共享工作区出现其他任务的并发实现后，任务 04 转入独立工作树进行构建、验收和提交。
 
@@ -73,3 +73,5 @@ rtk proxy dotnet run --project sample/MiKiNuo.Mvi.Samples.Avalonia/MiKiNuo.Mvi.S
 ### Spec
 
 实质发现为 0。三个表单的输入、验证、服务调用、加载、四类结果与真实 UI 验收符合任务 04；作者声明量及后续任务的边界已记录。
+
+当前集成验收见切片 20；上述历史测试数量与分支说明保留为原始切片证据，不作为当前集成结果。

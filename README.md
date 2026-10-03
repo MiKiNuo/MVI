@@ -1,722 +1,111 @@
-# MiKiNuo.Mvi
+﻿# MiKiNuo.Mvi
 
-> **版本方向：本分支用于 MVI v2 的设计与开发。** 当前源码仍是 v1 基线，新架构的已接受决策见 [设计讨论](docs/mvi-next-design.md) 与 [v2 词汇表](docs/mvi-next/CONTEXT.md)。
->
-> v1 保留在 `main`，归档标签为 `archive/v1-2026-10-01`，固定提交为 [`ed77eb3`](https://github.com/MiKiNuo/MVI/tree/ed77eb38ecba77a62fac2c0cbbbb35321a540d03)。v2 开发与默认分支采用 `codex/mvi-v2`；以下现有框架说明对应 v1 基线。
+面向复杂业务 UI 与实时交互的 MVI v2 框架，目标为 .NET 10，支持 Avalonia 与 Godot。普通业务由不可变 State、独立 Feature 和平台 View 组成；框架生成输入回写、操作入口、命令、本地投影、请求处理端口与标准 DI 工厂。
 
-> 面向复杂业务 UI 的 **响应式组合式 MVI 框架**。  
-> 基于 **.NET 10 + R3 + Source Generator + Clean Architecture + Analyzer + 编译期 DI**，用于构建可追踪、可测试、可复用、可扩展的 Avalonia / WinForms / Godot / Unity 等多平台 UI 架构。
+当前默认分支 `codex/mvi-v2` 只保留 v2 运行协议。v1 位于 `main` 和固定归档 `archive/v1-2026-10-01`（`ed77eb38ecba77a62fac2c0cbbbb35321a540d03`），可以独立恢复用于历史调查和性能对照。
 
-![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
-![R3](https://img.shields.io/badge/R3-Reactive-00A6D6)
-![Avalonia](https://img.shields.io/badge/Avalonia-12.x-7B2CBF)
-![Source Generator](https://img.shields.io/badge/Source%20Generator-Enabled-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+## 状态与业务流程
 
----
-
-## 为什么做这个项目？
-
-### 完整 Feature 递归组合
-
-组合中的每个子 Feature 都有独立 Store、状态、ViewModel 和 EffectDispatcher，可以独立运行或嵌入不同宿主。父子及兄弟的业务通信统一经过中介者；Slot 只负责展示，视图离树不等于业务实例关闭。
-
-- `MviCompositionScope` 是一个显式通信范围。通过 `CreateEndpoint(Guid)` 建立实例端点，`Register<TRequest,TResponse>` 注册目标处理器，`Bind<TRequest>` 将来源接到确定目标；业务代码只依赖端点的 `IMviMediator.SendAsync`。
-- 通知实现 `IMviNotification`。宿主 `Subscribe<TNotification>` 显式订阅，端点 `PublishAsync` 返回每个订阅的接纳结果。通知不跨范围自动传播，发布完成不表示后续业务完成。接纳回调应短小，只调用本实例 `Store.TryPost`，队列满时抛出明确异常；后台失败由 `Store.Errors` 观察。
-- `[MviFeature]` 生成 `Create<FeatureName>InstanceAsync(endpoint)` 与传入初始状态的重载。例如 `LoginReducer` 对应 `CreateLoginInstanceAsync`。每次使用新端点，返回 `MviFeatureInstance<TViewModel>`；旧 `Resolve` 继续保留单实例语义。
-- `Own` 建立资源所有权树，`DisposeAsync` 等待子实例和在途操作释放。
-- 多个自动装配中间件必须用 `[MviMiddlewareOrder(n)]` 声明唯一顺序。MVI0018–MVI0020 拒绝装配歧义；MVI0021 阻止可静态识别的兄弟状态绑定和异类 Store 依赖，不能代替完整业务边界测试。
-
-可运行的业务示例位于 `sample/MiKiNuo.Mvi.Samples.Avalonia/Features/CompositionDemo`：`MedicineSearchDemoHost` 独立运行检索功能；`PrescriptionDemoHost` 组合检索、明细与父级摘要 MVI。它们复用相同业务实现，测试通过宿主接口验证工作区隔离和通知。示例名称与数量仅用于演示，不包含医疗规则。
-
-同一业务对象多开默认使用不同实例，是否共享草稿由宿主明确选择。各 Store 独立提交，“全部保存”的部分失败或事务策略由具体业务定义。
-
-在 HIS、EMR、LIS、MES、ERP、WMS、工业上位机、桌面管理系统、游戏 UI 等复杂客户端系统中，界面通常不是一个简单页面，而是由大量子模块组成：
-
-```text
-业务页面
-├─ 表单录入区
-├─ 查询筛选区
-├─ 列表区
-├─ 明细区
-├─ 流程区
-├─ 状态区
-├─ 审计日志区
-└─ 多个可复用业务组件
+```mermaid
+flowchart LR
+    View[View 输入] --> Intent[强类型 Intent]
+    Intent --> Store[FeatureStore 的验证与纯 Reduce]
+    Store --> Snapshot[RuntimeSnapshot: State / Operations / Version]
+    Snapshot --> Projection[所属 View 的本地投影]
+    Projection --> View
+    Store --> Effect[提交后的 OperationEffect]
+    Effect --> Operation[锁外 Operation / IO]
+    Operation --> Feedback[UpdateAsync / 完成 Intent]
+    Feedback --> Store
+    Mediator[定向 Mediator 请求端口] --> Intent
 ```
 
-传统 MVVM 在中小型页面里很好用，但当页面足够复杂后，ViewModel 很容易膨胀成“上帝对象”：
+每个 Feature 实例有独立状态、操作身份、准入与生命期。IO 使用启动时通过验证的输入快照；反馈以提交时的当前 State 做纯转换，保留期间的新编辑。状态与操作事实提交到同一个带版本的 `RuntimeSnapshot<TState>`；正常等待完成表示有关状态已提交，UI 绘制独立调度。
 
-```text
-ViewModel 里写属性绑定
-ViewModel 里写 Command
-ViewModel 里写业务判断
-ViewModel 里调接口
-ViewModel 里做页面跳转
-ViewModel 里处理子组件通信
-ViewModel 里维护多个局部状态
-```
+默认拒绝同操作重复启动；Latest 拒绝旧执行的迟到反馈，Queue 有界顺序处理，Parallel 明确限制并行度。执行结果区分完成、拒绝、取消、被取代和故障，业务失败仍可属于正常完成。
 
-最后会出现这些问题：
+完整子 Feature 可以独立复用、同类型多开和动态组合。跨 Feature 业务交互经 `Mediator` 定向投递；`SendAsync` 等待目标处理，`Post` 返回接纳及相关处理结果。View 卸载释放本地连接，实例由所有者关闭；逻辑关闭和真实资源释放分别观察。
 
-| 痛点           | 结果                                                         |
-| -------------- | ------------------------------------------------------------ |
-| ViewModel 过重 | 绑定逻辑、业务逻辑、副作用混在一起                           |
-| 状态变化来源多 | 很难知道是谁修改了界面                                       |
-| 组件互相引用   | 父子、兄弟模块依赖变成网状                                   |
-| 事件中心滥用   | Publish / Subscribe 到处飞，调用链不可见                     |
-| 代码重复       | PropertyChanged、Command、CanExecute、Reducer 分发、DI 注册反复手写 |
-| 平台耦合       | 业务交互逻辑绑死在 Avalonia / WinForms / Unity / Godot       |
-| 测试困难       | UI、异步、状态、副作用混在一起，不好单测                     |
+## 三个安装入口
 
-`MiKiNuo.Mvi` 的目标是把这些问题拆开：
+| 包 | 使用场景 |
+| --- | --- |
+| `MiKiNuo.Mvi` | 无 GUI 的业务宿主、运行时与组合；唯一携带生成器 analyzer |
+| `MiKiNuo.Mvi.Avalonia` | Avalonia 平台适配，转递 Core 与其生成资产 |
+| `MiKiNuo.Mvi.Godot` | Godot 平台适配，转递 Core 与其生成资产 |
 
-```text
-View 只绑定
-ViewModel 只暴露属性和命令
-Intent 表达用户意图
-Reducer 只做状态转换
-Effect 描述副作用
-EffectDispatcher 执行副作用
-Middleware 处理横切逻辑
-Mediator 协调父子和兄弟 MVI
-Source Generator 消除重复代码
-Analyzer 防止架构腐化
-```
-
----
-
-## MVI 是什么？
-
-MVI 是 **Model-View-Intent** 的架构思想。  
-在本项目中，它的核心是：
-
-> **界面不能随便修改状态。所有变化都必须通过 Intent 进入 Store，再由 Reducer 生成新的 State。**
-
-普通状态流：
-
-```text
-View
-  -> ViewModel
-  -> Intent
-  -> Middleware
-  -> Reducer
-  -> State
-  -> R3 State Stream
-  -> ViewModel
-  -> View
-```
-
-副作用流：
-
-```text
-Reducer
-  -> Effect
-  -> EffectDispatcher
-  -> Service / Mediator / Navigation / Async Task
-  -> New Intent
-```
-
-组件通信流：
-
-```text
-子 MVI
-  -> Effect
-  -> EffectDispatcher
-  -> Mediator.SendAsync(...)
-  -> 父 MVI 协调
-  -> 目标子 MVI Dispatch Intent
-```
-
-这使得每一次界面变化都有明确来源：
-
-```text
-谁触发？      Intent
-怎么变化？    Reducer
-变成什么？    State
-做了什么副作用？Effect
-影响了谁？    Mediator
-```
-
----
-
-## 为什么不是传统 MVVM？
-
-MVVM 的核心优势是绑定简单，但复杂业务 UI 不只是绑定，还包含状态流、业务流、组件流和副作用流。
-
-### MVVM 常见流向
-
-```text
-View
-  <-> ViewModel
-        -> Service
-        -> Event / Message
-        -> Other ViewModel
-```
-
-问题是状态变化可以来自很多地方，数据流不够统一。
-
-### MiKiNuo.Mvi 的流向
-
-```text
-View
-  -> Intent
-  -> Reducer
-  -> State
-  -> View
-```
-
-所有状态变化都通过一个方向流动。ViewModel 不再承载业务，只是 UI 绑定适配层。
-
-| 对比点    | 传统 MVVM                  | MiKiNuo.Mvi                              |
-| --------- | -------------------------- | ---------------------------------------- |
-| ViewModel | 容易变重                   | 只暴露属性和命令                         |
-| 状态变化  | 来源分散                   | Intent -> Reducer -> State               |
-| 副作用    | 常写在 Command / ViewModel | Effect -> EffectDispatcher               |
-| 组件通信  | 直接引用或事件总线         | Mediator Request / Response              |
-| 代码重复  | 手写属性、命令、通知       | Source Generator 自动生成                |
-| 测试      | 依赖 UI 和异步细节         | Reducer / Middleware / Effect 可独立测试 |
-| 跨平台    | 容易绑定具体 UI 框架       | Core 不依赖具体平台                      |
-
----
-
-## 架构亮点
-
-### 1. R3 驱动响应式数据流
-
-本项目不依赖 ReactiveUI，也不依赖 Rx.NET。核心响应式能力由 **R3** 提供。
-
-R3 在项目中的作用：
-
-| 场景               | R3 作用                                  |
-| ------------------ | ---------------------------------------- |
-| State Stream       | Store 推送最新状态                       |
-| Effect Stream      | Store 推送副作用                         |
-| Command CanExecute | 用 `Observable<bool>` 驱动命令可执行状态 |
-| ViewModel 回写     | State Stream 驱动属性更新                |
-| Middleware 诊断    | 记录 Intent、Reducer、Effect、耗时       |
-| UI 通知调度        | 状态变化投递回 UI 线程                   |
-
-View 对外仍然使用 UI 框架熟悉的绑定形式：
-
-```xml
-<TextBox Text="{Binding UserName, Mode=TwoWay}" />
-<Button Command="{Binding SubmitCommand}" />
-```
-
-但内部不是 setter 直接修改业务，而是：
-
-```text
-TextBox 输入
-  -> ViewModel setter
-  -> Intent
-  -> Store
-  -> Reducer
-  -> State
-  -> R3 State Stream
-  -> ViewModel
-  -> View
-```
-
----
-
-### 2. Source Generator 消除样板代码
-
-传统 ViewModel 往往要写大量重复代码：
-
-```text
-backing field
-PropertyChanged
-Command
-CanExecute
-setter
-状态同步
-Intent 派发
-Dispose
-```
-
-MiKiNuo.Mvi 用 Source Generator 自动生成这些代码。
-
-你只需要声明绑定关系：
-
-```csharp
-[MviBind(
-    StateProperty = nameof(LoginState.UserName),
-    BindingMode = MviBindingMode.TwoWay,
-    IntentType = typeof(LoginIntent.ChangeUserName))]
-public partial string UserName { get; set; }
-```
-
-生成器负责生成：
-
-```text
-属性字段
-PropertyChanged
-双向绑定 setter
-Intent 派发
-ApplyStateCore
-Command 初始化
-CanExecute 订阅
-Dispose 释放
-```
-
-生成器还负责生成：
-
-```text
-Reducer 分发入口
-DI 容器工厂
-ViewRegistry
-组合根注册代码
-```
-
-业务代码不需要手写大段 switch，也不需要运行时反射扫描。
-
----
-
-### 3. 实例化 Reducer，而不是静态工具类
-
-早期 Reducer 很容易写成静态类：
-
-```csharp
-public static class LoginReducers
-{
-    public static MviReduceResult<LoginState, LoginEffect> Reduce(...)
-}
-```
-
-这种方式简单，但不利于 DI、扩展和复杂 Feature 拆分。
-
-当前设计推荐每个 MVI 拥有自己的 Reducer 对象：
-
-```csharp
-public sealed partial class LoginReducer
-    : MviReducerBase<LoginState, LoginIntent, LoginEffect>
-{
-    [MviReduce]
-    private MviReduceResult<LoginState, LoginEffect> ReduceChangeUserName(
-        LoginState state,
-        LoginIntent.ChangeUserName intent)
-    {
-        LoginState nextState = state with
-        {
-            UserName = intent.UserName
-        };
-
-        return MviReduceResult.State(nextState);
-    }
-}
-```
-
-开发者只写具体 Intent 的处理方法。  
-根 Intent 的分发入口由 Source Generator 生成。
-
----
-
-### 4. 编译期 DI，不靠运行时扫描
-
-项目中的 DI 方向是 **Source Generator 生成强类型工厂**。
-
-目标：
-
-```text
-不使用运行时反射创建对象
-不依赖字符串查找
-不在启动时扫描程序集
-编译期生成对象图
-支持 Singleton / Scoped / Transient
-支持 Store / ViewModel / Reducer / EffectDispatcher / Middleware / ViewRegistry
-```
-
-对于大型客户端项目，这可以减少启动开销，并让依赖错误更早暴露。
-
----
-
-### 5. Mediator 是协调者，不是事件总线
-
-本项目不鼓励事件中心式的发布订阅：
-
-```text
-Publish
-Subscribe
-Broadcast
-```
-
-而是使用明确的 Request / Response：
-
-```csharp
-public sealed record OpenPatientRequest(string PatientId)
-    : IMviRequest<OpenPatientResponse>;
-
-OpenPatientResponse response = await mediator.SendAsync<OpenPatientResponse>(
-    new OpenPatientRequest(patientId),
-    cancellationToken);
-```
-
-适合处理：
-
-```text
-父 MVI 协调子 MVI
-子 MVI 向父 MVI 提交数据
-一个子 MVI 的结果传给另一个子 MVI
-可复用 MVI 模块与宿主页面解耦
-跨组件业务流程编排
-```
-
----
-
-### 6. Middleware 处理横切逻辑
-
-中间件位于 Intent 进入 Reducer 之前：
-
-```text
-Intent
-  -> Validation Middleware
-  -> Logging Middleware
-  -> Performance Middleware
-  -> Reducer
-```
-
-适合放入：
-
-```text
-表单校验
-权限检查
-防重复提交
-操作审计
-日志记录
-性能统计
-异常转换
-业务规则前置拦截
-```
-
-Reducer 保持纯粹，只做状态转换。
-
----
-
-### 7. Clean Architecture + 平台拆分
-
-当前仓库采用 `src / sample / test` 结构，并使用 `.slnx` 解决方案文件。
-
-```text
-src
-├─ MiKiNuo.Mvi.Domain
-├─ MiKiNuo.Mvi.Application
-├─ MiKiNuo.Mvi.Infrastructure
-├─ MiKiNuo.Mvi.Presentation
-└─ MiKiNuo.Mvi.Platforms.Avalonia
-
-sample
-└─ MiKiNuo.Mvi.Samples.Avalonia
-
-test
-└─ MiKiNuo.Mvi.Tests
-```
-
-分层职责：
-
-| 项目                             | 职责                                                         |
-| -------------------------------- | ------------------------------------------------------------ |
-| `MiKiNuo.Mvi.Domain`             | MVI / DI 基础抽象、标记接口、公共模型                        |
-| `MiKiNuo.Mvi.Application`        | Store、Command、Reducer、Middleware、Mediator、ViewModel Base |
-| `MiKiNuo.Mvi.Infrastructure`     | Source Generator、Analyzer、编译期工具                       |
-| `MiKiNuo.Mvi.Presentation`       | 平台无关表现层抽象，例如 ViewRegistry、UI Dispatcher 抽象    |
-| `MiKiNuo.Mvi.Platforms.Avalonia` | Avalonia 平台实现与 NuGet 入口包                             |
-
-依赖方向：
-
-```text
-MiKiNuo.Mvi.Platforms.Avalonia
-  -> MiKiNuo.Mvi.Presentation
-  -> MiKiNuo.Mvi.Application
-  -> MiKiNuo.Mvi.Domain
-```
-
-`MiKiNuo.Mvi.Infrastructure` 不作为运行时引用。  
-源码开发时通过 `Directory.Build.targets` 作为 Analyzer / Source Generator 注入编译流程。
-
-跨平台 View 自带事件绑定的设计决策见 [ViewEvent 到 Command 绑定设计决策](docs/view-event-command-binding.md)。
-
----
-
-## 安装方式
-
-> NuGet 包发布后，Avalonia 用户优先引用平台入口包。
-
-```xml
-<PackageReference Include="MiKiNuo.Mvi.Platforms.Avalonia" Version="x.y.z" />
-```
-
-该包会带入：
-
-```text
-MiKiNuo.Mvi.Domain
-MiKiNuo.Mvi.Application
-MiKiNuo.Mvi.Presentation
-MiKiNuo.Mvi.Platforms.Avalonia
-Source Generator / Analyzer
-```
-
-源码开发时，仓库通过 `Directory.Build.targets` 注入 `MiKiNuo.Mvi.Infrastructure`，无需 sample 项目直接引用所有底层项目。
-
----
-
-## 快速开始
-
-### 1. 创建 State
-
-```csharp
-public sealed record LoginState(
-    string UserName,
-    string Password,
-    bool CanSubmit,
-    bool IsBusy,
-    string? ErrorMessage) : IMviState
-{
-    public static LoginState Initial { get; } = new(
-        string.Empty,
-        string.Empty,
-        false,
-        false,
-        null);
-}
-```
-
-### 2. 创建 Intent
-
-```csharp
-public abstract partial record LoginIntent : IMviIntent
-{
-    public sealed partial record ChangeUserName(string UserName) : LoginIntent;
-
-    public sealed partial record ChangePassword(string Password) : LoginIntent;
-
-    public sealed partial record Submit : LoginIntent;
-
-    public sealed partial record Succeeded(ILoginProfile Profile) : LoginIntent;
-
-    public sealed partial record Failed(string ErrorMessage) : LoginIntent;
-}
-```
-
-### 3. 创建 Effect
-
-```csharp
-public abstract partial record LoginEffect : IMviEffect
-{
-    public sealed partial record NavigateToDashboard(string DisplayName) : LoginEffect;
-}
-```
-
-### 4. 编写实例化 Reducer
-
-```csharp
-public sealed partial class LoginReducer
-    : MviReducerBase<LoginState, LoginIntent, LoginEffect>
-{
-    [MviReduce(typeof(LoginIntent.ChangeUserName))]
-    private MviReduceResult<LoginState, LoginEffect> HandleChangeUserName(
-        LoginState state,
-        LoginIntent.ChangeUserName intent)
-    {
-        LoginState nextState = state with
-        {
-            UserName = intent.UserName,
-            ErrorMessage = null,
-            CanSubmit = CanSubmit(intent.UserName, state.Password)
-        };
-
-        return Unchanged(nextState);
-    }
-
-    [MviReduce(typeof(LoginIntent.Submit), Guard = nameof(CanSubmitState))]
-    private MviReduceResult<LoginState, LoginEffect> HandleSubmit(
-        LoginState state,
-        LoginIntent.Submit intent)
-    {
-        return Unchanged(state with { IsBusy = true, ErrorMessage = null });
-    }
-
-    [MviReduce(typeof(LoginIntent.Succeeded))]
-    private MviReduceResult<LoginState, LoginEffect> HandleSucceeded(
-        LoginState state,
-        LoginIntent.Succeeded intent)
-    {
-        LoginState nextState = state with
-        {
-            IsBusy = false,
-            ErrorMessage = null,
-            CanSubmit = true
-        };
-
-        return WithEffect(
-            nextState,
-            new LoginEffect.NavigateToDashboard(intent.Profile.DisplayName));
-    }
-
-    [MviReduce(typeof(LoginIntent.Failed))]
-    private MviReduceResult<LoginState, LoginEffect> HandleFailed(
-        LoginState state,
-        LoginIntent.Failed intent)
-    {
-        return Unchanged(state with
-        {
-            IsBusy = false,
-            ErrorMessage = intent.ErrorMessage,
-            CanSubmit = CanSubmit(state.UserName, state.Password)
-        });
-    }
-
-    private bool CanSubmitState(LoginState state) => state.CanSubmit;
-
-    private bool CanSubmit(string userName, string password)
-    {
-        return !string.IsNullOrWhiteSpace(userName)
-            && !string.IsNullOrWhiteSpace(password);
-    }
-}
-```
-
-### 5. 编写 ViewModel
-
-```csharp
-public sealed partial class LoginViewModel
-    : MviViewModelBase<LoginState, LoginIntent, LoginEffect>
-{
-    public LoginViewModel(IMviStore<LoginState, LoginIntent, LoginEffect> store)
-        : base(store)
-    {
-    }
-
-    [MviBind(
-        nameof(LoginState.UserName),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(LoginIntent.ChangeUserName))]
-    public partial string UserName { get; set; }
-
-    [MviBind(
-        nameof(LoginState.Password),
-        BindingMode = MviBindingMode.TwoWay,
-        IntentType = typeof(LoginIntent.ChangePassword))]
-    public partial string Password { get; set; }
-
-    [MviBind(nameof(LoginState.CanSubmit))]
-    public partial bool CanSubmit { get; private set; }
-
-    [MviCommand(
-        typeof(LoginIntent.Submit),
-        CanExecuteProperty = nameof(CanSubmit),
-        IsAsync = true)]
-    public partial IMviAsyncCommand SubmitCommand { get; private set; }
-}
-```
-
-### 6. 编写 EffectDispatcher
-
-```csharp
-public sealed class LoginEffectDispatcher : MviEffectDispatcherBase<LoginEffect>
-{
-    private readonly ILoginNavigationService _navigationService;
-
-    public LoginEffectDispatcher(ILoginNavigationService navigationService)
-    {
-        _navigationService = navigationService
-            ?? throw new ArgumentNullException(nameof(navigationService));
-    }
-
-    protected override async ValueTask DispatchCoreAsync(
-        LoginEffect effect,
-        CancellationToken cancellationToken)
-    {
-        if (effect is LoginEffect.NavigateToDashboard navigateToDashboard)
-        {
-            await _navigationService.NavigateToDashboardAsync(
-                navigateToDashboard.DisplayName,
-                cancellationToken);
-        }
-    }
-}
-```
-
-### 7. View 只做绑定
-
-```xml
-<TextBox Text="{Binding UserName, Mode=TwoWay}" />
-<TextBox Text="{Binding Password, Mode=TwoWay}" />
-<Button Command="{Binding SubmitCommand}" Content="登录" />
-```
-
----
-
-
-
----
-
-## 本地运行
-
-还原依赖：
-
-```bash
-dotnet restore MiKiNuo.Mvi.slnx
-```
-
-编译：
-
-```bash
-dotnet build MiKiNuo.Mvi.slnx
-```
-
-运行测试：
-
-```bash
-dotnet test MiKiNuo.Mvi.slnx
-```
-
-启动 Avalonia 示例：
-
-```bash
-dotnet run --project sample/MiKiNuo.Mvi.Samples.Avalonia/MiKiNuo.Mvi.Samples.Avalonia.csproj
-```
-
-也可以使用脚本：
-
-```bash
-./build.sh
-```
-
-或 Windows PowerShell：
+应用显式引用自己的平台入口包，并自行提供平台宿主、主题或 Godot SDK。生成器不进入运行依赖；双平台引用只加载一份框架生成器。仓库消费者 fixture 验证这三个包的真实内容与转递关系。
 
 ```powershell
-./build.ps1
+dotnet add package MiKiNuo.Mvi.Avalonia --version <已发布版本>
 ```
 
----
-Avalonia 用户入口包：
+当前仓库包含完整的本地产物构建和独立消费门禁；远程发布由发行工作流显式执行。
 
-```text
-MiKiNuo.Mvi.Platforms.Avalonia
+## 业务作者示例
+
+以下结构对应 [登录 State](sample/MiKiNuo.Mvi.Samples.Avalonia/Features/V2Auth/LoginState.cs) 与 [登录 Feature](sample/MiKiNuo.Mvi.Samples.Avalonia/Features/V2Auth/LoginFeature.cs)：
+
+```csharp
+public sealed record LoginState
+{
+    [Input]
+    public string UserName { get; init; } = string.Empty;
+    [Input]
+    public string Password { get; init; } = string.Empty;
+    public AuthResult? Result { get; init; }
+    public string? ValidationError => string.IsNullOrWhiteSpace(UserName)
+        || string.IsNullOrWhiteSpace(Password) ? "请输入用户名和密码。" : null;
+}
+
+public sealed partial class LoginFeature(IAuthService service) : Feature<LoginState>(new())
+{
+    [Operation(Validate = nameof(CanSubmit))]
+    private async Task<AuthResult> SubmitAsync(Operation<LoginState> operation)
+    {
+        LoginState input = operation.Snapshot;
+        AuthResult result = await service.LoginAsync(
+            input.UserName, input.Password, operation.CancellationToken);
+        operation.CancellationToken.ThrowIfCancellationRequested();
+        await operation.UpdateAsync(ApplyResult, result);
+        return result;
+    }
+
+    private static bool CanSubmit(LoginState state) => state.ValidationError is null;
+    private static LoginState ApplyResult(LoginState state, AuthResult result)
+        => state with { Result = result };
+}
 ```
 
-该包负责携带运行时平台适配和编译期 Analyzer / Source Generator。
+`AuthResult` 与 `IAuthService` 属于应用。输入字段生成 `SetUserName`、`SetPassword` 和投影的可编辑属性；操作生成可等待的 `SubmitAsync(CancellationToken)` 与投影的 `SubmitAsyncCommand`。`Feature<TState>` 子类型直接参与生成，不需要另加 Feature 标记属性。
 
----
+View 使用平台本地连接。Avalonia 调用 `AvaloniaProjection.Create(feature.CreateProjection)` 和 `BindInput`；Godot 使用 `GodotProjection`、原生信号及 `GodotFeatureHost`。View 不持有其他 Feature 的状态或业务实现，输入、程序调用和请求端口都遵循目标实例的启动验证。
 
-## 设计原则
+## 本地运行与验收
 
-```text
-View 只绑定
-ViewModel 只暴露属性和命令
-Reducer 只做状态转换
-Effect 只描述副作用
-EffectDispatcher 只执行副作用
-Middleware 处理横切逻辑
-Mediator 处理组件协调
-Source Generator 生成重复代码
-Analyzer 阻止架构腐化
-Core 不依赖具体 UI 平台
+```powershell
+dotnet build MiKiNuo.Mvi.slnx -c Release
+dotnet test --solution MiKiNuo.Mvi.slnx -c Release --no-build
+dotnet run --project sample/MiKiNuo.Mvi.Samples.Avalonia -c Release --no-build
 ```
 
----
+默认 Avalonia 窗口是登录、注册和重置密码三个 v2 表单，联网服务沿用 DummyJSON 示例。`--v2-input`、`--v2-search`、`--v2-remount`、`--v2-workspace` 选择输入、Latest 搜索、重挂载或组合演示；对应 `--verify-v2-*` 使用真实窗口与可控服务作确定性验收。
 
-## License
+Godot 示例包含 HUD 和 `Composition.tscn`，使用固定 Godot 4.6.2 .NET 引擎。宿主为 Godot.NET.Sdk 4.6.1，明确将 GodotSharp 与源生成器的解析版本设为 4.6.2，目标保持 net10.0。
 
-MIT
+```powershell
+pwsh -NoProfile -File scripts/pack-local.ps1 -Version 2.0.0-local.1 -GodotPath <Godot-4.6.2-console.exe>
+```
+
+该入口执行解决方案构建/测试，再 fresh Rebuild 三包，在仓库外隔离 feed/cache 中验证 Core、Avalonia、Godot、双平台四个消费者、真实双平台场景及 20 个原声明诊断案例。经过验证的包与证据写入 `artifacts/packages/<version>/`。Shell 包装为 `scripts/pack-local.sh <version>`，也使用 PowerShell 7.2+ 的同一入口。
+
+正式、preview 与 CI 共用该入口和唯一三包清单。普通 `windows-latest` 运行 `-NonGraphical`，只证明消费者构建、Core/Dual 执行和诊断资产，结果明确为 `PASS_NON_GRAPHICAL`；真实 GUI 验收由完整本地入口提供。详见 [消费者说明](test/MiKiNuo.Mvi.PackageConsumers/README.md)。
+
+## 当前文档与边界
+
+- [领域词汇](docs/mvi-next/CONTEXT.md) 是活跃术语的权威定义。
+- [已实现架构](docs/mvi-next/ARCHITECTURE.md) 和 [UML / 时序 / 数据流](docs/mvi-next/diagrams/README.md) 对应当前运行协议。
+- [实施规格](docs/mvi-next/SPEC.md) 定义 T01–T21 与性能验收；[任务看板](docs/mvi-next/TICKETS.md) 记录进度。
+- [工程指南](AGENTS.md) 说明代码、测试与打包约束；历史决定保留在 [ADR](docs/adr/)。
+
+功能与包消费通过不等于性能目标达成。派发、资源、多实例、真实 UI 与生成编译成本的固定负载测量由 21、22 任务提供，数值预算和回归结论以那些数据为准。

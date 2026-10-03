@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -38,22 +38,22 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Restore
-        run: dotnet restore ${{ env.SOLUTION_FILE }}
+      - name: Build, test and verify three-package consumers
+        shell: pwsh
+        run: ./scripts/pack-local.ps1 -Version "2.0.0-ci.${{ github.run_number }}" -NonGraphical
 
-      - name: Build
-        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore
-
-      - name: Test
-        run: dotnet test --solution ${{ env.SOLUTION_FILE }} -c Release --no-build --results-directory TestResults
-
-      - name: Benchmark smoke (--list flat)
-        run: dotnet run --project test/MiKiNuo.Mvi.Benchmarks -c Release --no-build -- --list flat
+      - name: Upload verified package evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-consumers
+          path: artifacts/packages/*/evidence/**
+          if-no-files-found: ignore
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: "**/TestResults/*.trx"
+          path: "**/TestResults/**"
           if-no-files-found: ignore

@@ -1,8 +1,8 @@
-# MiKiNuo.Mvi 下一版本
+﻿# MiKiNuo.Mvi v2
 
 面向复杂业务 UI 与实时交互的 MVI 框架。业务由独立可复用的 Feature 组织，支持纯状态转换、异步业务流程与动态组合。
 
-本词汇表适用于下一版本设计；当前代码的术语定义仍见仓库根 CONTEXT.md。
+本词汇表是当前 v2 实现的活跃领域术语定义；运行类型和内部角色的准确映射见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## Language
 
@@ -47,7 +47,7 @@ _Avoid_: 全局状态容器、串行等待所有 IO
 _Avoid_: 异步业务流程、副作用执行
 
 **业务操作**:
-属于某个 Feature 实例的副作用执行流程，可以等待外部操作并派发反馈 Intent；它不直接修改 Store。
+属于某个 Feature 实例的副作用执行流程，对应 Operation<TState> 上下文；可以等待外部操作并通过 UpdateAsync 派发反馈 Intent，它不直接修改 Store。
 _Avoid_: UI Command、EffectDispatcher
 
 **操作运行状态**:

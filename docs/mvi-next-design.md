@@ -1,6 +1,6 @@
-# MVI 下一版本设计讨论
+﻿# MVI 下一版本设计讨论
 
-状态：Q1～Q23 基础决策已接受，组合通信以用户最新修订 ADR 0025 为准，完整设计等待整体确认。更新日期：2026-10-01。
+状态：本文保留 2026-10-01 的设计讨论。设计已经批准并进入 v2 默认实现；当前协议见 [ARCHITECTURE.md](mvi-next/ARCHITECTURE.md)，验收见 [SPEC.md](mvi-next/SPEC.md)，进度见 [TICKETS.md](mvi-next/TICKETS.md)。组合通信以 ADR 0025 为准；性能结论由 21、22 固定负载测量提供。
 
 2026-10-01 补充：原稿未充分展示 MVI 角色与结构图，完整方案现已补充 UML 类图、组件图、数据流图及登录/中介者/Latest 时序图。State + Feature + View 是业务代码布局；Intent、Reducer、Effect 和统一 RuntimeSnapshot 的运行职责明确保留，见 [ADR 0026](adr/0026-vnext-explicit-mvi-role-mapping.md)。
 
