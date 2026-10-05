@@ -1,4 +1,4 @@
-﻿name: Publish Preview NuGet
+name: Publish Preview NuGet
 
 on:
   workflow_dispatch:
@@ -49,17 +49,45 @@ jobs:
           "PUBLISH_TO_NUGET=${{ inputs.publish_to_nuget }}" | Out-File -FilePath $env:GITHUB_ENV -Append
           Write-Host "PACKAGE_VERSION=$version"
 
-      - name: Build, test, pack and verify consumers
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }}
+
+      - name: Test
+        run: dotnet test --solution ${{ env.SOLUTION_FILE }} -c Release --no-build --results-directory TestResults
+
+      - name: Pack preview packages
         shell: pwsh
-        run: ./scripts/pack-local.ps1 -Version "${{ env.PACKAGE_VERSION }}" -NonGraphical
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.PACKAGE_OUTPUT }}" | Out-Null
+
+          $projects = @(
+            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
+            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
+            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
+            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
+            "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
+            "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
+          )
+
+          foreach ($project in $projects) {
+            dotnet pack $project `
+              -c Release `
+              --no-build `
+              -p:PackageVersion=${{ env.PACKAGE_VERSION }} `
+              -p:ContinuousIntegrationBuild=true `
+              -o "${{ env.PACKAGE_OUTPUT }}"
+          }
 
       - name: Upload preview package artifacts
         uses: actions/upload-artifact@v4
         with:
           name: preview-nuget-packages-${{ env.PACKAGE_VERSION }}
           path: |
-            ${{ env.PACKAGE_OUTPUT }}/${{ env.PACKAGE_VERSION }}/*.nupkg
-            ${{ env.PACKAGE_OUTPUT }}/${{ env.PACKAGE_VERSION }}/evidence/**
+            ${{ env.PACKAGE_OUTPUT }}/*.nupkg
+            ${{ env.PACKAGE_OUTPUT }}/*.snupkg
           if-no-files-found: error
 
       - name: Publish preview packages to NuGet.org
@@ -70,7 +98,7 @@ jobs:
             throw "Missing repository secret: NUGET_API_KEY"
           }
 
-          Get-ChildItem -LiteralPath "${{ env.PACKAGE_OUTPUT }}/${{ env.PACKAGE_VERSION }}" -Filter "*.nupkg" | ForEach-Object {
+          Get-ChildItem "${{ env.PACKAGE_OUTPUT }}" -Filter "*.nupkg" | ForEach-Object {
             dotnet nuget push $_.FullName `
               --api-key "${{ secrets.NUGET_API_KEY }}" `
               --source "${{ env.NUGET_SOURCE }}" `

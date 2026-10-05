@@ -1,18 +1,18 @@
-﻿name: CI
+name: CI
 
 on:
   push:
     branches:
       - main
       - develop
-      - codex/mvi-v2
       - "feature/**"
       - "fix/**"
+      - v2
+      - "v2/**"
   pull_request:
     branches:
       - main
       - develop
-      - codex/mvi-v2
   workflow_dispatch:
 
 permissions:
@@ -38,22 +38,25 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Build, test and verify three-package consumers
-        shell: pwsh
-        run: ./scripts/pack-local.ps1 -Version "2.0.0-ci.${{ github.run_number }}" -NonGraphical
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-      - name: Upload verified package evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: package-consumers
-          path: artifacts/packages/*/evidence/**
-          if-no-files-found: ignore
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution ${{ env.SOLUTION_FILE }} -c Release --no-build --results-directory TestResults
+
+      - name: V2 Avalonia headless smoke
+        run: dotnet run --project sample/AuthenticationV2/Sample.Auth.SmokeTests -c Release --no-build --no-restore
+
+      - name: Benchmark smoke (--list flat)
+        run: dotnet run --project test/MiKiNuo.Mvi.Benchmarks -c Release --no-build -- --list flat
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: "**/TestResults/**"
+          path: "**/TestResults/*.trx"
           if-no-files-found: ignore
