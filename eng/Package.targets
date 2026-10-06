@@ -1,0 +1,15 @@
+<Project>
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)../docs/NUGET-README.md"
+          Pack="true" PackagePath="/README.md" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../LICENSE"
+          Pack="true" PackagePath="/LICENSE" Visible="false" />
+  </ItemGroup>
+  <Target Name="MiKiNuoValidatePackageMetadata" BeforeTargets="GenerateNuspec"
+          Condition="'$(IsPackable)' == 'true'">
+    <Error Condition="'$(PackageId)' == '' or '$(PackageVersion)' == ''"
+           Text="PackageId 和 PackageVersion 必须明确指定。" />
+    <Error Condition="'$(Version)' != '$(PackageVersion)'"
+           Text="Version 必须与 PackageVersion 一致，请使用 scripts/pack-local 入口。" />
+  </Target>
+</Project>

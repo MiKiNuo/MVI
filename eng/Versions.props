@@ -1,0 +1,7 @@
+<Project>
+  <!-- 所有六个包使用同一版本。发布脚本将同一个 Version 同时传给 restore/build/pack。 -->
+  <PropertyGroup>
+    <VersionPrefix>2.0.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.4</VersionSuffix>
+  </PropertyGroup>
+</Project>

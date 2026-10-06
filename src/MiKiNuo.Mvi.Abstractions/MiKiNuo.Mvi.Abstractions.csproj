@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup>
+  <IsPackable>true</IsPackable>
+  <PackageId>MiKiNuo.Mvi.Abstractions</PackageId>
+  <Description>MiKiNuo MVI 的 State、Intent、Mutation 契约与绑定、组件装配声明。</Description>
+</PropertyGroup>
+</Project>

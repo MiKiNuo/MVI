@@ -64,11 +64,9 @@ mono_crash.*.json
 /AGENTS.md
 /.gsd
 /CONTEXT.md
-/docs
 /TestResults
 /.workbuddy
 
-# v2 local verification and development authentication data
-artifacts/
-sample/AuthenticationV2/**/data/
-/GLOSSARY.md
+# 本地验证与 Python 检查器缓存
+/artifacts/
+__pycache__/

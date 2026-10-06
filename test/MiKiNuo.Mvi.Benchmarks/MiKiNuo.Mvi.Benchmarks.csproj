@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <UseMiKiNuoMviBuildTimeTools>true</UseMiKiNuoMviBuildTimeTools>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Abstractions\MiKiNuo.Mvi.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Runtime\MiKiNuo.Mvi.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Binding\MiKiNuo.Mvi.Binding.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+</Project>

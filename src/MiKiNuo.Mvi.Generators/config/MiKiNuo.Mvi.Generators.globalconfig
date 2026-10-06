@@ -1,0 +1,24 @@
+# NuGet 消费者默认不继承本仓库的中文文档、命名与项目目录策略。
+# 仓库 .editorconfig 的显式规则仍优先；MVIxxxx 诊断不在此关闭。
+is_global = true
+global_level = -100
+
+dotnet_diagnostic.ARCH0001.severity = none
+dotnet_diagnostic.ARCH0002.severity = none
+dotnet_diagnostic.ARCH0003.severity = none
+dotnet_diagnostic.ARCH0004.severity = none
+dotnet_diagnostic.ARCH0005.severity = none
+dotnet_diagnostic.ARCH0006.severity = none
+dotnet_diagnostic.ARCH0007.severity = none
+dotnet_diagnostic.ARCH0008.severity = none
+dotnet_diagnostic.ARCH0009.severity = none
+dotnet_diagnostic.CODE0001.severity = none
+dotnet_diagnostic.CODE0002.severity = none
+dotnet_diagnostic.DOC0001.severity = none
+dotnet_diagnostic.DOC0002.severity = none
+dotnet_diagnostic.DOC0003.severity = none
+dotnet_diagnostic.DOC0004.severity = none
+dotnet_diagnostic.DOC0005.severity = none
+dotnet_diagnostic.DOC0006.severity = none
+dotnet_diagnostic.DOC0007.severity = none
+dotnet_diagnostic.DOC0008.severity = none

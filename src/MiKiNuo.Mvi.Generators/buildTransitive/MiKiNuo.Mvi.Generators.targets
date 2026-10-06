@@ -1,0 +1,20 @@
+<Project>
+  <!-- NuGet PackageReference 的直接/传递使用均进入此处。绝不添加 PackageReference，
+       也不修改消费者的 TargetFramework、LangVersion 或 TreatWarningsAsErrors。 -->
+  <PropertyGroup>
+    <_MiKiNuoMviGeneratorFile>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'analyzers', 'dotnet', 'cs', 'MiKiNuo.Mvi.Generators.dll'))</_MiKiNuoMviGeneratorFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)../config/MiKiNuo.Mvi.Generators.globalconfig" />
+  </ItemGroup>
+  <Target Name="MiKiNuoMviLoadPackagedGenerators" BeforeTargets="CoreCompile"
+          Condition="'$(Language)' == 'C#'">
+    <Error Condition="!Exists('$(_MiKiNuoMviGeneratorFile)')"
+           Text="MiKiNuo.Mvi.Generators 包不完整：找不到生成器 DLL，请清理该包缓存后重新还原。" />
+    <ItemGroup>
+      <!-- 直接引用时 NuGet 已经加入 Analyzer；移除同名项后从唯一包位置添加，防止重复运行。 -->
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Analyzer.Filename)' == 'MiKiNuo.Mvi.Generators'" />
+      <Analyzer Include="$(_MiKiNuoMviGeneratorFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

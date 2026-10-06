@@ -1,0 +1,4 @@
+using MiKiNuo.Mvi.Platforms.Godot.Binding;
+namespace PackageProbe;
+// 这里只验证托管适配器编译；不在 dotnet 控制台中启动 Godot 原生引擎。
+public partial class ProbeGodotView : GodotMviControlView<CounterViewModel> { }

@@ -1,0 +1,6 @@
+<Project>
+  <!-- 生成器由独立 Generators 包的 buildTransitive 加载；平台包不重复携带 DLL。 -->
+  <PropertyGroup>
+    <MiKiNuoMviPlatformsAvaloniaPackageImported>true</MiKiNuoMviPlatformsAvaloniaPackageImported>
+  </PropertyGroup>
+</Project>

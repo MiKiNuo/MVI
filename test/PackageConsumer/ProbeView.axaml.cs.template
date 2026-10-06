@@ -1,0 +1,11 @@
+using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
+using MiKiNuo.Mvi.Abstractions.MVI.Binding;
+namespace PackageProbe;
+[MviView(typeof(CounterViewModel))]
+public sealed partial class ProbeView : UserControl
+{
+    public ProbeView() => AvaloniaXamlLoader.Load(this);
+    // 引用生成成员，确保 NuGet 安装后确实运行了 View 生成器。
+    public void ClearBindings() => Unbind();
+}

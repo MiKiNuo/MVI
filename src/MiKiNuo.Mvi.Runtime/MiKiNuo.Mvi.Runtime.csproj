@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Runtime</PackageId>
+    <Description>MiKiNuo MVI 框架运行时核心，包含 Store、Handler、Reducer、Middleware、Mediator 与组件生命周期。</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MiKiNuo.Mvi.Abstractions\MiKiNuo.Mvi.Abstractions.csproj" />
+    <!-- 构建时不作为运行时引用；pack 时保留为 NuGet 依赖。
+         消费者通过 Generators 包的 buildTransitive 加载编译期工具。 -->
+    <ProjectReference Include="..\MiKiNuo.Mvi.Generators\MiKiNuo.Mvi.Generators.csproj"
+                      ReferenceOutputAssembly="false" PrivateAssets="none" />
+    <PackageReference Include="R3" />
+  </ItemGroup>
+</Project>

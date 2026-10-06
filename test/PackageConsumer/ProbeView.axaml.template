@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:PackageProbe"
+             xmlns:mvi="clr-namespace:MiKiNuo.Mvi.Platforms.Avalonia.Events;assembly=MiKiNuo.Mvi.Platforms.Avalonia"
+             x:Class="PackageProbe.ProbeView" x:DataType="local:CounterViewModel">
+    <StackPanel>
+        <TextBox mvi:MviEvents.EnterCommand="{Binding AddCommand}" />
+        <Button Command="{Binding AddCommand}" Content="Add" />
+        <TextBlock Text="{Binding State.Value}" />
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);RS2007;RS2008</NoWarn>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Generators</PackageId>
+    <Description>MiKiNuo MVI 的编译期生成器与契约诊断；不包含运行时程序集。需要支持 Roslyn 5 / C# 14 的编译器。</Description>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- 生成器不放入 lib/，符号嵌入 DLL；其余五个运行库生成 .snupkg。 -->
+    <DebugType>embedded</DebugType>
+    <IncludeSymbols>false</IncludeSymbols>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);MiKiNuoPackGeneratorAssembly</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+    <None Update="buildTransitive/MiKiNuo.Mvi.Generators.targets" Pack="true"
+          PackagePath="buildTransitive/MiKiNuo.Mvi.Generators.targets" />
+    <None Update="config/MiKiNuo.Mvi.Generators.globalconfig" Pack="true"
+          PackagePath="config/MiKiNuo.Mvi.Generators.globalconfig" />
+  </ItemGroup>
+  <!-- 在 pack 目标执行期使用完整 TargetPath，避免 SDK 追加 TFM 前就展开 OutputPath。 -->
+  <Target Name="MiKiNuoPackGeneratorAssembly">
+    <Error Condition="!Exists('$(TargetPath)')"
+           Text="找不到本次配置的生成器输出 $(TargetPath)，请先完整构建再打包。" />
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(TargetPath)"
+                              PackagePath="analyzers/dotnet/cs/$(TargetFileName)" />
+    </ItemGroup>
+  </Target>
+</Project>

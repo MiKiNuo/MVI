@@ -1,0 +1,27 @@
+<UserControl x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Login.LoginView"
+    xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:MiKiNuo.Mvi.Samples.Avalonia.Features.Login"
+    xmlns:mvi="using:MiKiNuo.Mvi.Platforms.Avalonia.Events"
+    x:DataType="vm:LoginViewModel" x:CompileBindings="True">
+    <Border Width="420" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid>
+            <StackPanel Spacing="12">
+                <TextBlock Text="登录" FontSize="24" FontWeight="SemiBold" />
+                <TextBox PlaceholderText="用户名" Text="{Binding UserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" mvi:MviEvents.EnterCommand="{Binding SubmitCommand}" />
+                <TextBox PlaceholderText="密码" Text="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PasswordChar="●" mvi:MviEvents.EnterCommand="{Binding SubmitCommand}" />
+                <TextBlock Text="{Binding State.ErrorMessage}" Foreground="Crimson" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding State.Notice}" TextWrapping="Wrap" />
+                <Button Content="提交" Command="{Binding SubmitCommand}" HorizontalAlignment="Stretch" />
+                <Button Content="注册账号" Command="{Binding GoRegisterCommand}" />
+                <Button Content="忘记密码" Command="{Binding GoResetPasswordCommand}" />
+                <TextBlock Text="DummyJSON 测试账号：emilys / emilyspass。注册、改密不保存。仅填写测试数据，不要使用真实账号或密码。" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Background="#EFFFFFFF" IsVisible="{Binding State.IsBusy}">
+                <StackPanel VerticalAlignment="Center" Spacing="12">
+                    <ProgressBar IsIndeterminate="True" />
+                    <TextBlock Text="正在处理…" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

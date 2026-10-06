@@ -1,0 +1,55 @@
+[
+  {
+    "id": "MiKiNuo.Mvi.Abstractions",
+    "project": "src/MiKiNuo.Mvi.Abstractions/MiKiNuo.Mvi.Abstractions.csproj",
+    "tfm": "net10.0",
+    "kind": "library",
+    "dependencies": []
+  },
+  {
+    "id": "MiKiNuo.Mvi.Generators",
+    "project": "src/MiKiNuo.Mvi.Generators/MiKiNuo.Mvi.Generators.csproj",
+    "tfm": "netstandard2.0",
+    "kind": "analyzer",
+    "dependencies": []
+  },
+  {
+    "id": "MiKiNuo.Mvi.Runtime",
+    "project": "src/MiKiNuo.Mvi.Runtime/MiKiNuo.Mvi.Runtime.csproj",
+    "tfm": "net10.0",
+    "kind": "library",
+    "dependencies": [
+      "MiKiNuo.Mvi.Abstractions",
+      "MiKiNuo.Mvi.Generators"
+    ]
+  },
+  {
+    "id": "MiKiNuo.Mvi.Binding",
+    "project": "src/MiKiNuo.Mvi.Binding/MiKiNuo.Mvi.Binding.csproj",
+    "tfm": "net10.0",
+    "kind": "library",
+    "dependencies": [
+      "MiKiNuo.Mvi.Runtime"
+    ]
+  },
+  {
+    "id": "MiKiNuo.Mvi.Platforms.Avalonia",
+    "project": "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
+    "tfm": "net10.0",
+    "kind": "library",
+    "dependencies": [
+      "MiKiNuo.Mvi.Runtime",
+      "MiKiNuo.Mvi.Binding"
+    ]
+  },
+  {
+    "id": "MiKiNuo.Mvi.Platforms.Godot",
+    "project": "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj",
+    "tfm": "net10.0",
+    "kind": "library",
+    "dependencies": [
+      "MiKiNuo.Mvi.Runtime",
+      "MiKiNuo.Mvi.Binding"
+    ]
+  }
+]

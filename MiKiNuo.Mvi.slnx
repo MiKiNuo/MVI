@@ -1,0 +1,34 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src\MiKiNuo.Mvi.Abstractions\MiKiNuo.Mvi.Abstractions.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
+    <Project Path="src\MiKiNuo.Mvi.Runtime\MiKiNuo.Mvi.Runtime.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Generators\MiKiNuo.Mvi.Generators.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Binding\MiKiNuo.Mvi.Binding.csproj" Type="C#" />
+    <Project Path="src\MiKiNuo.Mvi.Platforms.Avalonia\MiKiNuo.Mvi.Platforms.Avalonia.csproj" Type="C#" />
+  </Folder>
+  <Folder Name="/sample/">
+    <Project Path="sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" Type="C#" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test\MiKiNuo.Mvi.Tests\MiKiNuo.Mvi.Tests.csproj" Type="C#" />
+    <Project Path="test\MiKiNuo.Mvi.Benchmarks\MiKiNuo.Mvi.Benchmarks.csproj" Type="C#" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path=".editorconfig" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Release Engineering/">
+    <File Path="eng/Versions.props" />
+    <File Path="eng/Package.props" />
+    <File Path="eng/Package.targets" />
+    <File Path="eng/packages.json" />
+    <File Path="docs/NUGET-PUBLISHING.md" />
+    <File Path="scripts/pack-local.ps1" />
+    <File Path="scripts/pack-local.sh" />
+    <File Path="tools/release.py" />
+    <File Path=".github/workflows/nuget-release.yml" />
+  </Folder>
+</Solution>

@@ -1,0 +1,79 @@
+using MiKiNuo.Mvi.Abstractions.MVI.State;
+using MiKiNuo.Mvi.Abstractions.MVI.Intent;
+using MiKiNuo.Mvi.Abstractions.MVI.Mutation;
+using MiKiNuo.Mvi.Abstractions.MVI.Reducer;
+using MiKiNuo.Mvi.Runtime.MVI.Intent;
+using MiKiNuo.Mvi.Runtime.MVI.Reducer;
+using MiKiNuo.Mvi.Runtime.MVI.Store;
+#if HAS_BINDING
+using MiKiNuo.Mvi.Abstractions.DI;
+using MiKiNuo.Mvi.Abstractions.MVI.Binding;
+using MiKiNuo.Mvi.Binding.ViewModel;
+using MiKiNuo.Mvi.Binding.Command;
+using MiKiNuo.Mvi.Binding.Threading;
+#endif
+
+namespace PackageProbe;
+
+// 故意不添加中文 XML 注释：外部消费者不应被仓库文档策略阻止编译。
+public sealed record CounterState(int Value) : IMviState
+{
+    public static CounterState Initial { get; } = new(0);
+}
+public sealed record AddIntent(int Amount) : IMviIntent;
+public sealed record Added(int Amount) : IMviMutation<CounterState>;
+
+#if HAS_BINDING
+[MviFeature]
+#endif
+public sealed partial class CounterHandler : MviIntentHandler<CounterState, AddIntent>
+{
+    [MviHandle(typeof(AddIntent))]
+    private ValueTask Add(AddIntent intent, IIntentContext<CounterState> context, CancellationToken token)
+    {
+        context.Reduce(new Added(intent.Amount));
+        return ValueTask.CompletedTask;
+    }
+}
+public sealed partial class CounterReducer : MviReducerBase<CounterState>
+{
+    [MviReduce(typeof(Added))]
+    private static CounterState Apply(CounterState state, Added mutation) => new(state.Value + mutation.Amount);
+}
+#if HAS_BINDING
+public sealed partial class CounterViewModel : MviViewModelBase<CounterState, AddIntent>
+{
+    [MviBind]
+    public partial int Amount { get; set; }
+    [MviCommand(typeof(AddIntent), nameof(Amount))]
+    public partial IMviAsyncCommand AddCommand { get; }
+}
+[MviComposition(typeof(CounterHandler))]
+public sealed partial class ProbeComposition { }
+#endif
+
+internal static class Program
+{
+    public static async Task<int> Main()
+    {
+        await using MviStore<CounterState, AddIntent> store = new(
+            CounterState.Initial, new CounterHandler(), new CounterReducer());
+#if HAS_BINDING
+        using CounterViewModel model = new(store, MviInlineUiDispatcher.Instance);
+        model.Amount = 7;
+        await model.AddCommand.ExecuteAsync(null);
+        // DI、组合、Handler、Reducer、ViewModel 生成器必须在包消费模式下协同。
+        PackageProbe.Composition.GeneratedMviContainer container = new();
+        await using ProbeComposition composition = await container.CreateProbeCompositionAsync();
+        composition.Counter.ViewModel.Amount = 3;
+        await composition.Counter.ViewModel.AddCommand.ExecuteAsync(null);
+        if (composition.Counter.ViewModel.State.Value != 3)
+            throw new InvalidOperationException("Packaged generated composition failed.");
+#else
+        await store.DispatchAsync(new AddIntent(7));
+#endif
+        if (store.CurrentState.Value != 7) throw new InvalidOperationException("Packaged pipeline failed.");
+        Console.WriteLine("PACKAGE_CONSUMER_OK");
+        return 0;
+    }
+}

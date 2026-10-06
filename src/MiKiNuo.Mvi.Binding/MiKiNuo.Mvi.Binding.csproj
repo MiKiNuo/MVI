@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>MiKiNuo.Mvi.Binding</PackageId>
+    <Description>MiKiNuo MVI 的平台无关声明式 ViewModel、命令、输入快照、事件与 View 绑定。</Description>
+</PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MiKiNuo.Mvi.Runtime\MiKiNuo.Mvi.Runtime.csproj" />
+    <PackageReference Include="R3" />
+  </ItemGroup>
+</Project>

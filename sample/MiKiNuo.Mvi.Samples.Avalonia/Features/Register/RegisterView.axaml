@@ -1,0 +1,28 @@
+<UserControl x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Register.RegisterView"
+    xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:MiKiNuo.Mvi.Samples.Avalonia.Features.Register"
+    xmlns:mvi="using:MiKiNuo.Mvi.Platforms.Avalonia.Events"
+    x:DataType="vm:RegisterViewModel" x:CompileBindings="True">
+    <Border Width="420" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid>
+            <StackPanel Spacing="12">
+                <TextBlock Text="注册" FontSize="24" FontWeight="SemiBold" />
+                <TextBox PlaceholderText="用户名" Text="{Binding UserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" mvi:MviEvents.EnterCommand="{Binding SubmitCommand}" />
+                <TextBox PlaceholderText="邮箱" Text="{Binding Email, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" mvi:MviEvents.EnterCommand="{Binding SubmitCommand}" />
+                <TextBox PlaceholderText="密码" Text="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PasswordChar="●" mvi:MviEvents.EnterCommand="{Binding SubmitCommand}" />
+                <TextBox PlaceholderText="确认密码" Text="{Binding ConfirmPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PasswordChar="●" mvi:MviEvents.EnterCommand="{Binding SubmitCommand}" />
+                <TextBlock Text="{Binding State.ErrorMessage}" Foreground="Crimson" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding State.Notice}" TextWrapping="Wrap" />
+                <Button Content="提交" Command="{Binding SubmitCommand}" HorizontalAlignment="Stretch" />
+                <TextBlock Text="第三方模拟注册，不保存新账号；成功后仍请使用 emilys / emilyspass 登录。" FontSize="11" TextWrapping="Wrap" />
+                <Button Content="返回登录" Command="{Binding GoLoginCommand}" />
+            </StackPanel>
+            <Border Background="#EFFFFFFF" IsVisible="{Binding State.IsBusy}">
+                <StackPanel VerticalAlignment="Center" Spacing="12">
+                    <ProgressBar IsIndeterminate="True" />
+                    <TextBlock Text="正在处理…" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

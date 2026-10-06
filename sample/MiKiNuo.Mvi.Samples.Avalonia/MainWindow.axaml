@@ -1,0 +1,10 @@
+<Window
+    x:Class="MiKiNuo.Mvi.Samples.Avalonia.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="MiKiNuo MVI - 联网登录注册"
+    Width="720"
+    Height="520"
+    Background="#F1F5F9">
+    <ContentControl x:Name="RootContent" />
+</Window>

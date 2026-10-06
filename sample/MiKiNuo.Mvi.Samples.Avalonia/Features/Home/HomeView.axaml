@@ -1,0 +1,9 @@
+<UserControl x:Class="MiKiNuo.Mvi.Samples.Avalonia.Features.Home.HomeView"
+ xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:MiKiNuo.Mvi.Samples.Avalonia.Features.Home" x:DataType="vm:HomeViewModel" x:CompileBindings="True">
+ <StackPanel Margin="32" Spacing="16" VerticalAlignment="Center" HorizontalAlignment="Center">
+  <TextBlock Text="大厅" FontSize="28" />
+  <TextBlock Text="{Binding State.DisplayName}" />
+  <Button Content="退出登录" Command="{Binding LogoutCommand}" />
+ </StackPanel>
+</UserControl>

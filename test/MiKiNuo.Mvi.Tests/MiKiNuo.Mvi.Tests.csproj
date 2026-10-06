@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors></WarningsAsErrors>
+    <EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
+    <TestingPlatformCommandLineArguments>--maximum-parallel-tests 1</TestingPlatformCommandLineArguments>
+    <NoWarn>$(NoWarn);CS1591;CS8785;RS1035;RS1022;RS1024;RS1025;RS1026;RS1027;RS1028;RS1029;RS1030</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Abstractions\MiKiNuo.Mvi.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Runtime\MiKiNuo.Mvi.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Binding\MiKiNuo.Mvi.Binding.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Platforms.Godot\MiKiNuo.Mvi.Platforms.Godot.csproj" />
+    <ProjectReference Include="..\..\src\MiKiNuo.Mvi.Generators\MiKiNuo.Mvi.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+    <ProjectReference Include="..\..\sample\MiKiNuo.Mvi.Samples.Avalonia\MiKiNuo.Mvi.Samples.Avalonia.csproj" />
+    <ProjectReference Include="..\MiKiNuo.Mvi.Benchmarks\MiKiNuo.Mvi.Benchmarks.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Controls.DataGrid" />
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="ZLinq" />
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+</Project>
