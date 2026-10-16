@@ -83,6 +83,15 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Binding 层应保持平台无关，编译期不得通过 PackageReference 引入 Avalonia / Godot 等具体平台包.");
 
+    private static readonly DiagnosticDescriptor MutableStateRule = new(
+        id: DiagnosticIdCatalog.MviStateMutableMember,
+        title: "业务状态不应公开可变成员",
+        messageFormat: "状态“{0}”的成员“{1}”允许绕过 Mutation 修改数据；请使用只读成员和不可变集合。",
+        category: "Mvi",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "公开 setter、可写字段和常见可变集合破坏状态快照；此诊断不证明对象图深度不可变.");
+
     /// <summary>
     /// 获取支持的诊断描述集合。
     /// </summary>
@@ -95,7 +104,8 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
             SampleReferenceRule,
             TestReferenceRule,
             BindingReferencePlatformRule,
-            BindingPackageIsolationRule);
+            BindingPackageIsolationRule,
+            MutableStateRule);
 
     /// <summary>
     /// 初始化分析器注册诊断动作。
@@ -111,6 +121,76 @@ public sealed class MiKiNuoArchitectureAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.RegisterCompilationAction(AnalyzeCompilation);
+        context.RegisterCompilationStartAction(start =>
+        {
+            INamedTypeSymbol? stateContract = start.Compilation.GetTypeByMetadataName("MiKiNuo.Mvi.Abstractions.MVI.State.IMviState");
+            if (stateContract is null) return;
+            start.RegisterSymbolAction(symbolContext => AnalyzeState(symbolContext, stateContract), SymbolKind.NamedType);
+        });
+    }
+
+    private static void AnalyzeState(SymbolAnalysisContext context, INamedTypeSymbol stateContract)
+    {
+        INamedTypeSymbol state = (INamedTypeSymbol)context.Symbol;
+        if (!state.AllInterfaces.Any(contract => SymbolEqualityComparer.Default.Equals(contract, stateContract))) return;
+
+        for (INamedTypeSymbol? type = state; type is not null; type = type.BaseType)
+        {
+            bool declaredHere = SymbolEqualityComparer.Default.Equals(type, state);
+            bool baseAnalyzed = !declaredHere && type.Locations.Any(location => location.IsInSource)
+                && type.AllInterfaces.Any(contract => SymbolEqualityComparer.Default.Equals(contract, stateContract));
+            if (baseAnalyzed && SymbolEqualityComparer.Default.Equals(type, type.OriginalDefinition)) break;
+
+            foreach (ISymbol member in type.GetMembers())
+            {
+                if (!IsMutableStateMember(member)) continue;
+                if (baseAnalyzed && IsMutableStateMember(member.OriginalDefinition)) continue;
+                Location location = declaredHere ? member.Locations[0] : state.Locations[0];
+                context.ReportDiagnostic(Diagnostic.Create(MutableStateRule, location, state.Name, member.Name));
+            }
+        }
+    }
+
+    private static bool IsMutableStateMember(ISymbol member)
+    {
+        if (member.IsStatic || member.DeclaredAccessibility != Accessibility.Public) return false;
+        return member switch
+        {
+            IPropertySymbol property =>
+                property.SetMethod is { DeclaredAccessibility: Accessibility.Public, IsInitOnly: false }
+                || property.GetMethod is { DeclaredAccessibility: Accessibility.Public }
+                    && (property.ReturnsByRef || IsMutableCollection(property.Type)),
+            IFieldSymbol field => !field.IsReadOnly || IsMutableCollection(field.Type),
+            _ => false,
+        };
+    }
+
+    private static bool IsMutableCollection(ITypeSymbol type)
+    {
+        if (type is IArrayTypeSymbol) return true;
+        for (INamedTypeSymbol? current = type as INamedTypeSymbol; current is not null; current = current.BaseType)
+        {
+            bool mutable = current.ContainingNamespace.ToDisplayString() switch
+            {
+                "System.Collections" => current.MetadataName is
+                    "IList" or "IDictionary" or "ArrayList" or "Hashtable" or "SortedList" or "Queue" or "Stack",
+                "System.Collections.Generic" => current.MetadataName is
+                    "ICollection`1" or "IList`1" or "IDictionary`2" or "ISet`1" or
+                    "List`1" or "Dictionary`2" or "HashSet`1" or "SortedSet`1" or "SortedList`2" or
+                    "SortedDictionary`2" or "Queue`1" or "Stack`1" or "LinkedList`1" or "PriorityQueue`2",
+                "System.Collections.ObjectModel" => current.MetadataName is
+                    "Collection`1" or "ObservableCollection`1" or "KeyedCollection`2",
+                "System.Collections.Concurrent" => current.MetadataName is
+                    "ConcurrentDictionary`2" or "ConcurrentQueue`1" or "ConcurrentStack`1" or
+                    "ConcurrentBag`1" or "BlockingCollection`1" or "IProducerConsumerCollection`1",
+                "System.Collections.Specialized" => current.MetadataName is
+                    "NameValueCollection" or "StringCollection" or "StringDictionary" or
+                    "OrderedDictionary" or "IOrderedDictionary" or "HybridDictionary" or "ListDictionary",
+                _ => false,
+            };
+            if (mutable) return true;
+        }
+        return false;
     }
 
     private static void AnalyzeCompilation(CompilationAnalysisContext context)

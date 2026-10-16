@@ -40,3 +40,4 @@ MVI0200 | Mvi | Error | MviBindingDeclarationInvalid
 MVI0201 | Mvi | Error | MviPipelineDeclarationInvalid
 MVI0202 | Mvi | Error | MviFeatureDeclarationInvalid
 MVI0203 | Mvi | Error | MviViewDeclarationInvalid
+MVI0204 | Mvi | Warning | 业务状态公开 setter、可写字段或常见可变集合；不证明深度不可变。

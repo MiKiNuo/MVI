@@ -25,7 +25,7 @@ try {
     Invoke-DotNet -Step "environment" -Arguments @("--info")
     Invoke-DotNet -Step "restore" -Arguments @("restore", "MiKiNuo.Mvi.slnx")
     Invoke-DotNet -Step "build" -Arguments @("build", "MiKiNuo.Mvi.slnx", "-c", $Configuration, "--no-restore")
-    Invoke-DotNet -Step "tests" -Arguments @("run", "--project", "test/MiKiNuo.Mvi.Tests", "-c", $Configuration, "--no-build", "--", "--maximum-parallel-tests", "1", "--results-directory", "artifacts/test-results")
+    Invoke-DotNet -Step "tests" -Arguments @("run", "--project", "test/MiKiNuo.Mvi.Tests", "-c", $Configuration, "--no-build", "--", "--results-directory", "$PSScriptRoot/artifacts/test-results")
     Invoke-DotNet -Step "benchmark-discovery" -Arguments @("run", "--project", "test/MiKiNuo.Mvi.Benchmarks", "-c", $Configuration, "--no-build", "--", "--list", "flat")
 }
 finally { Pop-Location }

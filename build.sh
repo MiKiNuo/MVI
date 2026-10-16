@@ -12,6 +12,6 @@ run() { local name="$1"; shift; echo "=== $name ==="; dotnet "$@" 2>&1 | tee "ar
 run environment --info
 run restore restore MiKiNuo.Mvi.slnx
 run build build MiKiNuo.Mvi.slnx -c "$configuration" --no-restore
-run tests run --project test/MiKiNuo.Mvi.Tests -c "$configuration" --no-build -- --maximum-parallel-tests 1 --results-directory artifacts/test-results
+run tests run --project test/MiKiNuo.Mvi.Tests -c "$configuration" --no-build -- --results-directory "$PWD/artifacts/test-results"
 # List only: proves discovery when executed, not a performance measurement.
 run benchmark-discovery run --project test/MiKiNuo.Mvi.Benchmarks -c "$configuration" --no-build -- --list flat

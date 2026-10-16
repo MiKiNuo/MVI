@@ -18,6 +18,8 @@ public static class DiagnosticIdCatalog
     public const string MviFeatureDeclarationInvalid = "MVI0202";
     /// <summary>非继承式 View 声明无效。</summary>
     public const string MviViewDeclarationInvalid = "MVI0203";
+    /// <summary>业务状态公开可变成员。</summary>
+    public const string MviStateMutableMember = "MVI0204";
 
     /// <summary>整洁架构分层引用检查 ID。</summary>
     public const string ArchDomainReference = "ARCH0001";
@@ -217,5 +219,6 @@ public static class DiagnosticIdCatalog
         MviPipelineDeclarationInvalid,
         MviFeatureDeclarationInvalid,
         MviViewDeclarationInvalid,
+        MviStateMutableMember,
     ];
 }

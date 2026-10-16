@@ -12,6 +12,26 @@ namespace MiKiNuo.Mvi.Tests;
 /// <summary>唯一的 Handler/Mutation Store 行为回归。</summary>
 public sealed class MviStoreTests
 {
+    /// <summary>状态流不暴露写入能力，并保留正常提交与最新状态重放。</summary>
+    [Test] public async Task StateStreamCannotPublishOutsideReducerAsync()
+    {
+        await using var store = TestCheck.Store();
+        List<int> observed = [];
+        using var subscription = store.States.Subscribe(state => observed.Add(state.Count));
+        if (store.States is ReactiveProperty<CounterState> writable)
+        {
+            writable.Value = new CounterState(99);
+        }
+        await Assert.That(string.Join(",", observed)).IsEqualTo("0");
+        await Assert.That(store.CurrentState.Count).IsEqualTo(0);
+
+        await store.DispatchAsync(new CounterIntent.Increment());
+        int replayed = -1;
+        using var lateSubscription = store.States.Subscribe(state => replayed = state.Count);
+        await Assert.That(string.Join(",", observed)).IsEqualTo("0,1");
+        await Assert.That(replayed).IsEqualTo(store.CurrentState.Count);
+    }
+
     /// <summary>普通派发提交状态并保留按序状态流。</summary>
     [Test] public async Task DispatchPublishesCommittedStatesAsync()
     {

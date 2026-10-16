@@ -166,8 +166,8 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
         }
 
         source.PropertyChanged += Handler;
-        update();
         bindings.Add(() => source.PropertyChanged -= Handler);
+        update();
     }
 
     /// <summary>
@@ -211,12 +211,12 @@ public abstract partial class GodotMviControlView<TViewModel> : Control, IMviGod
             button.Name);
 
         command.CanExecuteChanged += CanExecuteChanged;
-        RefreshCanExecute();
-
         bindings.Add(() =>
         {
             command.CanExecuteChanged -= CanExecuteChanged;
         });
+
+        RefreshCanExecute();
     }
 
     /// <summary>

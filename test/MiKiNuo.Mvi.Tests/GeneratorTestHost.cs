@@ -16,11 +16,14 @@ internal static class GeneratorTestHost
         typeof(R3.Observable).Assembly.Location,
         typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location,
     }.Distinct().Select(path => MetadataReference.CreateFromFile(path)).ToArray();
-    /// <summary>使用当前测试进程的平台引用创建编译。</summary>
+    /// <summary>默认仅引用 .NET 运行时程序集；框架和平台由调用方显式提供。</summary>
     public static CSharpCompilation CreateCompilation(string source, params MetadataReference[] extraReferences)
     {
+        string runtimeDirectory = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
         string[] platform = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? typeof(object).Assembly.Location).Split(Path.PathSeparator);
-        IEnumerable<MetadataReference> refs = platform.Where(File.Exists).Select(path => MetadataReference.CreateFromFile(path)).Concat(extraReferences)
+        IEnumerable<MetadataReference> refs = platform.Where(File.Exists)
+            .Where(path => string.Equals(Path.GetDirectoryName(path), runtimeDirectory, StringComparison.OrdinalIgnoreCase))
+            .Select(path => MetadataReference.CreateFromFile(path)).Concat(extraReferences)
             .GroupBy(reference => reference.Display, StringComparer.OrdinalIgnoreCase).Select(group => group.First());
         return CSharpCompilation.Create("MviGeneratorTestAssembly", [CSharpSyntaxTree.ParseText(source, ParseOptions)], refs,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));

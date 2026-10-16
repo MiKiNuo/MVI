@@ -21,6 +21,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
     private readonly IMviReducer<TState> _reducer;
     private readonly MviMiddlewarePipeline<TState, TIntent> _pipeline;
     private readonly ReactiveProperty<TState> _states;
+    private readonly Observable<TState> _stateStream;
     private readonly Subject<Exception> _errors = new();
     private readonly Queue<TState> _publications = new();
     private readonly Channel<TIntent> _notifications;
@@ -56,6 +57,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
         _maxConcurrentIntents = maxConcurrentIntents;
         _pipeline = new(middlewares, handler);
         _states = new(initialState);
+        _stateStream = _states.AsObservable();
         _notifications = Channel.CreateBounded<TIntent>(new BoundedChannelOptions(notificationCapacity)
         { SingleReader = true, FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false });
         try
@@ -71,8 +73,8 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
     }
     /// <summary>获取最新已提交状态，不等待 UI 投影。</summary>
     public TState CurrentState { get { lock (_gate) return _current; } }
-    /// <summary>获取按提交顺序发布的状态流。</summary>
-    public Observable<TState> States => _states;
+    /// <summary>获取按提交顺序发布且不暴露写入能力的状态流。</summary>
+    public Observable<TState> States => _stateStream;
     /// <summary>获取后台错误流；内容不自动包含 Intent、State 或凭据。</summary>
     public Observable<Exception> Errors => _errors;
     /// <summary>派发并等待该 Handler 显式等待的完整业务链；容量不足时明确拒绝。</summary>

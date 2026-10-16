@@ -20,7 +20,7 @@ public sealed class MviEventSourceGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviEventSourceGenerator>(
-                AvaloniaControlStub + "\n" + CustomControlSource);
+                CustomControlSource, AvaloniaReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -34,7 +34,7 @@ public sealed class MviEventSourceGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviEventSourceGenerator>(
-                AvaloniaControlStub + "\n" + CustomControlSource);
+                CustomControlSource, AvaloniaReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -48,7 +48,7 @@ public sealed class MviEventSourceGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviEventSourceGenerator>(
-                AvaloniaControlStub + "\n" + CustomControlSource);
+                CustomControlSource, AvaloniaReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
@@ -62,75 +62,79 @@ public sealed class MviEventSourceGeneratorBehaviorTests
     {
         (GeneratorDriverRunResult runResult, bool emitSuccess) =
             GeneratorTestHost.RunGeneratorAndCompile<MviEventSourceGenerator>(
-                AvaloniaControlStub + "\n" + CustomControlSource);
+                CustomControlSource, AvaloniaReferences);
 
         await Assert.That(emitSuccess).IsTrue();
         await Assert.That(runResult.GeneratedTrees.Length).IsEqualTo(1);
     }
 
-    /// <summary>
-    /// 验证无 Avalonia.Control 类型的编译不触发生成器。
-    /// </summary>
+    /// <summary>无平台引用时不生成事件适配器，且原始源码仍可编译。</summary>
     [Test]
     public async Task Generate_Should_NotProduceCode_ForCompilationWithoutControlAsync()
     {
-        GeneratorDriverRunResult result = GeneratorTestHost.RunGenerator<MviEventSourceGenerator>(
-            PlainSource);
+        (GeneratorDriverRunResult result, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviEventSourceGenerator>(PlainSource);
 
         await Assert.That(result.GeneratedTrees.Length).IsEqualTo(0);
+        await Assert.That(emitSuccess).IsTrue();
     }
 
-    /// <summary>
-    /// 桩类型定义：模拟 Avalonia.Control 控件基类与应用层事件绑定接口。
-    /// </summary>
-    private const string AvaloniaControlStub = """
-        namespace Avalonia.Controls
-        {
-            public class Control
+    /// <summary>默认编译不可见测试进程携带的框架和平台类型。</summary>
+    [Test]
+    public async Task CreateCompilation_Should_ExcludeImplicitFrameworkAndPlatformReferencesAsync()
+    {
+        Compilation compilation = GeneratorTestHost.CreateCompilation(PlainSource);
+
+        await Assert.That(compilation.GetSpecialType(SpecialType.System_Object).TypeKind).IsEqualTo(TypeKind.Class);
+        await Assert.That(compilation.GetTypeByMetadataName("Avalonia.Controls.Control")).IsNull();
+        await Assert.That(compilation.GetTypeByMetadataName("Godot.Control")).IsNull();
+        await Assert.That(compilation.GetTypeByMetadataName("MiKiNuo.Mvi.Abstractions.MVI.State.IMviState")).IsNull();
+        await Assert.That(compilation.GetTypeByMetadataName("MiKiNuo.Mvi.Binding.EventBinding.IEventSource`1")).IsNull();
+        await Assert.That(compilation.GetTypeByMetadataName("R3.Observable")).IsNull();
+    }
+
+    /// <summary>显式框架引用本身不应隐式引入平台控件。</summary>
+    [Test]
+    public async Task Generate_Should_NotProduceCode_ForFrameworkOnlyCompilationAsync()
+    {
+        (GeneratorDriverRunResult result, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviEventSourceGenerator>(PlainSource, GeneratorTestHost.FrameworkReferences);
+
+        await Assert.That(result.GeneratedTrees.Length).IsEqualTo(0);
+        await Assert.That(emitSuccess).IsTrue();
+    }
+
+    /// <summary>无源码控件时仍扫描显式平台引用，生成的真实事件源调用可编译。</summary>
+    [Test]
+    public async Task Generate_Should_CompileEventSource_FromExplicitPlatformReferenceAsync()
+    {
+        const string source = """
+            using MiKiNuo.Mvi.Platforms.Avalonia.Events;
+
+            namespace TestApp
             {
-                public event System.EventHandler? Click;
-            }
-        }
-
-        namespace MiKiNuo.Mvi.Binding.EventBinding
-        {
-            public interface IEventSource<out TEvent>
-            {
-                System.IDisposable Subscribe(System.Action<TEvent> handler);
-            }
-
-            public sealed class DelegateEventSource<TEvent> : IEventSource<TEvent>
-            {
-                private readonly System.Func<System.Action<TEvent>, System.IDisposable> _subscribeFunc;
-
-                public DelegateEventSource(System.Func<System.Action<TEvent>, System.IDisposable> subscribeFunc)
+                public static class EventConsumer
                 {
-                    _subscribeFunc = subscribeFunc;
-                }
-
-                public System.IDisposable Subscribe(System.Action<TEvent> handler)
-                {
-                    return _subscribeFunc(handler);
-                }
-            }
-
-            public sealed class ActionDisposable : System.IDisposable
-            {
-                private System.Action? _disposeAction;
-
-                public ActionDisposable(System.Action disposeAction)
-                {
-                    _disposeAction = disposeAction;
-                }
-
-                public void Dispose()
-                {
-                    _disposeAction?.Invoke();
-                    _disposeAction = null;
+                    public static MiKiNuo.Mvi.Binding.EventBinding.IEventSource<Avalonia.Interactivity.RoutedEventArgs>
+                        Clicks(Avalonia.Controls.Button button) => button.ToEventSource().Click;
                 }
             }
-        }
-        """;
+            """;
+        (GeneratorDriverRunResult result, bool emitSuccess) =
+            GeneratorTestHost.RunGeneratorAndCompile<MviEventSourceGenerator>(source, AvaloniaReferences);
+
+        await Assert.That(result.GeneratedTrees.Length).IsEqualTo(1);
+        await Assert.That(result.Results.Single().GeneratedSources.Single().HintName).IsEqualTo("MviAvaloniaEventSourceExtensions.g.cs");
+        await Assert.That(emitSuccess).IsTrue();
+    }
+
+    /// <summary>仅显式提供真实 MVI 框架和 Avalonia 控件依赖。</summary>
+    private static MetadataReference[] AvaloniaReferences =>
+    [
+        .. GeneratorTestHost.FrameworkReferences,
+        MetadataReference.CreateFromFile(typeof(Avalonia.AvaloniaObject).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(Avalonia.Controls.Control).Assembly.Location),
+    ];
 
     /// <summary>
     /// 测试源代码：含继承 Avalonia.Control 的自定义控件。
