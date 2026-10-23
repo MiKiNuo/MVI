@@ -4,8 +4,9 @@
   <PropertyGroup>
     <_MiKiNuoMviGeneratorFile>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'analyzers', 'dotnet', 'cs', 'MiKiNuo.Mvi.Generators.dll'))</_MiKiNuoMviGeneratorFile>
   </PropertyGroup>
+  <!-- NuGet .targets 在 SDK 收集全局配置之后导入，直接注册编译器配置文件。 -->
   <ItemGroup>
-    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)../config/MiKiNuo.Mvi.Generators.globalconfig" />
+    <EditorConfigFiles Include="$(MSBuildThisFileDirectory)../config/MiKiNuo.Mvi.Generators.globalconfig" />
   </ItemGroup>
   <Target Name="MiKiNuoMviLoadPackagedGenerators" BeforeTargets="CoreCompile"
           Condition="'$(Language)' == 'C#'">

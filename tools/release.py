@@ -208,7 +208,8 @@ def consumer_tests(directory: Path, version: str, logs: Path) -> list[dict]:
     <packageSource key="nuget.org"><package pattern="*" /></packageSource>
   </packageSourceMapping>
 </configuration>""", encoding="utf-8")
-        env = dict(os.environ, NUGET_PACKAGES=str(isolated / "cache"))
+        # Avalonia's background collector locks DLLs in this disposable cache on Windows.
+        env = dict(os.environ, NUGET_PACKAGES=str(isolated / "cache"), AVALONIA_TELEMETRY_OPTOUT="1")
         common = ["--configfile", str(config), "--no-http-cache"]
         # The facade is another nupkg, not a ProjectReference into this repository.
         facade = isolated / "facade"
