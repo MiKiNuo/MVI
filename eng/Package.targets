@@ -1,6 +1,6 @@
 <Project>
   <ItemGroup Condition="'$(IsPackable)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)../docs/NUGET-README.md"
+    <None Include="$(MSBuildThisFileDirectory)../README.md"
           Pack="true" PackagePath="/README.md" Visible="false" />
     <None Include="$(MSBuildThisFileDirectory)../LICENSE"
           Pack="true" PackagePath="/LICENSE" Visible="false" />

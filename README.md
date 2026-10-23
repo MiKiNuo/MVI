@@ -2,6 +2,27 @@
 
 基于 .NET 10、R3、Source Generator 和编译期 DI 的组合式 MVI 框架，提供 Avalonia 与 Godot 平台适配。
 
+## NuGet 发布
+
+推送 `v*.*.*` tag 后，GitHub Actions 自动构建、串行测试、打包并发布 NuGet。版本以 tag 去掉单个 `v` 前缀为准，例如 `v2.0.0` 发布 `2.0.0`，`v2.0.0-preview.4` 发布 `2.0.0-preview.4`。同次发布的六个包使用相同版本，发布前会验证包内容、符号、哈希和独立消费者。
+
+仓库 Actions secret 沿用 `NUGET_API_KEY`，其 NuGet.org 权限需要覆盖 `eng/packages.json` 中的全部包名，包括新增的 Abstractions、Generators、Runtime、Binding 包。先提交并推送待发布代码，再创建并推送所需 tag：
+
+```powershell
+git tag v2.0.0-preview.4
+git push origin v2.0.0-preview.4
+```
+
+Actions 中手动运行 **Publish NuGet** 时，填写不带 `v` 的版本；`publish_to_nuget` 默认关闭，只打包和上传产物。**Publish Preview NuGet** 保留手动预览入口，版本为 `0.0.0-<preview_suffix>.<yyyyMMdd>.<run_number>`，默认也只打包；勾选 `publish_to_nuget` 才发布。
+
+每次成功打包都会上传对应版本的 `.nupkg`、`.snupkg`、`release-manifest.json` 和 `SHA256SUMS` artifact；失败日志单独上传。本地安装 Python 3.12 和 .NET 10 SDK 后，可运行相同打包验证：
+
+```powershell
+python tools/release.py pack --version 2.0.0-preview.4
+```
+
+产物位于 `artifacts/packages/<version>/`，本地打包不会发布到 NuGet.org。
+
 ## 当前架构
 
 ```text

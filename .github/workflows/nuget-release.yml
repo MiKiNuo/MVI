@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "NuGet package version, for example 0.1.2"
+        description: "NuGet package version, for example 2.0.0 or 2.0.0-preview.4"
         required: true
         type: string
       publish_to_nuget:
@@ -20,12 +20,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: nuget-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   CI: true
-  PACKAGE_OUTPUT: artifacts/packages
-  NUGET_SOURCE: https://api.nuget.org/v3/index.json
 
 jobs:
   pack-and-publish:
@@ -36,6 +38,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Setup .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -43,112 +50,51 @@ jobs:
 
       - name: Resolve package version
         shell: pwsh
+        env:
+          RELEASE_EVENT_NAME: ${{ github.event_name }}
+          RELEASE_REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH_TO_NUGET: ${{ inputs.publish_to_nuget }}
         run: |
-          if ("${{ github.ref_type }}" -eq "tag") {
-            $version = "${{ github.ref_name }}".TrimStart("v")
+          if ($env:RELEASE_EVENT_NAME -eq "push") {
+            $version = $env:RELEASE_REF_NAME -creplace '^v', ''
             $publish = "true"
           }
           else {
-            $version = "${{ inputs.version }}"
-            $publish = "${{ inputs.publish_to_nuget }}"
+            $version = $env:INPUT_VERSION
+            $publish = $env:INPUT_PUBLISH_TO_NUGET
           }
 
-          if ([string]::IsNullOrWhiteSpace($version)) {
-            throw "Package version cannot be empty."
-          }
+          python tools/release.py version --version "$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
           "PUBLISH_TO_NUGET=$publish" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-          Write-Host "PACKAGE_VERSION=$version"
-          Write-Host "PUBLISH_TO_NUGET=$publish"
-
-      - name: Restore package projects
+      - name: Build, test and pack NuGet packages
         shell: pwsh
-        run: |
-          $projects = @(
-            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
-            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
-            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet restore $project
-          }
-
-      - name: Build package projects
-        shell: pwsh
-        run: |
-          $projects = @(
-            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
-            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
-            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet build $project `
-              -c Release `
-              --no-restore `
-              -p:Version=${{ env.PACKAGE_VERSION }} `
-              -p:ContinuousIntegrationBuild=true
-          }
-
-      - name: Clean package output
-        shell: pwsh
-        run: |
-          if (Test-Path "${{ env.PACKAGE_OUTPUT }}") {
-            Remove-Item "${{ env.PACKAGE_OUTPUT }}" -Recurse -Force
-          }
-
-          New-Item -ItemType Directory -Path "${{ env.PACKAGE_OUTPUT }}" | Out-Null
-
-      - name: Pack NuGet packages
-        shell: pwsh
-        run: |
-          $projects = @(
-            "src/MiKiNuo.Mvi.Domain/MiKiNuo.Mvi.Domain.csproj",
-            "src/MiKiNuo.Mvi.Application/MiKiNuo.Mvi.Application.csproj",
-            "src/MiKiNuo.Mvi.Infrastructure/MiKiNuo.Mvi.Infrastructure.csproj",
-            "src/MiKiNuo.Mvi.Presentation/MiKiNuo.Mvi.Presentation.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Avalonia/MiKiNuo.Mvi.Platforms.Avalonia.csproj",
-            "src/MiKiNuo.Mvi.Platforms.Godot/MiKiNuo.Mvi.Platforms.Godot.csproj"
-          )
-
-          foreach ($project in $projects) {
-            dotnet pack $project `
-              -c Release `
-              --no-build `
-              -p:PackageVersion=${{ env.PACKAGE_VERSION }} `
-              -p:ContinuousIntegrationBuild=true `
-              -o "${{ env.PACKAGE_OUTPUT }}"
-          }
+        run: python tools/release.py pack --version "$env:PACKAGE_VERSION"
 
       - name: Upload NuGet package artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages-${{ env.PACKAGE_VERSION }}
-          path: |
-            ${{ env.PACKAGE_OUTPUT }}/*.nupkg
-            ${{ env.PACKAGE_OUTPUT }}/*.snupkg
+          path: artifacts/packages/${{ env.PACKAGE_VERSION }}/
           if-no-files-found: error
 
       - name: Publish to NuGet.org
         if: env.PUBLISH_TO_NUGET == 'true'
         shell: pwsh
-        run: |
-          if ([string]::IsNullOrWhiteSpace("${{ secrets.NUGET_API_KEY }}")) {
-            throw "Missing repository secret: NUGET_API_KEY"
-          }
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: python tools/release.py publish --version "$env:PACKAGE_VERSION"
 
-          Get-ChildItem "${{ env.PACKAGE_OUTPUT }}" -Filter "*.nupkg" | ForEach-Object {
-            dotnet nuget push $_.FullName `
-              --api-key "${{ secrets.NUGET_API_KEY }}" `
-              --source "${{ env.NUGET_SOURCE }}" `
-              --skip-duplicate
-          }
+      - name: Upload release failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-release-logs-${{ github.run_id }}
+          path: |
+            artifacts/release/${{ env.PACKAGE_VERSION }}/
+            artifacts/publish/${{ env.PACKAGE_VERSION }}/
+          if-no-files-found: ignore

@@ -207,6 +207,13 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(xml.find('.//PackageId').text, entry['id'])
         self.assertEqual(len(release.catalog()), 6)
 
+    def test_package_readme_source_exists(self):
+        targets = release.ROOT/'eng/Package.targets'
+        readme = ET.parse(targets).find(".//None[@PackagePath='/README.md']")
+        self.assertIsNotNone(readme)
+        source = readme.get('Include').replace('$(MSBuildThisFileDirectory)', f'{targets.parent}/')
+        self.assertTrue(Path(source).is_file(), source)
+
     def test_public_targets_do_not_mutate_consumer_framework(self):
         for path in (release.ROOT/'src').glob('*/buildTransitive/*.targets'):
             xml = ET.parse(path)
