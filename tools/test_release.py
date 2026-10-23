@@ -195,7 +195,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertIsNotNone(xml.find("Target[@Name='AssertPackagedGenerator']"))
 
     def test_external_policy_does_not_disable_mvi_contracts(self):
-        config = (release.ROOT/'src/MiKiNuo.Mvi.Generators/config/MiKiNuo.Mvi.Generators.globalconfig').read_text()
+        config = (release.ROOT/'src/MiKiNuo.Mvi.Generators/config/MiKiNuo.Mvi.Generators.globalconfig').read_text(encoding='utf-8')
         rules = [line for line in config.splitlines() if line.startswith('dotnet_diagnostic.')]
         self.assertGreater(len(rules), 0)
         self.assertTrue(all(line.split('.')[1].startswith(('DOC', 'CODE', 'ARCH')) for line in rules))
