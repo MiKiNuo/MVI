@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -181,6 +182,24 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Expected failing'):
             release.execute([sys.executable, '-c', 'print("MVI0200")'], self.directory/'negative.log',
                             expected_error='MVI0200')
+
+    def test_cli_uses_utf8_with_legacy_console_encoding(self):
+        code = (
+            "import runpy, sys\n"
+            "sys.argv = sys.argv[1:]\n"
+            "try:\n"
+            "    runpy.run_path(sys.argv[0], run_name='__main__')\n"
+            "except SystemExit as error:\n"
+            "    if error.code: raise\n"
+            "print('中文诊断')\n"
+            "print('中文诊断', file=sys.stderr)\n"
+        )
+        result = subprocess.run(
+            [sys.executable, '-c', code, str(release.ROOT/'tools/release.py'), 'version', '--version', VERSION],
+            env=dict(os.environ, PYTHONIOENCODING='cp1252', PYTHONUTF8='0'), capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8', errors='replace'))
+        self.assertIn('中文诊断', result.stdout.decode('utf-8'))
+        self.assertIn('中文诊断', result.stderr.decode('utf-8'))
 
     def test_credential_arguments_not_written_to_logs(self):
         log = self.directory / 'private.log'
