@@ -3,7 +3,7 @@
     <None Include="$(MSBuildThisFileDirectory)../README.md"
           Pack="true" PackagePath="/README.md" Visible="false" />
     <None Include="$(MSBuildThisFileDirectory)../LICENSE"
-          Pack="true" PackagePath="/LICENSE" Visible="false" />
+          Pack="true" PackagePath="/" Visible="false" />
   </ItemGroup>
   <Target Name="MiKiNuoValidatePackageMetadata" BeforeTargets="GenerateNuspec"
           Condition="'$(IsPackable)' == 'true'">
