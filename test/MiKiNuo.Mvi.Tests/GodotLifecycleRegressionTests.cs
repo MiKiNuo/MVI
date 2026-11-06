@@ -1,5 +1,4 @@
-using System.Reflection;
-using System.Runtime.CompilerServices;
+﻿using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -98,10 +97,20 @@ public sealed class GodotLifecycleRegressionTests
             """);
     }
 
-    private static void RunScenario(string body, [CallerFilePath] string testFile = "")
+    private static void RunScenario(string body)
     {
-        string root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "../.."));
-        string platform = Path.Combine(root, "src", "MiKiNuo.Mvi.Platforms.Godot");
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "MiKiNuo.Mvi.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        if (directory is null)
+        {
+            throw new InvalidOperationException("未找到解决方案根目录。");
+        }
+
+        string platform = Path.Combine(directory.FullName, "src", "MiKiNuo.Mvi.Platforms.Godot");
         string[] files =
         [
             "Binding/GodotMviControlView.cs", "Binding/IMviGodotBindable.cs",

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -182,6 +183,24 @@ class ReleaseTests(unittest.TestCase):
             release.execute([sys.executable, '-c', 'print("MVI0200")'], self.directory/'negative.log',
                             expected_error='MVI0200')
 
+    def test_cli_uses_utf8_with_legacy_console_encoding(self):
+        code = (
+            "import runpy, sys\n"
+            "sys.argv = sys.argv[1:]\n"
+            "try:\n"
+            "    runpy.run_path(sys.argv[0], run_name='__main__')\n"
+            "except SystemExit as error:\n"
+            "    if error.code: raise\n"
+            "print('中文诊断')\n"
+            "print('中文诊断', file=sys.stderr)\n"
+        )
+        result = subprocess.run(
+            [sys.executable, '-c', code, str(release.ROOT/'tools/release.py'), 'version', '--version', VERSION],
+            env=dict(os.environ, PYTHONIOENCODING='cp1252', PYTHONUTF8='0'), capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8', errors='replace'))
+        self.assertIn('中文诊断', result.stdout.decode('utf-8'))
+        self.assertIn('中文诊断', result.stderr.decode('utf-8'))
+
     def test_credential_arguments_not_written_to_logs(self):
         log = self.directory / 'private.log'
         release.execute([sys.executable, '-c', 'pass', 'synthetic-key'], log, private=True)
@@ -195,7 +214,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertIsNotNone(xml.find("Target[@Name='AssertPackagedGenerator']"))
 
     def test_external_policy_does_not_disable_mvi_contracts(self):
-        config = (release.ROOT/'src/MiKiNuo.Mvi.Generators/config/MiKiNuo.Mvi.Generators.globalconfig').read_text()
+        config = (release.ROOT/'src/MiKiNuo.Mvi.Generators/config/MiKiNuo.Mvi.Generators.globalconfig').read_text(encoding='utf-8')
         rules = [line for line in config.splitlines() if line.startswith('dotnet_diagnostic.')]
         self.assertGreater(len(rules), 0)
         self.assertTrue(all(line.split('.')[1].startswith(('DOC', 'CODE', 'ARCH')) for line in rules))
@@ -212,6 +231,13 @@ class ReleaseTests(unittest.TestCase):
             xml = ET.parse(release.ROOT/entry['project'])
             self.assertEqual(xml.find('.//PackageId').text, entry['id'])
         self.assertEqual(len(release.catalog()), 6)
+
+    def test_package_readme_source_exists(self):
+        targets = release.ROOT/'eng/Package.targets'
+        readme = ET.parse(targets).find(".//None[@PackagePath='/README.md']")
+        self.assertIsNotNone(readme)
+        source = readme.get('Include').replace('$(MSBuildThisFileDirectory)', f'{targets.parent}/')
+        self.assertTrue(Path(source).is_file(), source)
 
     def test_public_targets_do_not_mutate_consumer_framework(self):
         for path in (release.ROOT/'src').glob('*/buildTransitive/*.targets'):
