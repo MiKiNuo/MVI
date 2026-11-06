@@ -149,9 +149,17 @@ public abstract class MviComponent : IDisposable, IMviIntentDispatcher
         {
             await DispatchCoreAsync(intent, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            DispatchFailed?.Invoke(this, new IntentDispatchExceptionEventArgs(exception, intent));
+            if (DispatchFailed is { } handlers)
+            {
+                IntentDispatchExceptionEventArgs error = new(exception, intent.GetType());
+                foreach (EventHandler<IntentDispatchExceptionEventArgs> handler in handlers.GetInvocationList())
+                {
+                    try { handler(this, error); }
+                    catch (Exception) { }
+                }
+            }
             throw;
         }
     }

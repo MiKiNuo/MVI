@@ -6,10 +6,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\MiKiNuo.Mvi.Abstractions\MiKiNuo.Mvi.Abstractions.csproj" />
-    <!-- 构建时不作为运行时引用；pack 时保留为 NuGet 依赖。
-         消费者通过 Generators 包的 buildTransitive 加载编译期工具。 -->
+    <!-- 保留还原依赖，但不复制生成器程序集；消费者通过 buildTransitive 加载工具。 -->
     <ProjectReference Include="..\MiKiNuo.Mvi.Generators\MiKiNuo.Mvi.Generators.csproj"
-                      ReferenceOutputAssembly="false" PrivateAssets="none" />
+                      Private="false" PrivateAssets="none" />
     <PackageReference Include="R3" />
   </ItemGroup>
 </Project>

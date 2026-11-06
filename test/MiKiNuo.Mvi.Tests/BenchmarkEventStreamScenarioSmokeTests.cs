@@ -56,6 +56,19 @@ public sealed class BenchmarkEventStreamScenarioSmokeTests
         await Assert.That(scenario.CurrentCounter).IsEqualTo(100);
     }
 
+    /// <summary>两条输入链每次返回时都已完成整批工作，不把触发数当完成数。</summary>
+    [Test]
+    public async Task EventBindingBenchmark_Should_CompleteEveryBatchAsync()
+    {
+        using EventBindingDispatchBenchmarks benchmark = new();
+        benchmark.Setup();
+        for (int batch = 0; batch < 2; batch++)
+        {
+            await Assert.That(await benchmark.DirectDispatch1000Async()).IsEqualTo(1000);
+            await Assert.That(await benchmark.Raise1000EventsThroughBindingAsync()).IsEqualTo(1000);
+        }
+    }
+
     /// <summary>
     /// 验证事件绑定场景在零事件时不产生任何派发。
     /// </summary>

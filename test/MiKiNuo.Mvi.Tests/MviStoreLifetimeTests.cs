@@ -68,4 +68,92 @@ public sealed class MviStoreLifetimeTests
         await Assert.That(error.Message).IsEqualTo("probe");
         store.Stop(); await Assert.That(store.TryPost(new CounterIntent.Increment())).IsFalse();
     }
+
+    /// <summary>已接纳通知等待容量且不额外腾出隐藏队列空间。</summary>
+    [Test]
+    public async Task AcceptedNotificationsWaitForExecutionCapacityAsync()
+    {
+        TaskCompletionSource entered = TestCheck.Signal(), release = TestCheck.Signal();
+        TaskCompletionSource ready = TestCheck.Signal(), delivered = TestCheck.Signal();
+        TaskCompletionSource<Exception> failed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        InvalidOperationException warmupFailure = new("warmup");
+        await using var store = new MviStore<CounterState, CounterIntent>(CounterState.Initial,
+            new CounterHandler(async (_, _) =>
+            {
+                if (!ready.Task.IsCompleted) throw warmupFailure;
+                entered.TrySetResult();
+                await release.Task;
+            }), new CounterReducer(), notificationCapacity: 2, maxConcurrentIntents: 1);
+        using var states = store.States.Subscribe(state =>
+        {
+            if (state.Label == "delivered") delivered.TrySetResult();
+        });
+        using var errors = store.Errors.Subscribe(error =>
+        {
+            if (ReferenceEquals(error, warmupFailure)) ready.TrySetResult();
+            else failed.TrySetResult(error);
+        });
+        store.TryPost(new CounterIntent.Run());
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Task operation = store.DispatchAsync(new CounterIntent.Run()).AsTask();
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(store.TryPost(new CounterIntent.Increment())).IsTrue();
+            await Assert.That(store.TryPost(new CounterIntent.Rename("delivered"))).IsTrue();
+            await Task.Yield();
+            await Assert.That(store.TryPost(new CounterIntent.Increment())).IsFalse();
+            await Assert.That(store.CurrentState.Count).IsEqualTo(0);
+        }
+        finally { release.TrySetResult(); await operation.WaitAsync(TimeSpan.FromSeconds(5)); }
+        await Task.WhenAny(delivered.Task, failed.Task).WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.That(failed.Task.IsCompleted).IsFalse();
+        await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.That(store.CurrentState.Count).IsEqualTo(1);
+    }
+
+    /// <summary>停止取消排队通知，但不能提前释放仍在运行的处理器。</summary>
+    [Test]
+    public async Task StopCancelsQueuedNotificationsButWaitsForRunningHandlerAsync()
+    {
+        TaskCompletionSource entered = TestCheck.Signal(), release = TestCheck.Signal();
+        var errors = new System.Collections.Concurrent.ConcurrentQueue<Exception>();
+        await using var store = new MviStore<CounterState, CounterIntent>(CounterState.Initial,
+            new CounterHandler(async (_, _) => { entered.TrySetResult(); await release.Task; }),
+            new CounterReducer(), notificationCapacity: 1, maxConcurrentIntents: 1);
+        using var subscription = store.Errors.Subscribe(errors.Enqueue);
+        Task operation = store.DispatchAsync(new CounterIntent.Run()).AsTask();
+        Task closing = Task.CompletedTask;
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(store.TryPost(new CounterIntent.Increment())).IsTrue();
+            store.Stop();
+            closing = store.DisposeAsync().AsTask();
+            await Assert.That(closing.IsCompleted).IsFalse();
+            await Assert.That(store.TryPost(new CounterIntent.Increment())).IsFalse();
+            await TestCheck.ThrowsAsync<ObjectDisposedException>(() => store.DispatchAsync(new CounterIntent.Increment()).AsTask());
+        }
+        finally
+        {
+            release.TrySetResult();
+            await operation.WaitAsync(TimeSpan.FromSeconds(5));
+            await closing.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        await Assert.That(errors.IsEmpty).IsTrue();
+        await Assert.That(store.CurrentState.Count).IsEqualTo(0);
+    }
+
+    /// <summary>后台失败仍释放执行容量。</summary>
+    [Test]
+    public async Task PostedFailureReleasesExecutionCapacityAsync()
+    {
+        TaskCompletionSource<Exception> failed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var store = TestCheck.Store(new((_, _) => throw new InvalidOperationException("posted")), capacity: 1);
+        using var subscription = store.Errors.Subscribe(error => failed.TrySetResult(error));
+        await Assert.That(store.TryPost(new CounterIntent.Run())).IsTrue();
+        await failed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await store.DispatchAsync(new CounterIntent.Increment());
+        await Assert.That(store.CurrentState.Count).IsEqualTo(1);
+    }
 }

@@ -9,7 +9,7 @@ public interface IMviIntentSink<in TIntent> where TIntent : IMviIntent
     /// <param name="cancellationToken">取消标记。</param>
     /// <returns>完整处理任务。</returns>
     public ValueTask DispatchAsync(TIntent intent, CancellationToken cancellationToken = default);
-    /// <summary>尝试将通知对应的本地意图放入有界队列。</summary>
+    /// <summary>尝试进入有界队列；接纳后等待执行容量，停止时取消尚未执行的通知。</summary>
     /// <param name="intent">本地意图。</param>
     /// <returns>仅表示队列接纳，不表示处理成功。</returns>
     public bool TryPost(TIntent intent);

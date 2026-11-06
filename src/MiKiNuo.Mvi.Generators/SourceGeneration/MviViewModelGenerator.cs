@@ -172,7 +172,7 @@ public sealed class MviViewModelGenerator : IIncrementalGenerator
         {
             b.Append("    private ").Append(S(c.Property.Type)).Append(" __mvi_").Append(c.Property.Name).AppendLine(" = default!;");
             b.AppendLine("    /// <inheritdoc/>");
-            b.Append("    ").Append(Access(c.Property.DeclaredAccessibility)).Append(" partial ").Append(S(c.Property.Type)).Append(" @").Append(c.Property.Name).Append(" { get => __mvi_").Append(c.Property.Name).Append(';');
+            b.Append("    ").Append(Access(c.Property.DeclaredAccessibility)).Append(" partial ").Append(S(c.Property.Type)).Append(" @").Append(c.Property.Name).Append(" { get => __mvi_").Append(c.Property.Name).Append(" ?? throw new global::System.InvalidOperationException(\"请在派生构造函数完成自身初始化后调用 InitializeBindings。\");");
             if (c.Property.SetMethod is not null)
             { if (c.Property.SetMethod.DeclaredAccessibility != c.Property.DeclaredAccessibility) b.Append(' ').Append(Access(c.Property.SetMethod.DeclaredAccessibility)); b.Append(" set => __mvi_").Append(c.Property.Name).Append(" = value;"); }
             b.AppendLine(" }");

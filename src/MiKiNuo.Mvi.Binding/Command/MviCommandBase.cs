@@ -10,6 +10,7 @@ public abstract class MviCommandBase : ICommand, IDisposable
     private readonly Func<bool>? _predicate;
     private int _disposed;
     private int _enabled;
+    private int _notificationPending;
     /// <summary>创建使用状态流的命令。</summary>
     /// <param name="canExecute">可执行状态流。</param>
     /// <param name="uiDispatcher">UI 调度器。</param>
@@ -41,8 +42,23 @@ public abstract class MviCommandBase : ICommand, IDisposable
     /// <param name="parameter">命令参数。</param>
     public abstract void Execute(object? parameter);
     /// <summary>请求平台重新检查命令条件；投递后的回调会再次检查生命周期。</summary>
-    public void NotifyCanExecuteChanged() => _ui.Post(() =>
-    { if (Volatile.Read(ref _disposed) == 0) CanExecuteChanged?.Invoke(this, EventArgs.Empty); });
+    public void NotifyCanExecuteChanged()
+    {
+        if (Volatile.Read(ref _disposed) != 0 || Interlocked.CompareExchange(ref _notificationPending, 1, 0) != 0) return;
+        try
+        {
+            _ui.Post(() =>
+            {
+                Interlocked.Exchange(ref _notificationPending, 0);
+                if (Volatile.Read(ref _disposed) == 0) CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+            });
+        }
+        catch
+        {
+            Interlocked.Exchange(ref _notificationPending, 0);
+            throw;
+        }
+    }
     /// <summary>在 UI 上报告平台入口的故障，不在错误报告中保留敏感命令参数。</summary>
     /// <param name="exception">操作故障。</param>
     /// <param name="parameter">为了兼容命令契约接收，但不转存参数值。</param>
@@ -50,8 +66,13 @@ public abstract class MviCommandBase : ICommand, IDisposable
     {
         _ui.Post(() =>
         {
-            if (Volatile.Read(ref _disposed) == 0)
-                UnhandledException?.Invoke(this, new CommandExceptionEventArgs(exception, null));
+            if (Volatile.Read(ref _disposed) != 0 || UnhandledException is not { } handlers) return;
+            CommandExceptionEventArgs error = new(exception, null);
+            foreach (EventHandler<CommandExceptionEventArgs> handler in handlers.GetInvocationList())
+            {
+                try { handler(this, error); }
+                catch (Exception) { }
+            }
         });
     }
     /// <summary>释放后立即拒绝执行，再清理订阅与额外资源。</summary>

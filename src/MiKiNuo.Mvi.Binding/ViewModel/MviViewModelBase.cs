@@ -23,6 +23,7 @@ public abstract class MviViewModelBase<TState, TIntent> : MviComponent, INotifyP
     private readonly List<string?> _notifications = [];
     private int _disposed;
     private bool _initialized;
+    private bool _bindingsReady;
     private bool _applying;
     private TState _state;
     /// <summary>只初始化依赖；生成的派生构造函数在自身初始化后调用 InitializeBindings。</summary>
@@ -49,12 +50,19 @@ public abstract class MviViewModelBase<TState, TIntent> : MviComponent, INotifyP
         {
             InitializeGeneratedCommands();
             _resources.Add(Store.States.Subscribe(this, static (state, model) => model.QueueProjection(state)));
+            _bindingsReady = true;
         }
         catch (Exception failure)
         {
             try { Dispose(); } catch (Exception cleanup) { throw new AggregateException(failure, cleanup); }
             throw;
         }
+    }
+    /// <summary>验证命令和订阅已成功初始化；不保证 UI 首次投影已完成。</summary>
+    /// <exception cref="InvalidOperationException">派生构造函数尚未成功调用 InitializeBindings。</exception>
+    public void VerifyBindingsInitialized()
+    {
+        if (!_bindingsReady) throw new InvalidOperationException("请在派生构造函数完成自身初始化后调用 InitializeBindings。");
     }
     /// <summary>由生成器安装命令。</summary>
     protected virtual void InitializeGeneratedCommands() { }

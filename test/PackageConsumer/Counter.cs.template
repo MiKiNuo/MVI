@@ -43,6 +43,9 @@ public sealed partial class CounterReducer : MviReducerBase<CounterState>
 #if HAS_BINDING
 public sealed partial class CounterViewModel : MviViewModelBase<CounterState, AddIntent>
 {
+    public CounterViewModel(IMviStore<CounterState, AddIntent> store, IMviUiDispatcher? uiDispatcher = null)
+        : base(store, uiDispatcher) => InitializeBindings();
+
     [MviBind]
     public partial int Amount { get; set; }
     [MviCommand(typeof(AddIntent), nameof(Amount))]

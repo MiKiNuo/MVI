@@ -5,6 +5,91 @@ namespace MiKiNuo.Mvi.Tests;
 /// <summary>多生成器协作必须得到可编译且行为正确的单一对象图。</summary>
 public sealed class GeneratedFeatureTests
 {
+    /// <summary>默认及自定义构造均返回已就绪绑定。</summary>
+    [Test]
+    [Arguments("")]
+    [Arguments("public TestViewModel(MiKiNuo.Mvi.Runtime.MVI.Store.IMviStore<TestState, TestIntent> store) : base(store) { Text = \"ready\"; InitializeBindings(); }")]
+    [Arguments("public TestViewModel(MiKiNuo.Mvi.Runtime.MVI.Store.IMviStore<TestState, TestIntent> store) : this(store, true) { } private TestViewModel(MiKiNuo.Mvi.Runtime.MVI.Store.IMviStore<TestState, TestIntent> store, bool initialize) : base(store) { InitializeBindings(); }")]
+    public async Task ConstructorsReturnReadyBindingsAsync(string constructor)
+    {
+        string source = FeatureSource.Replace("[MviBind] public partial string Text", constructor + "\n[MviBind] public partial string Text") + """
+            public static class InstanceProbe
+            {
+                public static async System.Threading.Tasks.Task<bool> Run()
+                {
+                    var container = new MviGeneratorTestAssembly.Composition.GeneratedMviContainer();
+                    await using var composition = await container.CreateTestCompositionAsync();
+                    composition.Test.ViewModel.VerifyBindingsInitialized();
+                    return composition.Test.ViewModel.SubmitCommand != null;
+                }
+            }
+            """;
+        await Assert.That(await GeneratorTestHost.ProbeFrameworkAsync(source)).IsTrue();
+    }
+
+    /// <summary>首次同步投影能够读取已安装命令。</summary>
+    [Test]
+    public async Task InitialSynchronousProjectionCanReadInstalledCommandAsync()
+    {
+        string source = FeatureSource.Replace("[MviBind] public partial string Text", """
+            public bool Observed;
+            public TestViewModel(MiKiNuo.Mvi.Runtime.MVI.Store.IMviStore<TestState, TestIntent> store) : base(store)
+            {
+                PropertyChanged += (_, _) =>
+                {
+                    if (SubmitCommand == null) throw new Exception("missing command");
+                    try { VerifyBindingsInitialized(); }
+                    catch (InvalidOperationException) { Observed = true; }
+                };
+                InitializeBindings();
+            }
+            [MviBind] public partial string Text
+            """) + """
+            public static class InstanceProbe
+            {
+                public static async System.Threading.Tasks.Task<bool> Run()
+                {
+                    var container = new MviGeneratorTestAssembly.Composition.GeneratedMviContainer();
+                    await using var composition = await container.CreateTestCompositionAsync();
+                    composition.Test.ViewModel.VerifyBindingsInitialized();
+                    return composition.Test.ViewModel.Observed;
+                }
+            }
+            """;
+        await Assert.That(await GeneratorTestHost.ProbeFrameworkAsync(source)).IsTrue();
+    }
+
+    /// <summary>遗漏初始化时命令与工厂明确失败并回滚。</summary>
+    [Test]
+    public async Task MissingInitializationFailsGetterAndFactoryAndRollsBackAsync()
+    {
+        string source = FeatureSource.Replace("[MviBind] public partial string Text", """
+            public static bool GetterRejected, Disposed;
+            public TestViewModel(MiKiNuo.Mvi.Runtime.MVI.Store.IMviStore<TestState, TestIntent> store) : base(store)
+            {
+                try { _ = SubmitCommand; }
+                catch (InvalidOperationException e) { GetterRejected = e.Message.Contains("InitializeBindings"); }
+            }
+            protected override void OnDispose() { Disposed = true; }
+            [MviBind] public partial string Text
+            """) + """
+            public static class InstanceProbe
+            {
+                public static async System.Threading.Tasks.Task<bool> Run()
+                {
+                    var container = new MviGeneratorTestAssembly.Composition.GeneratedMviContainer();
+                    try { await container.CreateTestCompositionAsync(); return false; }
+                    catch (System.InvalidOperationException e)
+                    {
+                        return e.Message.Contains("InitializeBindings") && FeatureTest.TestViewModel.GetterRejected
+                            && FeatureTest.TestViewModel.Disposed;
+                    }
+                }
+            }
+            """;
+        await Assert.That(await GeneratorTestHost.ProbeFrameworkAsync(source)).IsTrue();
+    }
+
     internal const string FeatureSource = """
         using System;
         using System.Threading;

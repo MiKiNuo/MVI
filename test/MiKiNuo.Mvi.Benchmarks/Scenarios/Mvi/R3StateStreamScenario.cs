@@ -4,8 +4,8 @@ using R3;
 namespace MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi;
 
 /// <summary>
-/// 表示 R3 状态流基准场景：包装 <see cref="ReactiveProperty{T}"/>（Store 同款状态发布通道），
-/// 测量状态发布吞吐与订阅者数量的关系。
+/// 表示 R3 状态流微基准场景：直接包装 <see cref="ReactiveProperty{T}"/>，
+/// 测量发布通知与订阅者数量的关系，不经过实际 Store 全链。
 /// </summary>
 public sealed class R3StateStreamScenario : IDisposable
 {

@@ -6,19 +6,19 @@ namespace MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi;
 
 /// <summary>
 /// 表示并发派发基准：
-/// 1/2/4/8 线程同时对同一 Store 派发无副作用意图，
-/// 验证 SemaphoreSlim 派发门（ADR-0002：锁只护 Reduce）在争抢下的吞吐。
-/// 每次操作为一整批（线程数 × 100 个派发），报告值除以批量即得单派发成本。
+/// 1/2/4/8 个 Task.Run worker 全部抵达异步起跑门后向同一 Store 派发。
+/// 每次测量包含任务调度、起跑协调、派发完成和计数校验，非纯锁竞争成本。
+/// 每批为 worker 数 × 100 次派发；worker 数不保证同时运行的物理线程数。
 /// </summary>
 [MemoryDiagnoser]
-public class ConcurrentDispatchBenchmarks : IDisposable
+public class ConcurrentDispatchBenchmarks : IAsyncDisposable
 {
     private const int DispatchesPerThread = 100;
 
     private MviStore<MinimalState, MinimalIntent> _store = null!;
 
     /// <summary>
-    /// 获取或设置并发争抢派发门的线程数。
+    /// 获取或设置并发 worker 数（保留 ThreadCount 参数名）。
     /// </summary>
     [Params(1, 2, 4, 8)]
     public int ThreadCount { get; set; }
@@ -38,35 +38,62 @@ public class ConcurrentDispatchBenchmarks : IDisposable
     /// <summary>
     /// 清理 Store 资源。
     /// </summary>
+    /// <returns>完整资源清理任务。</returns>
     [GlobalCleanup]
-    public void Cleanup()
-    {
-        Dispose();
-    }
+    public Task CleanupAsync() => DisposeAsync().AsTask();
 
     /// <summary>
-    /// 释放 Store 资源。
+    /// 等待 Store 排空并释放资源，支持初始化前和重复清理。
     /// </summary>
-    public void Dispose()
+    /// <returns>完整资源清理任务。</returns>
+    public async ValueTask DisposeAsync()
     {
-        _store?.Dispose();
+        if (_store is not null)
+        {
+            await _store.DisposeAsync().ConfigureAwait(false);
+        }
+
         GC.SuppressFinalize(this);
     }
 
     /// <summary>
     /// 并发派发一整批意图并等待全部完成。
     /// </summary>
-    /// <returns>表示整批派发过程的任务。</returns>
+    /// <returns>本批实际完成的计数增量。</returns>
     [Benchmark]
-    public async Task ConcurrentDispatchBatchAsync()
+    public async Task<int> ConcurrentDispatchBatchAsync()
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ThreadCount);
+        int expected = checked(ThreadCount * DispatchesPerThread);
+        int before = _store.CurrentState.Counter;
+        TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int arrived = 0;
         Task[] workers = new Task[ThreadCount];
         for (int index = 0; index < ThreadCount; index++)
         {
-            workers[index] = DispatchIncrementManyAsync();
+            workers[index] = Task.Run(async () =>
+            {
+                if (Interlocked.Increment(ref arrived) == workers.Length)
+                {
+                    ready.SetResult();
+                }
+
+                await start.Task.ConfigureAwait(false);
+                await DispatchIncrementManyAsync().ConfigureAwait(false);
+            });
         }
 
+        await ready.Task.ConfigureAwait(false);
+        start.SetResult();
         await Task.WhenAll(workers).ConfigureAwait(false);
+        int completed = unchecked(_store.CurrentState.Counter - before);
+        if (completed != expected)
+        {
+            throw new InvalidOperationException($"本批应完成 {expected} 次派发，实际计数增量为 {completed}。");
+        }
+
+        return completed;
     }
 
     /// <summary>

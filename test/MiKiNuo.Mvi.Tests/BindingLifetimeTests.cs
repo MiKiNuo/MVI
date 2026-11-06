@@ -12,6 +12,54 @@ namespace MiKiNuo.Mvi.Tests;
 /// <summary>绑定资源清理不能因一项失败而提前中断。</summary>
 public sealed class BindingLifetimeTests
 {
+    /// <summary>故障只暴露类型，观察者故障不覆盖原异常或阻断后续观察者。</summary>
+    [Test] public async Task DispatchFailurePreservesExceptionWithoutIntentAsync()
+    {
+        InvalidOperationException expected = new("dispatch");
+        TaskCompletionSource release = TestCheck.Signal();
+        using FailingComponent component = new(async () => { await release.Task; throw expected; });
+        IntentDispatchExceptionEventArgs? reported = null;
+        component.DispatchFailed += (_, _) => throw new InvalidOperationException("observer");
+        component.DispatchFailed += (_, error) => reported = error;
+        Task dispatch = component.GetIntentDispatcher().DispatchAsync(new SensitiveIntent("password")).AsTask();
+        try
+        {
+            release.TrySetResult();
+            Exception actual = await TestCheck.ThrowsAsync<InvalidOperationException>(() => dispatch.WaitAsync(TimeSpan.FromSeconds(5)));
+            await Assert.That(actual).IsSameReferenceAs(expected);
+            await Assert.That(reported!.Exception).IsSameReferenceAs(expected);
+            await Assert.That(reported.IntentType).IsEqualTo(typeof(SensitiveIntent));
+            await Assert.That(typeof(IntentDispatchExceptionEventArgs).GetProperty("Intent")).IsNull();
+        }
+        finally { release.TrySetResult(); }
+    }
+
+    /// <summary>显式派发保留取消异常，但不发送故障事件。</summary>
+    [Test] public async Task DispatchCancellationIsNotReportedAsync()
+    {
+        OperationCanceledException expected = new();
+        using FailingComponent component = new(() => ValueTask.FromException(expected));
+        int reports = 0;
+        component.DispatchFailed += (_, _) => reports++;
+        OperationCanceledException actual = await TestCheck.ThrowsAsync<OperationCanceledException>(() =>
+            component.GetIntentDispatcher().DispatchAsync(new SensitiveIntent("password")).AsTask().WaitAsync(TimeSpan.FromSeconds(5)));
+        await Assert.That(actual).IsSameReferenceAs(expected);
+        await Assert.That(reports).IsEqualTo(0);
+    }
+
+    /// <summary>携带仅用于验证的合成敏感输入。</summary>
+    /// <param name="Password">合成密码。</param>
+    private sealed record SensitiveIntent(string Password) : MiKiNuo.Mvi.Abstractions.MVI.Intent.IMviIntent;
+
+    /// <summary>通过公开派发入口验证受控异步故障。</summary>
+    /// <param name="dispatch">受控派发操作。</param>
+    private sealed class FailingComponent(Func<ValueTask> dispatch) : MviComponent
+    {
+        /// <inheritdoc/>
+        protected override ValueTask DispatchCoreAsync(MiKiNuo.Mvi.Abstractions.MVI.Intent.IMviIntent intent, CancellationToken cancellationToken)
+            => dispatch();
+    }
+
     /// <summary>逆序释放所有资源并聚合失败。</summary>
     [Test] public async Task CleanupContinuesAfterFailureAsync()
     {

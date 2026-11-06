@@ -6,9 +6,9 @@ namespace MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi;
 
 /// <summary>
 /// 表示事件绑定派发基准：
-/// 对照"裸 Store 串行派发 1000 次"（基线）与"经事件绑定触发 1000 个事件"
-/// （事件源回调 → Intent 映射 → 派发器转发 → Store 管线），
-/// 差值即事件绑定层每个事件的额外成本。报告值为每 1000 个事件的成本。
+/// 对照裸 Store 串行派发与事件源回调 → Intent 映射 → 派发器 → Store 整条输入链。
+/// 两条路径均逐次创建 Intent，并在计时内确认 1000 次状态更新完成。
+/// 报告值为每批总成本（事件路径包含完成等待），差值不是纯 binding 额外成本。
 /// </summary>
 [MemoryDiagnoser]
 public class EventBindingDispatchBenchmarks : IDisposable
@@ -17,7 +17,6 @@ public class EventBindingDispatchBenchmarks : IDisposable
 
     private EventBindingScenario _scenario = null!;
     private MviStore<MinimalState, MinimalIntent> _bareStore = null!;
-    private readonly MinimalIntent.Increment _increment = new();
 
     /// <summary>
     /// 构建事件绑定场景与无绑定的裸 Store 基线。
@@ -54,22 +53,41 @@ public class EventBindingDispatchBenchmarks : IDisposable
     /// <summary>
     /// 裸 Store 串行派发 1000 个意图：不含事件层的事件派发基线。
     /// </summary>
-    /// <returns>表示串行派发过程的任务。</returns>
+    /// <returns>本批实际完成的计数增量。</returns>
     [Benchmark(Baseline = true)]
-    public async Task DirectDispatch1000Async()
+    public async Task<int> DirectDispatch1000Async()
     {
+        int before = _bareStore.CurrentState.Counter;
         for (int index = 0; index < EventsPerOperation; index++)
         {
-            await _bareStore.DispatchAsync(_increment).ConfigureAwait(false);
+            await _bareStore.DispatchAsync(new MinimalIntent.Increment()).ConfigureAwait(false);
         }
+
+        int completed = unchecked(_bareStore.CurrentState.Counter - before);
+        if (completed != EventsPerOperation)
+        {
+            throw new InvalidOperationException($"直接派发应完成 {EventsPerOperation} 次，实际为 {completed}。");
+        }
+
+        return completed;
     }
 
     /// <summary>
     /// 经事件绑定触发 1000 个事件：事件源回调 → Intent 映射 → 派发器 → Store 管线。
     /// </summary>
+    /// <returns>本批实际完成的计数增量。</returns>
     [Benchmark]
-    public void Raise1000EventsThroughBinding()
+    public async Task<int> Raise1000EventsThroughBindingAsync()
     {
+        int before = _scenario.CurrentCounter;
         _scenario.RaiseEvents(EventsPerOperation);
+        await _scenario.WaitUntilCounterAsync(_scenario.RaisedEventCount).ConfigureAwait(false);
+        int completed = unchecked(_scenario.CurrentCounter - before);
+        if (completed != EventsPerOperation || _scenario.CurrentCounter != _scenario.RaisedEventCount)
+        {
+            throw new InvalidOperationException($"事件派发应完成 {EventsPerOperation} 次，实际为 {completed}。");
+        }
+
+        return completed;
     }
 }

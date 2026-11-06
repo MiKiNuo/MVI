@@ -128,6 +128,58 @@ public sealed class MviEventSourceGeneratorBehaviorTests
         await Assert.That(emitSuccess).IsTrue();
     }
 
+    /// <summary>友元程序集使用本程序集生成的事件适配器。</summary>
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task FriendAssembliesUseTheirOwnEventAdaptersAsync(bool godot)
+    {
+        string suffix = Guid.NewGuid().ToString("N");
+        string nameA = "Events-A" + suffix, nameB = "Events_A" + suffix;
+        string platform = godot ? "Godot.Control" : "Avalonia.Controls.Control";
+        string imports = godot ? "MiKiNuo.Mvi.Platforms.Godot.Binding" : "MiKiNuo.Mvi.Platforms.Avalonia.Events";
+        MetadataReference[] references = godot ? GeneratorTestHost.FrameworkReferences : AvaloniaReferences;
+        string sourceA = "[assembly: System.Runtime.CompilerServices.InternalsVisibleTo(\"" + nameB + "\")]\n"
+            + (godot ? "namespace Godot { public class Control { } }" : "")
+            + "namespace Shared { public sealed class FriendButton : " + platform + " { public event System.Action? Click; public void Raise() => Click?.Invoke(); } internal static class Probe { internal static bool Value => true; } }";
+        var inputA = GeneratorTestHost.CreateCompilation(sourceA, references).WithAssemblyName(nameA);
+        var driverA = Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver.Create(
+            [new MviEventSourceGenerator().AsSourceGenerator()], parseOptions: (Microsoft.CodeAnalysis.CSharp.CSharpParseOptions)inputA.SyntaxTrees.First().Options);
+        driverA.RunGeneratorsAndUpdateCompilation(inputA, out Compilation outputA, out _);
+        using MemoryStream imageA = new();
+        var emittedA = outputA.Emit(imageA);
+        await Assert.That(string.Join("\n", emittedA.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))).IsEqualTo("");
+        string sourceB = "using " + imports + ";\n" + """
+            public static class InstanceProbe
+            {
+                public static bool Run()
+                {
+                    var button = new Shared.FriendButton();
+                    var adapter = button.ToEventSource();
+                    _ = adapter.Click;
+                    return Shared.Probe.Value && adapter.GetType().Assembly == typeof(InstanceProbe).Assembly;
+                }
+            }
+            """;
+        var inputB = GeneratorTestHost.CreateCompilation(sourceB, references)
+            .AddReferences(MetadataReference.CreateFromImage(imageA.ToArray())).WithAssemblyName(nameB);
+        var driverB = Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver.Create(
+            [new MviEventSourceGenerator().AsSourceGenerator()], parseOptions: (Microsoft.CodeAnalysis.CSharp.CSharpParseOptions)inputB.SyntaxTrees.First().Options);
+        driverB.RunGeneratorsAndUpdateCompilation(inputB, out Compilation outputB, out _);
+        using MemoryStream imageB = new();
+        var emittedB = outputB.Emit(imageB);
+        await Assert.That(string.Join("\n", emittedB.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error || d.Id == "CS0436" || d.Id == "CS0121"))).IsEqualTo("");
+        var context = new System.Runtime.Loader.AssemblyLoadContext(nameB, isCollectible: true);
+        try
+        {
+            imageA.Position = 0; imageB.Position = 0;
+            context.LoadFromStream(imageA);
+            var assembly = context.LoadFromStream(imageB);
+            await Assert.That((bool)assembly.GetType("InstanceProbe")!.GetMethod("Run")!.Invoke(null, null)!).IsTrue();
+        }
+        finally { context.Unload(); }
+    }
+
     /// <summary>仅显式提供真实 MVI 框架和 Avalonia 控件依赖。</summary>
     private static MetadataReference[] AvaloniaReferences =>
     [

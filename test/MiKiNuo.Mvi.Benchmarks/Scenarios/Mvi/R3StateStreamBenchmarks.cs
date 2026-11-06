@@ -6,8 +6,8 @@ namespace MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi;
 
 /// <summary>
 /// 表示 R3 状态发布吞吐基准：
-/// 向 Store 同款 <see cref="ReactiveProperty{T}"/> 发布 1000 个互异状态，
-/// 订阅者数量扫描（1/5）给出"每个订阅者加多少纳秒"的边际成本。
+/// 直接向 <see cref="ReactiveProperty{T}"/> 发布 1000 个互异状态，比较 1/5 个订阅者。
+/// 仅测 ReactiveProperty 发布通知，不包含实际 Store 的派发、归约与状态发布全链。
 /// 报告值为每 1000 次发布的总成本。
 /// </summary>
 [MemoryDiagnoser]
@@ -64,7 +64,7 @@ public class R3StatePublishBenchmarks : IDisposable
 
 /// <summary>
 /// 表示 R3 订阅成本基准：测量"挂载一个订阅者再卸载"的往返成本
-/// （对应 View 重新绑定时的订阅生命周期开销）。
+/// （仅 ReactiveProperty 订阅与重放，不代表 View 重新绑定或 Store 全链成本）。
 /// </summary>
 [MemoryDiagnoser]
 public class R3SubscribeBenchmarks : IDisposable

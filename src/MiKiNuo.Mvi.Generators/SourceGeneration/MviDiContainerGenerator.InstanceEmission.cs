@@ -77,6 +77,7 @@ public sealed partial class MviDiContainerGenerator
                 builder.AppendLine("            " + feature.StoreTypeName + " store = services.Resolve<" + feature.StoreTypeName + ">();");
                 builder.AppendLine("            services.Stops.Add(((" + store + ")store).Stop);");
                 builder.AppendLine("            " + feature.ViewModel.TypeName + " vm = services.Resolve<" + feature.ViewModel.TypeName + ">();");
+                builder.AppendLine("            vm.VerifyBindingsInitialized();");
                 builder.AppendLine("            " + handle + " instance = new(endpoint.InstanceId, vm, services.Resources, services.Stops);");
                 builder.AppendLine("            _ = instance.Lifetime.Register(endpoint.Dispose);");
                 builder.AppendLine("            return (instance, services);");

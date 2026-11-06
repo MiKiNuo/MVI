@@ -12,6 +12,96 @@ namespace MiKiNuo.Mvi.Tests;
 /// <summary>命令准入、错误观察和取消的实际行为。</summary>
 public sealed class MviCommandTests
 {
+    /// <summary>错误仍排队到 UI，逐个隔离观察者且不保存参数。</summary>
+    [Test] public async Task FailureObserversAreIsolatedOnUiAsync()
+    {
+        QueueUiDispatcher ui = new();
+        InvalidOperationException expected = new("failure");
+        using MviAsyncCommand command = new(static () => true, (_, _) => throw expected, ui);
+        CommandExceptionEventArgs? reported = null;
+        command.UnhandledException += (_, _) => throw new InvalidOperationException("observer");
+        command.UnhandledException += (_, error) => reported = error;
+        command.Execute("password");
+        await Assert.That(reported).IsNull();
+        ui.Drain();
+        await Assert.That(reported!.Exception).IsSameReferenceAs(expected);
+        await Assert.That(reported.Parameter).IsNull();
+        Exception actual = await TestCheck.ThrowsAsync<InvalidOperationException>(() => command.ExecuteAsync("password").AsTask());
+        await Assert.That(actual).IsSameReferenceAs(expected);
+    }
+
+    /// <summary>取消不会进入 UI 错误事件，显式调用仍抛取消。</summary>
+    [Test] public async Task CancellationIsNotReportedAsync()
+    {
+        QueueUiDispatcher ui = new();
+        OperationCanceledException expected = new();
+        using MviAsyncCommand command = new(static () => true, (_, _) => ValueTask.FromException(expected), ui);
+        int reports = 0;
+        command.UnhandledException += (_, _) => reports++;
+        command.Execute("password");
+        OperationCanceledException actual = await TestCheck.ThrowsAsync<OperationCanceledException>(() => command.ExecuteAsync(null).AsTask().WaitAsync(TimeSpan.FromSeconds(5)));
+        ui.Drain();
+        await Assert.That(actual).IsSameReferenceAs(expected);
+        await Assert.That(reports).IsEqualTo(0);
+    }
+
+    /// <summary>并发请求合并为一个投递，回调开始后允许重入，释放后不通知。</summary>
+    [Test] public async Task NotificationsCoalesceAndAllowReentryAsync()
+    {
+        NotificationUiDispatcher ui = new();
+        using MviAsyncCommand command = new(static () => true, (_, _) => ValueTask.CompletedTask, ui);
+        int notifications = 0;
+        command.CanExecuteChanged += (_, _) =>
+        {
+            if (++notifications == 1) command.NotifyCanExecuteChanged();
+        };
+        Parallel.For(0, 32, _ => command.NotifyCanExecuteChanged());
+        await Assert.That(ui.Queue.Count).IsEqualTo(1);
+        await Assert.That(notifications).IsEqualTo(0);
+        ui.RunNext();
+        await Assert.That(notifications).IsEqualTo(1);
+        await Assert.That(ui.Queue.Count).IsEqualTo(1);
+        ui.RunNext();
+        await Assert.That(notifications).IsEqualTo(2);
+        command.NotifyCanExecuteChanged();
+        command.Dispose();
+        ui.RunNext();
+        command.NotifyCanExecuteChanged();
+        await Assert.That(notifications).IsEqualTo(2);
+        await Assert.That(ui.Queue.Count).IsEqualTo(0);
+    }
+
+    /// <summary>投递失败不会使 pending 永久卡住。</summary>
+    [Test] public async Task NotificationPostFailureCanRecoverAsync()
+    {
+        NotificationUiDispatcher ui = new() { FailNext = true };
+        using MviAsyncCommand command = new(static () => true, (_, _) => ValueTask.CompletedTask, ui);
+        int notifications = 0;
+        command.CanExecuteChanged += (_, _) => notifications++;
+        await TestCheck.ThrowsAsync<InvalidOperationException>(() => { command.NotifyCanExecuteChanged(); return Task.CompletedTask; });
+        command.NotifyCanExecuteChanged();
+        await Assert.That(ui.Queue.Count).IsEqualTo(1);
+        ui.RunNext();
+        await Assert.That(notifications).IsEqualTo(1);
+    }
+
+    private sealed class NotificationUiDispatcher : IMviUiDispatcher
+    {
+        internal readonly ConcurrentQueue<Action> Queue = new();
+        internal bool FailNext;
+        /// <summary>记录待执行回调，或模拟一次平台投递失败。</summary>
+        public void Post(Action action)
+        {
+            if (FailNext) { FailNext = false; throw new InvalidOperationException("post"); }
+            Queue.Enqueue(action);
+        }
+        internal void RunNext()
+        {
+            if (!Queue.TryDequeue(out Action? action)) throw new InvalidOperationException("No UI callback");
+            action();
+        }
+    }
+
     /// <summary>void 入口观察同步构造异常且不保存敏感参数。</summary>
     [Test] public async Task SynchronousFailureIsReportedWithoutPayloadAsync()
     {
@@ -28,12 +118,19 @@ public sealed class MviCommandTests
     [Test] public async Task AsynchronousFailureIsReportedAsync()
     {
         TaskCompletionSource release = TestCheck.Signal();
-        TaskCompletionSource<Exception> reported = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        using MviAsyncCommand command = new(static () => true, async (_, _) => { await release.Task; throw new InvalidOperationException("async"); });
-        command.UnhandledException += (_, error) => reported.TrySetResult(error.Exception);
-        command.Execute(null); release.TrySetResult();
-        Exception exception = await reported.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await Assert.That(exception.Message).IsEqualTo("async");
+        TaskCompletionSource<CommandExceptionEventArgs> reported = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        InvalidOperationException expected = new("async");
+        using MviAsyncCommand command = new(static () => true, async (_, _) => { await release.Task; throw expected; });
+        command.UnhandledException += (_, _) => throw new InvalidOperationException("observer");
+        command.UnhandledException += (_, error) => reported.TrySetResult(error);
+        try
+        {
+            command.Execute("password"); release.TrySetResult();
+            CommandExceptionEventArgs error = await reported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(error.Exception).IsSameReferenceAs(expected);
+            await Assert.That(error.Parameter).IsNull();
+        }
+        finally { release.TrySetResult(); }
     }
     /// <summary>按钮和原生事件重复触发同一个命令时只运行一次。</summary>
     [Test] public async Task RunningCommandRejectsDuplicateExecutionAsync()

@@ -145,7 +145,7 @@ public sealed class EventBindingScenario : IDisposable
             }
             catch (Exception exception)
             {
-                DispatchFailed?.Invoke(this, new IntentDispatchExceptionEventArgs(exception, intent));
+                DispatchFailed?.Invoke(this, new IntentDispatchExceptionEventArgs(exception, intent.GetType()));
                 throw;
             }
         }

@@ -12,6 +12,38 @@ namespace MiKiNuo.Mvi.Tests;
 /// <summary>测试 UI 调度所有权与声明式输入。</summary>
 public sealed class ViewModelBindingTests
 {
+    /// <summary>就绪检查不等待排队投影。</summary>
+    [Test]
+    public async Task ReadinessDoesNotWaitForQueuedProjectionAsync()
+    {
+        await using var store = TestCheck.Store();
+        QueueUiDispatcher dispatcher = new();
+        using CounterViewModel model = new(store, dispatcher);
+        model.VerifyBindingsInitialized();
+        await Assert.That(model.RenameCommand is not null).IsTrue();
+    }
+
+    /// <summary>初始化仅尝试一次，失败时清理命令。</summary>
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task InitializationIsSingleAttemptAndFailureCleansUpAsync(bool fail)
+    {
+        await using var store = TestCheck.Store();
+        using InitializationProbe model = new(store, fail);
+        bool failed = false;
+        try { model.Initialize(); } catch (InvalidOperationException) { failed = true; }
+        await Assert.That(failed).IsEqualTo(fail);
+        await Assert.That(model.Cleaned).IsEqualTo(fail);
+        await Assert.That(model.Command!.CanExecute(null)).IsEqualTo(!fail);
+        bool repeated = false;
+        try { model.Initialize(); } catch (InvalidOperationException) { repeated = true; }
+        await Assert.That(repeated).IsTrue();
+        bool ready = true;
+        try { model.VerifyBindingsInitialized(); } catch (InvalidOperationException) { ready = false; }
+        await Assert.That(ready).IsEqualTo(!fail);
+    }
+
     /// <summary>后台状态提交不能立即改写 UI 拥有的属性缓冲。</summary>
     [Test] public async Task EntireProjectionIsQueuedOnUiDispatcherAsync()
     {
@@ -56,6 +88,36 @@ public sealed class ViewModelBindingTests
         await model.RenameCommand.ExecuteAsync(null);
         await Assert.That(store.CurrentState.Label).IsEqualTo("new input");
     }
+}
+/// <summary>验证生成绑定初始化与失败清理。</summary>
+/// <param name="store">借用的状态存储。</param>
+/// <param name="fail">是否拒绝初次投影。</param>
+internal sealed partial class InitializationProbe(IMviStore<CounterState, CounterIntent> store, bool fail)
+    : MviViewModelBase<CounterState, CounterIntent>(fail ? new InitializationStore(store) : store)
+{
+    internal bool Cleaned;
+    internal void Initialize() => InitializeBindings();
+    /// <summary>获取生成的测试命令。</summary>
+    [MviCommand(typeof(CounterIntent.Increment))]
+    public partial IMviAsyncCommand Command { get; }
+    /// <inheritdoc/>
+    protected override void OnDispose() => Cleaned = true;
+}
+/// <summary>模拟初始化期间状态流不可用。</summary>
+/// <param name="store">借用的状态存储。</param>
+internal sealed class InitializationStore(IMviStore<CounterState, CounterIntent> store) : IMviStore<CounterState, CounterIntent>
+{
+    /// <inheritdoc/>
+    public CounterState CurrentState => store.CurrentState;
+    /// <inheritdoc/>
+    public R3.Observable<CounterState> States => throw new InvalidOperationException("subscription unavailable");
+    /// <inheritdoc/>
+    public R3.Observable<Exception> Errors => store.Errors;
+    /// <inheritdoc/>
+    public ValueTask DispatchAsync(CounterIntent intent, CancellationToken cancellationToken = default)
+        => store.DispatchAsync(intent, cancellationToken);
+    /// <inheritdoc/>
+    public bool TryPost(CounterIntent intent) => store.TryPost(intent);
 }
 /// <summary>真实生成的属性与命令，不使用模拟基类。</summary>
 public sealed partial class CounterViewModel : MviViewModelBase<CounterState, CounterIntent>

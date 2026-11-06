@@ -1,3 +1,4 @@
+using MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi;
 using MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi.Minimal;
 using MiKiNuo.Mvi.Benchmarks.Scenarios.Mvi.LoginReplica;
 using MiKiNuo.Mvi.Runtime.MVI.Store;
@@ -7,6 +8,34 @@ namespace MiKiNuo.Mvi.Tests;
 /// <summary>基准场景必须能完成当前内核上的实际操作。</summary>
 public sealed class BenchmarkMviScenarioSmokeTests
 {
+    /// <summary>所有并发参数均完整执行两批，清理后派发必须失败。</summary>
+    /// <param name="threadCount">本批并发 worker 数。</param>
+    [Test]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(4)]
+    [Arguments(8)]
+    public async Task ConcurrentBenchmarkCompletesEveryBatchAsync(int threadCount)
+    {
+        await using ConcurrentDispatchBenchmarks benchmark = new() { ThreadCount = threadCount };
+        benchmark.Setup();
+        await Assert.That(await benchmark.ConcurrentDispatchBatchAsync()).IsEqualTo(threadCount * 100);
+        await Assert.That(await benchmark.ConcurrentDispatchBatchAsync()).IsEqualTo(threadCount * 100);
+        await benchmark.CleanupAsync();
+        await benchmark.DisposeAsync();
+        try { await benchmark.ConcurrentDispatchBatchAsync(); }
+        catch (ObjectDisposedException) { return; }
+        throw new InvalidOperationException("基准清理后不应继续接纳派发。");
+    }
+
+    /// <summary>初始化前以及重复异步清理均安全。</summary>
+    [Test] public async Task ConcurrentBenchmarkCleanupBeforeSetupIsSafeAsync()
+    {
+        await using ConcurrentDispatchBenchmarks benchmark = new();
+        await benchmark.CleanupAsync();
+        await benchmark.DisposeAsync();
+    }
+
     /// <summary>最小 Handler 和纯 Reducer 对账。</summary>
     [Test] public async Task MinimalHandlerScenarioRunsAsync()
     {

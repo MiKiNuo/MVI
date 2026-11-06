@@ -28,7 +28,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
     private readonly CancellationTokenSource _lifetime = new();
     private readonly TaskCompletionSource _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Task _notificationWorker;
-    private readonly int _maxConcurrentIntents;
+    private readonly SemaphoreSlim _executionSlots;
     private TState _current;
     private int _active;
     private bool _stopping;
@@ -54,7 +54,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxConcurrentIntents);
         _current = initialState;
         _reducer = reducer;
-        _maxConcurrentIntents = maxConcurrentIntents;
+        _executionSlots = new(maxConcurrentIntents, maxConcurrentIntents);
         _pipeline = new(middlewares, handler);
         _states = new(initialState);
         _stateStream = _states.AsObservable();
@@ -66,7 +66,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
         }
         catch
         {
-            _states.Dispose(); _errors.Dispose(); _lifetime.Dispose();
+            _states.Dispose(); _errors.Dispose(); _lifetime.Dispose(); _executionSlots.Dispose();
             throw;
         }
         _notificationWorker = Task.Run(ProcessNotificationsAsync);
@@ -88,7 +88,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_stopping, this);
-            if (_active >= _maxConcurrentIntents) throw new MviCapacityExceededException();
+            if (!_executionSlots.Wait(0, cancellationToken)) throw new MviCapacityExceededException();
             _active++;
         }
         return ExecuteAsync(intent, cancellationToken);
@@ -111,6 +111,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
             {
                 // 与 Reduce 使用同一把锁，封住处理结束后偷用上下文的竞态。
                 if (context is not null) context.Closed = true;
+                _executionSlots.Release();
                 if (--_active == 0 && _stopping) _drained.TrySetResult();
             }
         }
@@ -125,14 +126,29 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
     }
     private async Task ProcessNotificationsAsync()
     {
-        await foreach (TIntent intent in _notifications.Reader.ReadAllAsync().ConfigureAwait(false))
+        try
         {
-            lock (_gate) { if (_stopping) break; }
-            try { await DispatchAsync(intent, _lifetime.Token).ConfigureAwait(false); }
-            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { break; }
-            catch (ObjectDisposedException) when (_lifetime.IsCancellationRequested) { break; }
-            catch (Exception exception) { ReportError(exception); }
+            while (await _notifications.Reader.WaitToReadAsync(_lifetime.Token).ConfigureAwait(false))
+            {
+                await _executionSlots.WaitAsync(_lifetime.Token).ConfigureAwait(false);
+                TIntent intent;
+                lock (_gate)
+                {
+                    if (_stopping || !_notifications.Reader.TryRead(out intent!))
+                    {
+                        _executionSlots.Release();
+                        if (_stopping) return;
+                        continue;
+                    }
+                    _active++;
+                }
+                try { await ExecuteAsync(intent, default).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { break; }
+                catch (ObjectDisposedException) when (_lifetime.IsCancellationRequested) { break; }
+                catch (Exception exception) { ReportError(exception); }
+            }
         }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
     }
     private bool Commit(Context context, Func<TState, bool>? guard, IMviMutation<TState> mutation)
     {
@@ -211,7 +227,7 @@ public sealed class MviStore<TState, TIntent> : IMviStore<TState, TIntent>, IDis
         await _notificationWorker.ConfigureAwait(false);
         await _drained.Task.ConfigureAwait(false);
         while (_notifications.Reader.TryRead(out _)) { }
-        _states.Dispose(); _errors.Dispose(); _lifetime.Dispose();
+        _states.Dispose(); _errors.Dispose(); _lifetime.Dispose(); _executionSlots.Dispose();
     }
     private sealed class Context(MviStore<TState, TIntent> owner) : IIntentContext<TState>
     {

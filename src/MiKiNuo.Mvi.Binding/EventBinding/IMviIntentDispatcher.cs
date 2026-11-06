@@ -35,13 +35,13 @@ public sealed class IntentDispatchExceptionEventArgs : EventArgs
     /// 初始化 Intent 派发失败事件参数。
     /// </summary>
     /// <param name="exception">派发异常。</param>
-    /// <param name="intent">触发异常的 Intent。</param>
-    public IntentDispatchExceptionEventArgs(Exception exception, IMviIntent intent)
+    /// <param name="intentType">触发异常的 Intent 类型。</param>
+    public IntentDispatchExceptionEventArgs(Exception exception, Type intentType)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        ArgumentNullException.ThrowIfNull(intent);
+        ArgumentNullException.ThrowIfNull(intentType);
         Exception = exception;
-        Intent = intent;
+        IntentType = intentType;
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ public sealed class IntentDispatchExceptionEventArgs : EventArgs
     public Exception Exception { get; }
 
     /// <summary>
-    /// 获取触发异常的 Intent。
+    /// 获取触发异常的 Intent 类型。
     /// </summary>
-    public IMviIntent Intent { get; }
+    public Type IntentType { get; }
 }

@@ -201,6 +201,12 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(all(line.split('.')[1].startswith(('DOC', 'CODE', 'ARCH')) for line in rules))
         self.assertNotIn('dotnet_diagnostic.MVI', config)
 
+    def test_package_readme_source_exists(self):
+        targets = ET.parse(release.ROOT / 'eng/Package.targets')
+        readme = next(item for item in targets.iter('None') if item.get('PackagePath') == '/README.md')
+        source = readme.get('Include').replace('$(MSBuildThisFileDirectory)', str(release.ROOT / 'eng') + '/')
+        self.assertTrue(Path(source).is_file(), source)
+
     def test_catalog_matches_the_six_project_ids(self):
         for entry in release.catalog():
             xml = ET.parse(release.ROOT/entry['project'])

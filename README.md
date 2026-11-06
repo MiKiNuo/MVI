@@ -35,9 +35,17 @@ View ← ViewModel ← States ← State ← Store + Reducer
 - Handler 可以并发执行；Reducer 提交在 Store 锁内串行完成。不能假设 Intent 的完成顺序等于派发顺序。
 - `TryReduce(guard, mutation)` 在同一个锁内判断当前状态并提交，适用于忙碌保护等原子检查。不要先读取 `context.State` 再假定后续提交仍基于同一版本。
 - 锁不会跨越异步等待或观察者回调；状态按提交顺序发布，重入派发不会打乱该发布顺序。
-- `DispatchAsync` 等待该 Handler 的完整工作；`TryPost` 仅报告队列是否接纳，后续失败通过 `Errors` 观察。
+- `DispatchAsync` 等待该 Handler 的完整工作，执行容量满时立即拒绝。`TryPost` 仅报告有界队列是否接纳；已接纳通知等待执行容量，不因直接派发暂时占满容量而被丢弃，业务失败通过 `Errors` 观察。
 - Handler 返回后 Context 失效。调用方取消时仍允许 Handler 在 `finally` 中提交清理 Mutation；Store 停止后拒绝继续提交。
-- `DisposeAsync` 停止准入、发出取消并等待已准入操作及通知工作结束。无法强制终止不响应取消的服务；宿主关闭时应异步等待，不在 UI 线程调用 `.Wait()` 或 `.Result`。
+- `DisposeAsync` 停止准入、取消尚未执行的通知并等待在途工作真正结束。接纳不等于终态必达；Handler 不得等待同一 Store 的排队通知完成或等待自身 Store 释放。无法强制终止不响应取消的服务；宿主关闭时应异步等待，不在 UI 线程调用 `.Wait()` 或 `.Result`。
+
+### 绑定就绪与错误观察
+
+没有自定义构造函数时，生成器负责初始化 ViewModel。自定义构造函数须在自身依赖和字段就绪后调用一次 `InitializeBindings()`；生成工厂返回前会调用 `VerifyBindingsInitialized()`，手工构造也可调用它检查。该检查不等待 UI 首次投影；遗漏初始化时，生成 command 的 getter 会明确抛错，而不是返回 null。
+
+`DispatchFailed` 在派发失败的执行线程通知，事件参数只保留 `Exception` 和 `IntentType`，不再保留原始 `Intent`；使用旧事件参数的调用方需迁移到类型标识。正常取消不触发失败事件，显式异步调用仍保留取消。`Command.UnhandledException` 仍在 UI 上通知且不保存参数；两种错误事件都隔离观察者异常，避免遮蔽原始故障。`Exception.Message`、`Data` 和内部异常不保证脱敏，不能直接视为安全日志内容。
+
+同一 command 尚未执行的 `CanExecuteChanged` 投递会合并，回调读取当时的可执行状态；State 发布及完整投影不合并、不跳过。生成的事件 adapter 使用程序集独立的内部命名空间，本程序集自动导入，继续使用 `control.ToEventSource().EventName`，不要依赖生成类型的完整名称。
 
 ## 项目结构
 

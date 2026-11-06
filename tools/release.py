@@ -288,7 +288,7 @@ def pack(version: str) -> None:
     execute(["dotnet", "restore", "MiKiNuo.Mvi.slnx", *version_args], logs / "restore.log")
     execute(["dotnet", "build", "MiKiNuo.Mvi.slnx", "-c", "Release", "--no-restore", *version_args], logs / "build.log")
     execute(["dotnet", "run", "--project", "test/MiKiNuo.Mvi.Tests", "-c", "Release", "--no-build", "--no-restore",
-             "--", "--maximum-parallel-tests", "1", "--results-directory", str(logs / "test-results")], logs / "tests.log")
+             "--", "--results-directory", str(logs / "test-results")], logs / "tests.log")
     execute(["dotnet", "run", "--project", "test/MiKiNuo.Mvi.Benchmarks", "-c", "Release", "--no-build", "--no-restore",
              "--", "--list", "flat"], logs / "benchmark-discovery.log")
     for item in catalog():
