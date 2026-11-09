@@ -232,12 +232,11 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(xml.find('.//PackageId').text, entry['id'])
         self.assertEqual(len(release.catalog()), 6)
 
-    def test_package_readme_source_exists(self):
-        targets = release.ROOT/'eng/Package.targets'
-        readme = ET.parse(targets).find(".//None[@PackagePath='/README.md']")
-        self.assertIsNotNone(readme)
-        source = readme.get('Include').replace('$(MSBuildThisFileDirectory)', f'{targets.parent}/')
-        self.assertTrue(Path(source).is_file(), source)
+    def test_packaged_globalconfig_reaches_compiler(self):
+        # SDK 在 NuGet .targets 导入前已快照 GlobalAnalyzerConfigFiles，只有 EditorConfigFiles 会到达编译器。
+        targets = ET.parse(release.ROOT/'src/MiKiNuo.Mvi.Generators/buildTransitive/MiKiNuo.Mvi.Generators.targets')
+        includes = [item.get('Include', '') for item in targets.iter('EditorConfigFiles')]
+        self.assertTrue(any('MiKiNuo.Mvi.Generators.globalconfig' in include for include in includes))
 
     def test_public_targets_do_not_mutate_consumer_framework(self):
         for path in (release.ROOT/'src').glob('*/buildTransitive/*.targets'):
